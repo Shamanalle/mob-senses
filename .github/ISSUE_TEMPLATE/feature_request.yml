@@ -1,0 +1,26 @@
+name: "💡 Idea / Идея"
+description: "Suggest a sense, a setting or a change / Предложите чувство, настройку или изменение"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: "What would you like? / Что вы хотите?"
+      description: "What should mobs notice, and how should it feel in game? / Что мобы должны замечать и как это должно ощущаться в игре?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: "Why? / Зачем?"
+      description: "Your server or play style: survival, horror, PvE events… / Ваш сервер или стиль игры: выживание, хоррор, PvE-ивенты…"
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: "Who is it for? / Для кого?"
+      options:
+        - "Players / Игроки"
+        - "Server owners / Владельцы серверов"
+        - "Both / Оба"
