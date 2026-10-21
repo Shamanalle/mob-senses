@@ -1,0 +1,59 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+    id 'java'
+}
+
+// Its jar carries the classes of ':common', so that module is configured first (configure-on-demand)
+evaluationDependsOn(':common')
+
+// NeoForge 1.21 - 1.21.1. NeoForge runs with Minecraft's own names, so the code shared with the Fabric
+// builds is compiled here as it is; only the hooks into NeoForge (package com.kasper.mobsenses.neoforge)
+// are its own.
+def target = "mc1.21-1.21.1"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-neoforge"
+}
+
+repositories {
+    mavenCentral()
+}
+
+// The build against the oldest NeoForge of the band (.github/workflows/build.yml) passes -PloaderOverride.neoforge-1.21=<version>
+neoForge {
+    version = project.findProperty("loaderOverride.${project.name}") ?: project.nf121_neoforge
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+}
