@@ -1,0 +1,43 @@
+plugins {
+    id 'java-library'
+}
+
+// The shared code of every loader and the plugin: no Minecraft classes, so it is unit-tested here
+base {
+    archivesName = "mob-senses-common"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+processResources {
+    inputs.property "version", project.mod_version
+    filesMatching("mobsenses-build.properties") {
+        expand "version": project.mod_version
+    }
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
+}

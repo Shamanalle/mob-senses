@@ -1,0 +1,38 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/Shamanalle/mob-senses/issues"
+
+[[mods]]
+modId = "mobsenses"
+version = "${version}"
+displayName = "Mob Senses"
+displayURL = "https://github.com/Shamanalle/mob-senses"
+logoFile = "assets/mobsenses/icon.png"
+authors = "Shamanalle"
+description = '''
+Mobs hear your steps, blocks, doors and fights through walls, see your light and, with Simple Voice Chat, hear your voice. Works on the server alone; vanilla clients can join.
+
+Мобы слышат шаги, блоки, двери и бой сквозь стены, видят ваш свет, а с Simple Voice Chat слышат и голос. Хватает мода на сервере; ванильные клиенты могут заходить.
+'''
+
+[[dependencies.mobsenses]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.mobsenses]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21,1.21.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.mobsenses]]
+modId = "voicechat"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"

@@ -1,0 +1,94 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+// Its jar carries the classes of ':common', so that module is configured first (configure-on-demand)
+evaluationDependsOn(':common')
+
+// Minecraft 26.1 - 26.3 (compiled against 26.3, unobfuscated: no remapping)
+def target = "mc26.x"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-fabric"
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common')
+
+    minecraft "com.mojang:minecraft:${project.mc26_minecraft}"
+    implementation "net.fabricmc:fabric-loader:${project.mc26_fabric_loader}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.mc26_fabric_api}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+}
+
+// The classpath the mod compiles against, one entry per line. The 26.x compatibility check
+// (.github/workflows/compat-26.yml) compares the jar against this list for each Minecraft version.
+tasks.register('writeCompileClasspath') {
+    def out = layout.buildDirectory.file('compile-classpath.txt')
+    def files = sourceSets.main.compileClasspath
+    outputs.file out
+    outputs.upToDateWhen { false }
+    doLast {
+        out.get().asFile.text = files.files.join('\n') + '\n'
+    }
+}
+
+// In-game test (Fabric client gametest, run by .github/workflows/ingame.yml): starts a singleplayer
+// world with the mod and runs /mobsenses as a player, in English and Russian, with screenshots
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'mobsenses-gametest'
+        enableGameTests = false
+        enableClientGameTests = true
+        eula = true
+    }
+}
+
+sourceSets {
+    gametest {
+        java {
+            srcDir "${rootDir}/shared/gametest/src/java"
+        }
+        // The mod's texts: in the dev client ':common' is a plain library, so its assets are not loaded
+        resources {
+            srcDir "${rootDir}/common/src/main/resources"
+            include "assets/**", "fabric.mod.json"
+        }
+    }
+}

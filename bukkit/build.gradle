@@ -1,0 +1,80 @@
+plugins {
+    id 'java'
+}
+
+// This build script reads common's source set, and ':bukkit' is configured before ':common-j8'
+evaluationDependsOn(':common-j8')
+
+// Bukkit, Spigot, Paper, Purpur and Folia 1.16.5+: the server side only (there is no client on Bukkit).
+// Compiled against the 1.16.5 API (Java 8 bytecode, see gradle/jabel.gradle) and uses only API that later
+// versions still have; what needs a newer API is in the "modern" source set.
+version = project.mod_version
+
+base {
+    archivesName = "mob-senses-bukkit"
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc"
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    implementation project(':common-j8')
+    compileOnly "com.destroystokyo.paper:paper-api:${project.bukkit_api_version}"
+}
+
+apply from: "${rootDir}/gradle/jabel.gradle"
+
+// Game events (GenericGameEvent, 1.17+) and Folia's schedulers (1.20+) exist only in newer APIs, so their
+// classes are a source set of their own, compiled against such an API and loaded only where it exists.
+// They go into the same jar.
+sourceSets {
+    modern {
+        compileClasspath += sourceSets.main.output + configurations.compileClasspath
+    }
+}
+configurations.modernCompileClasspath {
+    attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 17)
+}
+dependencies {
+    modernCompileOnly "io.papermc.paper:paper-api:${project.bukkit_modern_api_version}"
+}
+tasks.named('compileModernJava') { dependsOn 'compileJava' }
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("plugin.yml") {
+        expand "version": project.version
+    }
+}
+
+// The plugin jar: the common code with the language files (replies to /mobsenses come from them; the icon
+// is for the mod only)
+tasks.named('jar') {
+    from(sourceSets.modern.output)
+    from(project(':common-j8').sourceSets.main.output) {
+        exclude 'assets/mobsenses/icon.png'
+    }
+}
+
+// Guards the jar against losing the texts: without them every reply is a bare key
+tasks.register('checkPluginJar') {
+    def jarFile = tasks.named('jar').flatMap { it.archiveFile }
+    inputs.file jarFile
+    dependsOn 'jar'
+    doLast {
+        def names = new java.util.zip.ZipFile(jarFile.get().asFile).withCloseable { zip -> zip.entries().collect { it.name } }
+        for (String required : ['plugin.yml', 'assets/mobsenses/lang/en_us.json', 'assets/mobsenses/lang/ru_ru.json',
+                                'com/kasper/mobsenses/ServerText.class', 'com/kasper/mobsenses/bukkit/GameEventListener.class',
+                                'com/kasper/mobsenses/bukkit/FoliaScheduling.class']) {
+            if (!names.contains(required)) {
+                throw new GradleException("The plugin jar lacks " + required)
+            }
+        }
+    }
+}
+tasks.named('build') { dependsOn 'checkPluginJar' }

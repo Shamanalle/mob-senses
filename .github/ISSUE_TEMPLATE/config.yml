@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: "📖 README — installation, commands and settings"
+    url: https://github.com/Shamanalle/mob-senses#readme
+    about: "Versions, files per loader, commands, the settings file"
+  - name: "📖 README — установка, команды и настройки"
+    url: https://github.com/Shamanalle/mob-senses/blob/main/README.ru.md
+    about: "Версии, файлы для загрузчиков, команды, файл настроек"

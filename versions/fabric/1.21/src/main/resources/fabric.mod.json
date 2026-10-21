@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "mobsenses",
+  "version": "${version}",
+  "name": "Mob Senses",
+  "icon": "assets/mobsenses/icon.png",
+  "description": "Mobs hear your steps, blocks, doors and fights through walls, see your light and, with Simple Voice Chat, hear your voice. Works on the server alone; vanilla clients can join.",
+  "authors": [
+    "Shamanalle"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Shamanalle/mob-senses",
+    "sources": "https://github.com/Shamanalle/mob-senses",
+    "issues": "https://github.com/Shamanalle/mob-senses/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.kasper.mobsenses.MobSensesFabric"
+    ]
+  },
+  "mixins": [
+    "mobsenses.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": ">=1.21 <=1.21.11",
+    "java": ">=21"
+  },
+  "suggests": {
+    "voicechat": "*"
+  }
+}

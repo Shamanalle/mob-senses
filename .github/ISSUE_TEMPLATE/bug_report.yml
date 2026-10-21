@@ -1,0 +1,84 @@
+name: "🐞 Bug report / Ошибка"
+description: "Something is broken or the game crashes / Что-то работает не так или игра падает"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Exact versions and steps make it much faster to fix.
+        Спасибо за отчёт! Чем точнее версии и шаги, тем быстрее получится исправить.
+
+  - type: dropdown
+    id: side
+    attributes:
+      label: "Where is the mod installed? / Где установлен мод?"
+      options:
+        - "Server only / Только сервер"
+        - "Singleplayer / Одиночная игра"
+        - "Client and server / Клиент и сервер"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: loader
+    attributes:
+      label: "Loader / Загрузчик"
+      options:
+        - Fabric
+        - Quilt
+        - Forge
+        - NeoForge
+        - Paper / Purpur / Folia / Spigot (plugin / плагин)
+    validations:
+      required: true
+
+  - type: input
+    id: mc_version
+    attributes:
+      label: "Minecraft version / Версия Minecraft"
+      placeholder: "1.21.1"
+    validations:
+      required: true
+
+  - type: input
+    id: mod_version
+    attributes:
+      label: "Mod version / Версия мода"
+      description: "The file name from your mods or plugins folder / Имя файла из папки mods или plugins"
+      placeholder: "mob-senses-forge-neoforge-0.1.0+mc1.20.1-1.21.1.jar"
+    validations:
+      required: true
+
+  - type: input
+    id: loader_version
+    attributes:
+      label: "Loader or server version / Версия загрузчика или ядра"
+      placeholder: "NeoForge 21.1.172 / Fabric Loader 0.17.2 + Fabric API 0.116.6 / Paper 1.21.1 build 132"
+
+  - type: textarea
+    id: other_mods
+    attributes:
+      label: "Other mods that change mobs / Другие моды, меняющие мобов"
+      description: "In Control!, Enhanced AI, Improved Mobs, Simple Voice Chat… / In Control!, Enhanced AI, Improved Mobs, Simple Voice Chat…"
+
+  - type: textarea
+    id: what
+    attributes:
+      label: "What happened and what did you expect? / Что произошло и что вы ожидали?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to reproduce / Как воспроизвести"
+      placeholder: |
+        1. /mobsenses preset hardcore
+        2. …
+
+  - type: textarea
+    id: log
+    attributes:
+      label: "Log or crash report / Лог или отчёт о падении"
+      description: "logs/latest.log or crash-reports/… (drag the file here) / logs/latest.log или crash-reports/… (перетащите файл сюда)"
+      render: text
