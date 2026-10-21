@@ -56,10 +56,16 @@ def main():
     with open(".github/workflows/publish.yml") as f:
         rows = yaml.safe_load(f)["jobs"]["publish"]["strategy"]["matrix"]["include"]
 
-    # With the token, as a project still in review is not public
-    modrinth = get_json(f"https://api.modrinth.com/v2/project/{ids['modrinth']}/version",
-                        os.environ.get("MODRINTH_TOKEN"))
-    modrinth = {v["version_number"]: v for v in modrinth}
+    # The projects are created by hand; until then there is nothing to check
+    if not any(ids.get(key) for key in ("modrinth", "curseforge", "curseforge_plugin")):
+        print("::warning::No store projects in .github/publish.json, nothing to check")
+        return
+    modrinth = None
+    if ids.get("modrinth"):
+        # With the token, as a project still in review is not public
+        modrinth = get_json(f"https://api.modrinth.com/v2/project/{ids['modrinth']}/version",
+                            os.environ.get("MODRINTH_TOKEN"))
+        modrinth = {v["version_number"]: v for v in modrinth}
     curseforge = {}
     for key in ("curseforge", "curseforge_plugin"):
         if ids.get(key):
@@ -79,19 +85,20 @@ def main():
         loaders = row["loaders"].split()
 
         # Modrinth: the version number is {version}+{target}
-        found = modrinth.get(f"{version}+{row['target']}")
-        if found is None:
-            report(row, "Modrinth", "not uploaded")
-        else:
-            problems = []
-            missing = [v for v in game_versions if v not in found["game_versions"]]
-            if missing:
-                problems.append("versions " + " ".join(missing))
-            missing = [l for l in loaders if l not in found["loaders"]]
-            if missing:
-                problems.append("loaders " + " ".join(missing))
-            listed = ", ".join(found["game_versions"] + found["loaders"])
-            report(row, "Modrinth", "; ".join(problems) + (f" (listed: {listed})" if problems else ""))
+        if modrinth is not None:
+            found = modrinth.get(f"{version}+{row['target']}")
+            if found is None:
+                report(row, "Modrinth", "not uploaded")
+            else:
+                problems = []
+                missing = [v for v in game_versions if v not in found["game_versions"]]
+                if missing:
+                    problems.append("versions " + " ".join(missing))
+                missing = [l for l in loaders if l not in found["loaders"]]
+                if missing:
+                    problems.append("loaders " + " ".join(missing))
+                listed = ", ".join(found["game_versions"] + found["loaders"])
+                report(row, "Modrinth", "; ".join(problems) + (f" (listed: {listed})" if problems else ""))
 
         # CurseForge: the mod rows go to the mod project, the plugin to its own project
         key = "curseforge_plugin" if row["target"] == "bukkit" else "curseforge"

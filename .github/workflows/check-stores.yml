@@ -46,7 +46,10 @@ jobs:
         run: |
           tag="${TAG}"
           if [ -z "${tag}" ]; then
-            tag=$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)
+            if ! tag=$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName); then
+              echo "::warning::No release yet, nothing to check in the stores"
+              exit 0
+            fi
           fi
           # shellcheck disable=SC2086
           python3 .github/scripts/check-stores.py "${tag}" ${WARN_ONLY}
