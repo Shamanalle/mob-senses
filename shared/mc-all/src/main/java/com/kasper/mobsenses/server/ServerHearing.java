@@ -36,6 +36,7 @@ import java.util.Set;
 public final class ServerHearing {
 
     private static final int SENSE_TICK_INTERVAL = 10;
+    private static long levelTickCounter;
 
     private static final Set<String> DEFAULT_LISTENERS = new HashSet<>(Arrays.asList(
             "minecraft:zombie",
@@ -179,7 +180,7 @@ public final class ServerHearing {
         }
 
         // 3. Sight (held light / darkness + sneaking) and Scent (wounded blood trail)
-        if (level.getGameTime() % SENSE_TICK_INTERVAL == 0) {
+        if (++levelTickCounter % SENSE_TICK_INTERVAL == 0) {
             for (ServerPlayer player : level.players()) {
                 if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
                     continue;

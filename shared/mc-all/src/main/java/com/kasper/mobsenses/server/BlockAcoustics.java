@@ -8,7 +8,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
-import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -53,7 +52,7 @@ public final class BlockAcoustics {
                 || lower.contains("fence_gate")) {
             return AcousticMaterial.DOOR;
         }
-        if (state.getBlock() instanceof LeavesBlock || lower.contains("leaves")) {
+        if (lower.contains("leaves")) {
             return AcousticMaterial.LEAVES;
         }
         if (lower.contains("wool")
