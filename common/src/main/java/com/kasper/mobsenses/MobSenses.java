@@ -24,6 +24,9 @@ public final class MobSenses {
     private static final NoiseStats NOISE = new NoiseStats();
     private static final NoiseStats ALERTED = new NoiseStats();
     private static final NoiseCoalescer COALESCER = new NoiseCoalescer();
+    private static final VoiceTracker VOICE = new VoiceTracker();
+    private static final ScentModel SCENT = new ScentModel();
+    private static final StealthHudState HUD = new StealthHudState();
     private static volatile ServerSettings settings = new ServerSettings(null);
     private static volatile Platform platform = new Platform("unknown", "?");
     private static volatile boolean voiceChat;
@@ -39,13 +42,20 @@ public final class MobSenses {
      */
     public static void start(Path configDir, Platform where, boolean voiceChatInstalled) {
         platform = where;
-        voiceChat = voiceChatInstalled;
+        voiceChat = voiceChatInstalled || voiceChat;
         debug = false;
         COALESCER.clear();
+        VOICE.clear();
+        SCENT.clear();
         ServerSettings s = new ServerSettings(configDir.resolve(ServerSettings.FILE_NAME));
         s.load();
         settings = s;
         ModLog.info(NAME + " " + BuildInfo.version() + " on " + where + ", preset " + s.preset().id());
+    }
+
+    /** Marks Simple Voice Chat as active when its plugin service initializes. */
+    public static void markVoiceChatActive(boolean active) {
+        voiceChat = active;
     }
 
     /** How often the settings file is checked for an admin's edits. */
@@ -97,6 +107,41 @@ public final class MobSenses {
         return COALESCER;
     }
 
+    public static VoiceTracker voice() {
+        return VOICE;
+    }
+
+    public static ScentModel scent() {
+        return SCENT;
+    }
+
+    public static StealthHudState hud() {
+        return HUD;
+    }
+
+    /**
+     * Records a voice noise emitted by a speaking player at {@code (x, y, z)} in {@code world} with
+     * adaptive base range {@code baseRange}.
+     */
+    public static void voiceEvent(String world, double x, double y, double z, double baseRange) {
+        try {
+            if (!settings.voice() || baseRange <= 0.0) {
+                return;
+            }
+            Preset preset = settings.presetOf(world);
+            if (preset == Preset.OFF) {
+                return;
+            }
+            NOISE.record(System.currentTimeMillis());
+            double range = NoiseModel.effectiveRange(baseRange, preset, settings.hearing());
+            if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                COALESCER.record(world, NoiseModel.Kind.VOICE, "mobsenses:voice", x, y, z, range);
+            }
+        } catch (Throwable t) {
+            ModLog.failure("Handling a voice event", t);
+        }
+    }
+
     /**
      * A game event happened in a world (a step, a block broken, a door opened, an explosion...). Called on
      * the thread that owns the world; never throws.
@@ -129,6 +174,9 @@ public final class MobSenses {
             double range = NoiseModel.effectiveRange(base, preset, settings.hearing());
             if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
                 COALESCER.record(world, kind, event, x, y, z, range);
+                if (playerInvolved) {
+                    HUD.onLocalNoise(range, System.currentTimeMillis());
+                }
             }
         } catch (Throwable t) {
             ModLog.failure("Handling the game event " + event, t);

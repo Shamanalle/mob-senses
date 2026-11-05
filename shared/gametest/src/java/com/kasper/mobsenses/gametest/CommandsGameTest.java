@@ -12,7 +12,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Plays singleplayer with the mod: the world's own server runs Mob Senses inside the client.
  * Sets up a stone courtyard with listener mobs, triggers noise with debug particles enabled, verifies
- * that mobs hear the sound and pathfind toward its origin, captures 4K {@code store-*} screenshots,
+ * that mobs hear the sound and pathfind toward its origin, exercises voice, held-torch sight, and
+ * wounded blood-scent with the client Stealth & Noise HUD, captures 4K {@code store-*} screenshots,
  * and exercises {@code /mobsenses} in English and Russian.
  */
 public class CommandsGameTest implements FabricClientGameTest {
@@ -47,6 +48,7 @@ public class CommandsGameTest implements FabricClientGameTest {
             // Set up the investigation courtyard and listener mobs
             context.runOnClient(TestScreens::setupInvestigationScene);
             context.waitTicks(20);
+            context.getInput().resizeWindow(STORE_WIDTH, STORE_HEIGHT);
             context.runOnClient(client -> TestScreens.guiScale(client, STORE_GUI_SCALE));
             context.waitTicks(5);
 
@@ -64,6 +66,15 @@ public class CommandsGameTest implements FabricClientGameTest {
             storeShot(context, "store-hearing");
             TestScreens.verifyInvestigation();
 
+            // Exercise voice, held-torch sight, wounded scent trail, and capture 4K HUD screenshot
+            context.runOnClient(TestScreens::triggerVoiceSightAndScent);
+            context.waitTicks(15);
+            context.runOnClient(TestScreens::refreshVoiceAndNoiseForHud);
+            context.waitTicks(2);
+            storeShot(context, "store-hud");
+            context.runOnClient(TestScreens::restorePlayerState);
+            context.waitTicks(20);
+
             context.runOnClient(client -> TestScreens.command(client, "mobsenses debug off"));
             context.waitTicks(5);
             context.runOnClient(TestScreens::clearChat);
@@ -71,6 +82,7 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.waitTicks(10);
             storeShot(context, "store-status");
 
+            context.getInput().resizeWindow(854, 480);
             context.runOnClient(client -> TestScreens.guiScale(client, 0));
             context.waitTicks(5);
 

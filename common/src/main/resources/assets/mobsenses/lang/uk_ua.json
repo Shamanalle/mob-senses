@@ -47,5 +47,12 @@
   "command.mobsenses.unknown": "Невідома команда: %s.",
   "command.mobsenses.unknown.suggest": "Можливо, /mobsenses %s?",
   "command.mobsenses.unknown.help": "Список команд: /mobsenses help.",
-  "command.mobsenses.error": "Щось пішло не так; подробиці в лозі сервера."
+  "command.mobsenses.error": "Щось пішло не так; подробиці в лозі сервера.",
+  "gui.mobsenses.hud.noise": "Шум",
+  "gui.mobsenses.hud.light": "Світло",
+  "gui.mobsenses.hud.scent": "Запах",
+  "gui.mobsenses.hud.voice": "Голос",
+  "gui.mobsenses.hud.hidden": "Схований",
+  "gui.mobsenses.hud.caution": "Помітний",
+  "gui.mobsenses.hud.exposed": "Викритий"
 }

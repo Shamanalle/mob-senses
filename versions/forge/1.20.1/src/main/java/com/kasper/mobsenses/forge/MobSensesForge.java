@@ -17,6 +17,7 @@ import net.minecraftforge.event.VanillaGameEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -39,6 +40,9 @@ public final class MobSensesForge {
             }
         });
         MinecraftForge.EVENT_BUS.addListener(MobSensesForge::gameEvent);
+        if (FMLEnvironment.dist.isClient()) {
+            ForgeClientHooks.register();
+        }
     }
 
     private static void gameEvent(VanillaGameEvent e) {

@@ -10,6 +10,14 @@ base {
 
 repositories {
     mavenCentral()
+    maven {
+        name = "henkelmax.public"
+        url = 'https://maven.maxhenkel.de/repository/public'
+    }
+}
+
+dependencies {
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
 }
 
 apply from: "${rootDir}/gradle/jabel.gradle"

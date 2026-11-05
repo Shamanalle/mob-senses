@@ -47,5 +47,12 @@
   "command.mobsenses.unknown": "Comando desconhecido: %s.",
   "command.mobsenses.unknown.suggest": "Você quis dizer /mobsenses %s?",
   "command.mobsenses.unknown.help": "A lista: /mobsenses help.",
-  "command.mobsenses.error": "Algo deu errado; os detalhes estão no log do servidor."
+  "command.mobsenses.error": "Algo deu errado; os detalhes estão no log do servidor.",
+  "gui.mobsenses.hud.noise": "Ruído",
+  "gui.mobsenses.hud.light": "Luz",
+  "gui.mobsenses.hud.scent": "Rastro",
+  "gui.mobsenses.hud.voice": "Voz",
+  "gui.mobsenses.hud.hidden": "Oculto",
+  "gui.mobsenses.hud.caution": "Cuidado",
+  "gui.mobsenses.hud.exposed": "Exposto"
 }

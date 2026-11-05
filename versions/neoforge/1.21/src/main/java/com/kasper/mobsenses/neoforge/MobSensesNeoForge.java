@@ -11,6 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
@@ -36,6 +37,9 @@ public final class MobSensesNeoForge {
             MobSenses.serverTick();
         });
         NeoForge.EVENT_BUS.addListener(MobSensesNeoForge::gameEvent);
+        if (FMLEnvironment.dist.isClient()) {
+            NeoForgeClientHooks.register();
+        }
     }
 
     private static void gameEvent(VanillaGameEvent e) {

@@ -52,14 +52,45 @@ public final class ParticleSender {
         for (ServerPlayer player : level.players()) {
             send(level, player, ParticleTypes.NOTE, sx, sy + 0.35, sz, 1, 0.0, 0.0, 0.0, 0.0);
             send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
-            int steps = 6;
-            for (int i = 1; i < steps; i++) {
-                double t = (double) i / steps;
-                double px = sx + (ex - sx) * t;
-                double py = sy + (ey - sy) * t;
-                double pz = sz + (ez - sz) * t;
-                send(level, player, ParticleTypes.END_ROD, px, py, pz, 1, 0.0, 0.0, 0.0, 0.0);
-            }
+            sendLine(level, player, ParticleTypes.END_ROD, sx, sy, sz, ex, ey, ez, 5);
+        }
+    }
+
+    public static void sendScentTrace(
+            ServerLevel level,
+            double sx, double sy, double sz,
+            double ex, double ey, double ez) {
+        for (ServerPlayer player : level.players()) {
+            send(level, player, ParticleTypes.DAMAGE_INDICATOR, sx, sy + 0.4, sz, 1, 0.1, 0.1, 0.1, 0.0);
+            send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
+            sendLine(level, player, ParticleTypes.CRIT, sx, sy + 0.3, sz, ex, ey, ez, 5);
+        }
+    }
+
+    public static void sendSightTrace(
+            ServerLevel level,
+            double sx, double sy, double sz,
+            double ex, double ey, double ez) {
+        for (ServerPlayer player : level.players()) {
+            send(level, player, ParticleTypes.FLAME, sx, sy + 0.35, sz, 1, 0.05, 0.05, 0.05, 0.01);
+            send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
+            sendLine(level, player, ParticleTypes.ENCHANTED_HIT, sx, sy, sz, ex, ey, ez, 5);
+        }
+    }
+
+    private static void sendLine(
+            ServerLevel level,
+            ServerPlayer player,
+            ParticleOptions particle,
+            double sx, double sy, double sz,
+            double ex, double ey, double ez,
+            int steps) {
+        for (int i = 1; i < steps; i++) {
+            double t = (double) i / steps;
+            double px = sx + (ex - sx) * t;
+            double py = sy + (ey - sy) * t;
+            double pz = sz + (ez - sz) * t;
+            send(level, player, particle, px, py, pz, 1, 0.0, 0.0, 0.0, 0.0);
         }
     }
 

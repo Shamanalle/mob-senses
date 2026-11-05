@@ -20,11 +20,16 @@ repositories {
         name = "papermc"
         url = 'https://repo.papermc.io/repository/maven-public/'
     }
+    maven {
+        name = "henkelmax.public"
+        url = 'https://maven.maxhenkel.de/repository/public'
+    }
 }
 
 dependencies {
     implementation project(':common-j8')
     compileOnly "com.destroystokyo.paper:paper-api:${project.bukkit_api_version}"
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
 }
 
 apply from: "${rootDir}/gradle/jabel.gradle"

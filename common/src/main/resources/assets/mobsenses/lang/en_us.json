@@ -47,5 +47,12 @@
   "command.mobsenses.unknown": "Unknown command: %s.",
   "command.mobsenses.unknown.suggest": "Did you mean /mobsenses %s?",
   "command.mobsenses.unknown.help": "Type /mobsenses help for the list.",
-  "command.mobsenses.error": "Something went wrong; the details are in the server log."
+  "command.mobsenses.error": "Something went wrong; the details are in the server log.",
+  "gui.mobsenses.hud.noise": "Noise",
+  "gui.mobsenses.hud.light": "Light",
+  "gui.mobsenses.hud.scent": "Scent",
+  "gui.mobsenses.hud.voice": "Voice",
+  "gui.mobsenses.hud.hidden": "Hidden",
+  "gui.mobsenses.hud.caution": "Caution",
+  "gui.mobsenses.hud.exposed": "Exposed"
 }

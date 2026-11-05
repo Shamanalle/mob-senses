@@ -4,9 +4,9 @@ import java.util.Locale;
 
 /**
  * The hearing model of Mob Senses: maps game events (steps with posture and surface material, breaking
- * and placing blocks, doors, containers, fights, projectiles, explosions, bells, note blocks, eating)
- * to their base audible radius in blocks, scales them by the world's {@link Preset} and the server's
- * hearing multiplier, and attenuates them through walls.
+ * and placing blocks, doors, containers, fights, projectiles, explosions, bells, note blocks, eating,
+ * and player voice) to their base audible radius in blocks, scales them by the world's {@link Preset}
+ * and the server's hearing multiplier, and attenuates them through walls.
  */
 public final class NoiseModel {
 
@@ -22,7 +22,8 @@ public final class NoiseModel {
         EXPLOSION(48.0, false),
         BELL(40.0, false),
         NOTE_BLOCK(28.0, false),
-        EAT(8.0, true);
+        EAT(8.0, true),
+        VOICE(16.0, true);
 
         private final double defaultRange;
         private final boolean requiresPlayerSource;
@@ -38,8 +39,8 @@ public final class NoiseModel {
         }
 
         /**
-         * Whether this noise category is personal to an entity (steps, eating) and should only alert mobs
-         * when made by a player, so mobs do not endlessly chase other mobs' idle steps.
+         * Whether this noise category is personal to an entity (steps, eating, voice) and should only alert
+         * mobs when made by a player, so mobs do not endlessly chase other mobs' idle steps.
          */
         public boolean requiresPlayerSource() {
             return requiresPlayerSource;
@@ -139,6 +140,8 @@ public final class NoiseModel {
             case "equip":
             case "item_interact_finish":
                 return Kind.EAT;
+            case "voice":
+                return Kind.VOICE;
             default:
                 return null;
         }
@@ -228,6 +231,8 @@ public final class NoiseModel {
                 return "jukebox_play".equals(id) ? 24.0 : Kind.NOTE_BLOCK.defaultRange();
             case EAT:
                 return Kind.EAT.defaultRange() * (pos == Posture.SNEAKING ? 0.6 : 1.0);
+            case VOICE:
+                return Kind.VOICE.defaultRange();
             default:
                 return 0.0;
         }

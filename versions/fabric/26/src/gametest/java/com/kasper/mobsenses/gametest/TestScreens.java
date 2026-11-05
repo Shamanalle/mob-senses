@@ -1,15 +1,20 @@
 package com.kasper.mobsenses.gametest;
 
 import com.kasper.mobsenses.MobSenses;
+import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.server.ServerHearing;
+import com.kasper.mobsenses.server.Worlds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 import java.util.ArrayList;
@@ -129,6 +134,60 @@ final class TestScreens {
             ServerLevel level = server.overworld();
             ServerPlayer player = level.players().isEmpty() ? null : level.players().get(0);
             ServerHearing.onGameEvent(level, "minecraft:bell_ring", 0.5, 121.0, 2.5, player, Blocks.BELL.defaultBlockState());
+        });
+    }
+
+    /**
+     * Exercises Simple Voice Chat audio, held-torch sight, and wounded blood-scent while lighting up
+     * all three bars (Noise, Light, Scent) + Voice indicator on the client Stealth HUD.
+     */
+    static void triggerVoiceSightAndScent(Minecraft client) {
+        long now = System.currentTimeMillis();
+        short[] voiceFrame = new short[]{14000, -14000, 14000, -14000, 14000, -14000};
+        if (client.player != null) {
+            client.player.setHealth(6.0f);
+            client.player.hurtTime = 0;
+        }
+        MinecraftServer server = client.getSingleplayerServer();
+        if (server == null) {
+            return;
+        }
+        server.execute(() -> {
+            ServerLevel level = server.overworld();
+            for (ServerPlayer player : level.players()) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+                player.setHealth(6.0f);
+                MobSenses.voice().onVoiceFrame(player.getUUID(), voiceFrame, false, now);
+                ServerHearing.tickPlayerSightAndScent(level, Worlds.id(level), player, Preset.DEFAULT, now);
+            }
+        });
+    }
+
+    static void refreshVoiceAndNoiseForHud(Minecraft client) {
+        long now = System.currentTimeMillis();
+        short[] voiceFrame = new short[]{14000, -14000, 14000, -14000, 14000, -14000};
+        MobSenses.voice().onClientSound(voiceFrame, false, now);
+        MobSenses.hud().onLocalNoise(22.0, now);
+        if (client.player != null) {
+            client.player.hurtTime = 0;
+        }
+    }
+
+    static void restorePlayerState(Minecraft client) {
+        if (client.player != null) {
+            client.player.setHealth(20.0f);
+            client.player.hurtTime = 0;
+        }
+        MinecraftServer server = client.getSingleplayerServer();
+        if (server == null) {
+            return;
+        }
+        server.execute(() -> {
+            ServerLevel level = server.overworld();
+            for (ServerPlayer player : level.players()) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                player.setHealth(20.0f);
+            }
         });
     }
 

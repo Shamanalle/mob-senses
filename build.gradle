@@ -57,6 +57,9 @@ tasks.register('fabricUniversalMetadata') {
         def entrypoints = [:]
         newest.entrypoints.each { stage, values ->
             entrypoints[stage] = values.collect { String value ->
+                if (stage == 'voicechat') {
+                    return value
+                }
                 // Every entrypoint is glue, created through BandAdapter
                 if (!value.startsWith(prefix) || value.substring(prefix.length()).contains('.')) {
                     throw new GradleException("Unexpected Fabric entrypoint ${value}")

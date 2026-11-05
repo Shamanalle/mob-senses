@@ -47,5 +47,12 @@
   "command.mobsenses.unknown": "未知命令：%s。",
   "command.mobsenses.unknown.suggest": "你是想输入 /mobsenses %s 吗？",
   "command.mobsenses.unknown.help": "命令列表：/mobsenses help。",
-  "command.mobsenses.error": "出了点问题；详情见服务器日志。"
+  "command.mobsenses.error": "出了点问题；详情见服务器日志。",
+  "gui.mobsenses.hud.noise": "声响",
+  "gui.mobsenses.hud.light": "光照",
+  "gui.mobsenses.hud.scent": "气味",
+  "gui.mobsenses.hud.voice": "语音",
+  "gui.mobsenses.hud.hidden": "隐蔽",
+  "gui.mobsenses.hud.caution": "警惕",
+  "gui.mobsenses.hud.exposed": "暴露"
 }

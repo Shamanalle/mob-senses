@@ -18,6 +18,12 @@
   "entrypoints": {
     "main": [
       "com.kasper.mobsenses.MobSensesFabric"
+    ],
+    "client": [
+      "com.kasper.mobsenses.MobSensesClient"
+    ],
+    "voicechat": [
+      "com.kasper.mobsenses.MobSensesVoicePlugin"
     ]
   },
   "mixins": [

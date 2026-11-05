@@ -47,5 +47,12 @@
   "command.mobsenses.unknown": "Unbekannter Befehl: %s.",
   "command.mobsenses.unknown.suggest": "Meintest du /mobsenses %s?",
   "command.mobsenses.unknown.help": "Die Liste: /mobsenses help.",
-  "command.mobsenses.error": "Etwas ist schiefgegangen; die Einzelheiten stehen im Serverlog."
+  "command.mobsenses.error": "Etwas ist schiefgegangen; die Einzelheiten stehen im Serverlog.",
+  "gui.mobsenses.hud.noise": "Lärm",
+  "gui.mobsenses.hud.light": "Licht",
+  "gui.mobsenses.hud.scent": "Spur",
+  "gui.mobsenses.hud.voice": "Stimme",
+  "gui.mobsenses.hud.hidden": "Verborgen",
+  "gui.mobsenses.hud.caution": "Auffällig",
+  "gui.mobsenses.hud.exposed": "Entdeckt"
 }

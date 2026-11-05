@@ -5,16 +5,21 @@ import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.NoiseCoalescer;
 import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
+import com.kasper.mobsenses.ScentModel;
+import com.kasper.mobsenses.SightModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
@@ -25,10 +30,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Bridges Minecraft server game events and world ticks to {@link MobSenses}'s noise model,
- * coalescer, ray-bundle occlusion, and {@link InvestigateGoal}.
+ * Bridges Minecraft server game events and world ticks to {@link MobSenses}'s hearing, voice,
+ * sight/light, and blood-scent models, ray-bundle occlusion, and {@link InvestigateGoal}.
  */
 public final class ServerHearing {
+
+    private static final int SENSE_TICK_INTERVAL = 10;
 
     private static final Set<String> DEFAULT_LISTENERS = new HashSet<>(Arrays.asList(
             "minecraft:zombie",
@@ -109,8 +116,8 @@ public final class ServerHearing {
     }
 
     /**
-     * Dispatches all coalesced noises queued during the current server tick across every loaded
-     * dimension.
+     * Dispatches all coalesced noises, voice events, sight checks, and scent trails across every
+     * loaded dimension.
      */
     public static void tickServer(MinecraftServer server) {
         if (server == null) {
@@ -126,22 +133,39 @@ public final class ServerHearing {
             return;
         }
         String worldId = Worlds.id(level);
-        if (MobSenses.settings().presetOf(worldId) == Preset.OFF) {
+        Preset preset = MobSenses.settings().presetOf(worldId);
+        if (preset == Preset.OFF) {
             MobSenses.coalescer().drainWorld(worldId);
             return;
         }
+        long now = System.currentTimeMillis();
+
+        // 1. Drain pending Simple Voice Chat frames for players in this dimension
+        if (MobSenses.settings().voice()) {
+            for (ServerPlayer player : level.players()) {
+                if (player.isSpectator()) {
+                    continue;
+                }
+                double voiceRange = MobSenses.voice().pollPendingRange(player.getUUID(), now);
+                if (voiceRange > 0.0) {
+                    MobSenses.voiceEvent(worldId, player.getX(), player.getEyeY(), player.getZ(), voiceRange);
+                }
+            }
+        }
+
+        // 2. Dispatch coalesced hearing & voice events through wall occlusion
         List<NoiseCoalescer.Alerted<Mob>> alertedList = MobSenses.coalescer().dispatchWorld(
                 worldId,
                 (ex, ey, ez, radius) -> findCandidateListeners(level, ex, ey, ez, radius),
                 (sx, sy, sz, tx, ty, tz) -> BlockAcoustics.traceBundle(level, sx, sy, sz, tx, ty, tz));
 
-        long now = System.currentTimeMillis();
         for (NoiseCoalescer.Alerted<Mob> alerted : alertedList) {
             Mob mob = alerted.mob();
             NoiseCoalescer.CoalescedNoise noise = alerted.noise();
             double speed = noise.kind() == NoiseModel.Kind.EXPLOSION
                     || noise.kind() == NoiseModel.Kind.COMBAT
                     || noise.kind() == NoiseModel.Kind.BELL
+                    || noise.kind() == NoiseModel.Kind.VOICE
                     ? 1.15 : 1.0;
             if (InvestigateGoal.alert(mob, noise.x(), noise.y(), noise.z(), speed)) {
                 MobSenses.alerted().record(now);
@@ -152,6 +176,139 @@ public final class ServerHearing {
                             mob.getX(), mob.getEyeY(), mob.getZ());
                 }
             }
+        }
+
+        // 3. Sight (held light / darkness + sneaking) and Scent (wounded blood trail)
+        if (level.getGameTime() % SENSE_TICK_INTERVAL == 0) {
+            for (ServerPlayer player : level.players()) {
+                if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
+                    continue;
+                }
+                tickPlayerSightAndScent(level, worldId, player, preset, now);
+            }
+        }
+    }
+
+    /**
+     * Evaluates a player's wounded scent trail and light/posture visibility against nearby mobs.
+     */
+    public static void tickPlayerSightAndScent(
+            ServerLevel level, String worldId, Player player, Preset preset, long now) {
+        if (level == null || player == null || preset == null || preset == Preset.OFF) {
+            return;
+        }
+        double px = player.getX();
+        double py = player.getY();
+        double pz = player.getZ();
+
+        // Scent: badly wounded players (<= 50% health) leave a trail followed by zombies and spiders
+        double scentRange = MobSenses.scent().recordPlayer(
+                worldId, player.getUUID(), px, py, pz,
+                player.getHealth(), player.getMaxHealth(), preset, now);
+        if (scentRange > 0.0) {
+            AABB scentBox = new AABB(
+                    px - scentRange, py - 6.0, pz - scentRange,
+                    px + scentRange, py + 6.0, pz + scentRange);
+            List<Mob> trackers = level.getEntitiesOfClass(Mob.class, scentBox,
+                    m -> m.isAlive() && !m.isNoAi() && m.getTarget() == null && isScentTrackerMob(m));
+            int alertedCount = 0;
+            for (Mob mob : trackers) {
+                ScentModel.Crumb crumb = MobSenses.scent().findNearestScent(
+                        worldId, mob.getX(), mob.getY(), mob.getZ(), now);
+                if (crumb != null && InvestigateGoal.alert(mob, crumb.x(), crumb.y(), crumb.z(), 1.10)) {
+                    MobSenses.alerted().record(now);
+                    if (MobSenses.debug()) {
+                        ParticleSender.sendScentTrace(
+                                level, crumb.x(), crumb.y(), crumb.z(),
+                                mob.getX(), mob.getEyeY(), mob.getZ());
+                    }
+                    if (++alertedCount >= 6) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Sight & Light: holding a torch/lantern increases detection range; darkness + sneaking hides
+        double sightMult = MobSenses.settings().sight();
+        if (!(sightMult > 0.0)) {
+            return;
+        }
+        BlockPos pos = player.blockPosition();
+        int blockLight = level.getBrightness(LightLayer.BLOCK, pos);
+        int skyLight = Math.max(0, level.getBrightness(LightLayer.SKY, pos) - level.getSkyDarken());
+        int heldLight = Math.max(
+                SightModel.heldItemLight(itemId(player.getMainHandItem())),
+                SightModel.heldItemLight(itemId(player.getOffhandItem())));
+        boolean sneaking = player.isShiftKeyDown() || player.isCrouching();
+        boolean sprinting = player.isSprinting();
+
+        double baseSight = SightModel.DEFAULT_SIGHT_RANGE * sightMult;
+        double effectiveSight = SightModel.effectiveSightRange(
+                baseSight, blockLight, skyLight, heldLight, sneaking, sprinting, preset);
+
+        if (effectiveSight > SightModel.DEFAULT_SIGHT_RANGE) {
+            AABB sightBox = new AABB(
+                    px - effectiveSight, py - 8.0, pz - effectiveSight,
+                    px + effectiveSight, py + 8.0, pz + effectiveSight);
+            List<Mob> watchers = level.getEntitiesOfClass(Mob.class, sightBox,
+                    m -> isListener(m) && m.getTarget() == null);
+            int spotted = 0;
+            for (Mob mob : watchers) {
+                double dx = px - mob.getX();
+                double dy = player.getEyeY() - mob.getEyeY();
+                double dz = pz - mob.getZ();
+                if (dx * dx + dy * dy + dz * dz > effectiveSight * effectiveSight) {
+                    continue;
+                }
+                if (mob.hasLineOfSight(player) && InvestigateGoal.alert(mob, px, py, pz, 1.10)) {
+                    MobSenses.alerted().record(now);
+                    if (MobSenses.debug()) {
+                        ParticleSender.sendSightTrace(
+                                level, px, player.getEyeY(), pz,
+                                mob.getX(), mob.getEyeY(), mob.getZ());
+                    }
+                    if (++spotted >= 6) {
+                        break;
+                    }
+                }
+            }
+        } else if (effectiveSight < SightModel.DEFAULT_SIGHT_RANGE * 0.75) {
+            double checkRadius = SightModel.DEFAULT_SIGHT_RANGE + 6.0;
+            AABB darkBox = new AABB(
+                    px - checkRadius, py - 8.0, pz - checkRadius,
+                    px + checkRadius, py + 8.0, pz + checkRadius);
+            double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
+            List<Mob> pursuers = level.getEntitiesOfClass(Mob.class, darkBox,
+                    m -> m.isAlive() && m.getTarget() == player && m.getLastHurtByMob() != player);
+            for (Mob mob : pursuers) {
+                if (mob.distanceToSqr(player) > loseDistSq) {
+                    mob.setTarget(null);
+                }
+            }
+        }
+    }
+
+    public static boolean isScentTrackerMob(Mob mob) {
+        if (mob == null) {
+            return false;
+        }
+        try {
+            String key = String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()));
+            return ScentModel.isScentTracker(key);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public static String itemId(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return "";
+        }
+        try {
+            return String.valueOf(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        } catch (Throwable ignored) {
+            return "";
         }
     }
 
