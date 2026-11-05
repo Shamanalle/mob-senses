@@ -40,7 +40,7 @@ Check the names in the form: both sites rename categories from time to time.
 **Links:** source https://github.com/Shamanalle/mob-senses · issues https://github.com/Shamanalle/mob-senses/issues · license MIT.
 
 **Upload checklist**
-1. Modrinth → *Create a project*, type *Mod*, the name and summary above, slug `mob-senses`. CurseForge → *Minecraft → Mods → Create project*, same name and summary; the plugin: *Minecraft → Bukkit Plugins → Create project*, name `Mob Senses`, the same summary without "Forge, NeoForge, Fabric and".
+1. Modrinth → *Create a project*, type *Mod*, the name and summary above, slug `mob-senses`. CurseForge → *Minecraft → Mods → Create project*, same name and summary; the plugin: *Minecraft → Bukkit Plugins → Create project*, the same name and the same summary (with "Paper, Purpur, Folia and Spigot" instead of "Forge, NeoForge, Fabric and Paper").
 2. License MIT, the links above, the icon, the categories and the environment from the tables.
 3. Put the project ids into `.github/publish.json` (`modrinth`, `curseforge`, `curseforge_plugin`), and add the `MODRINTH_TOKEN` and `CURSEFORGE_TOKEN` secrets (rights in `CONTRIBUTING.md`).
 4. *Actions → Sync Modrinth page → Run workflow* uploads `docs/modrinth.md` and the gallery images from `docs/gallery.json`.
@@ -79,7 +79,7 @@ Check the names in the form: both sites rename categories from time to time.
 **Ссылки:** исходники https://github.com/Shamanalle/mob-senses · ошибки https://github.com/Shamanalle/mob-senses/issues · лицензия MIT.
 
 **Чек-лист загрузки**
-1. Modrinth → *Create a project*, тип *Mod*, название и краткое описание выше, slug `mob-senses`. CurseForge → *Minecraft → Mods → Create project*, те же название и описание; плагин: *Minecraft → Bukkit Plugins → Create project*, название `Mob Senses`, то же описание без «Forge, NeoForge, Fabric and».
+1. Modrinth → *Create a project*, тип *Mod*, название и краткое описание выше, slug `mob-senses`. CurseForge → *Minecraft → Mods → Create project*, те же название и описание; плагин: *Minecraft → Bukkit Plugins → Create project*, то же самое название и описание (с «Paper, Purpur, Folia and Spigot» вместо «Forge, NeoForge, Fabric and Paper»).
 2. Лицензия MIT, ссылки выше, иконка, категории и окружение из таблиц.
 3. Впишите ID проектов в `.github/publish.json` (`modrinth`, `curseforge`, `curseforge_plugin`) и добавьте секреты `MODRINTH_TOKEN` и `CURSEFORGE_TOKEN` (права — в `CONTRIBUTING.md`).
 4. *Actions → Sync Modrinth page → Run workflow* загрузит `docs/modrinth.md` и картинки галереи из `docs/gallery.json`.
