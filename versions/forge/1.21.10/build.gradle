@@ -1,0 +1,17 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+ext {
+    bandTarget = "mc1.20.5-1.21.10"
+    mcVersion = project.forge12110_minecraft
+    forgeVersion = project.forge12110_version
+}
+
+apply from: "${rootDir}/gradle/forge-band.gradle"
+
+sourceSets.main.java {
+    srcDir "${rootDir}/versions/neoforge/1.21/src/main/java"
+    exclude "com/kasper/mobsenses/neoforge/**"
+}

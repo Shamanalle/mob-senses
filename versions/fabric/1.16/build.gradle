@@ -1,0 +1,59 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+evaluationDependsOn(':common-j8')
+
+// Minecraft 1.16.5 (Java 8 bytecode via Jabel)
+def target = "mc1.16.5"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-fabric"
+}
+
+repositories {
+    mavenCentral()
+}
+
+apply from: "${rootDir}/gradle/jabel.gradle"
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common-j8')
+
+    minecraft "com.mojang:minecraft:${project.mc116_minecraft}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.mc116_fabric_loader}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.mc116_fabric_api}"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "mobsenses-refmap.json"
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common-j8').sourceSets.main.output
+}
+
+remapJar {
+    archiveClassifier = ''
+}

@@ -129,6 +129,9 @@ case "${loader}" in
     mkdir -p mods
     cp "${mod}" mods/
     echo "-Xmx2G" > user_jvm_args.txt
+    case "$(uname -s)" in
+      MINGW* | MSYS*) sed -i 's/unix_args\.txt/win_args.txt/g' run.sh ;;
+    esac
     run=(bash ./run.sh nogui)
     settings="config/mobsenses-server.properties"
     nether="minecraft:the_nether"

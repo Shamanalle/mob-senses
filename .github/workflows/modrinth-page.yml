@@ -1,0 +1,117 @@
+name: Modrinth page
+
+# Uploads docs/modrinth.md as the Modrinth project description, updates the short summary from
+# docs/store-description.md, and syncs the gallery from docs/gallery.json.
+# Needs .modrinth in .github/publish.json and the MODRINTH_TOKEN secret with the "Write projects"
+# scope; without either, validates the files and skips the upload.
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "docs/modrinth.md"
+      - "docs/store-description.md"
+      - "docs/gallery.json"
+      - "docs/images/store-*.png"
+      - ".github/publish.json"
+      - ".github/workflows/modrinth-page.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  modrinth-page:
+    name: Check and upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check files
+        run: |
+          test -s docs/modrinth.md
+          jq -e 'type == "array" and length > 0' docs/gallery.json > /dev/null
+          jq -r '.[] | [.file, .title] | @tsv' docs/gallery.json | while IFS=$'\t' read -r file title; do
+            test -s "${file}" || { echo "::error::Missing gallery image: ${file}"; exit 1; }
+            test -n "${title}" || { echo "::error::Missing title for ${file}"; exit 1; }
+            size=$(stat -c%s "${file}")
+            if [ "${size}" -gt 5242880 ]; then
+              echo "::error::${file} is ${size} bytes (Modrinth limit is 5 MiB)"
+              exit 1
+            fi
+          done
+
+      - name: Upload to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          project=$(jq -r '.modrinth // empty' .github/publish.json)
+          if [ -z "${project}" ] || [ -z "${MODRINTH_TOKEN}" ]; then
+            echo "::notice::Modrinth page upload skipped: set .modrinth in .github/publish.json and MODRINTH_TOKEN (with the Write projects scope) to enable."
+            exit 0
+          fi
+
+          ua="Shamanalle/mob-senses (https://github.com/Shamanalle/mob-senses)"
+          api="https://api.modrinth.com/v2/project/${project}"
+
+          summary=$(sed -n 's/^\*\*Summary:\*\* //p' docs/store-description.md | head -n 1)
+          if [ -n "${summary}" ]; then
+            jq -n --rawfile body docs/modrinth.md --arg desc "${summary}" '{body: $body, description: $desc}' > request.json
+          else
+            jq -n --rawfile body docs/modrinth.md '{body: $body}' > request.json
+          fi
+          code=$(curl -sS -o response.json -w '%{http_code}' -X PATCH "${api}" \
+            -H "Authorization: ${MODRINTH_TOKEN}" \
+            -H "User-Agent: ${ua}" \
+            -H "Content-Type: application/json" \
+            --data-binary @request.json)
+          if [ "${code}" != "204" ]; then
+            cat response.json
+            echo "::error::Modrinth PATCH ${api} failed with HTTP ${code}"
+            exit 1
+          fi
+          echo "Updated project body ($(wc -c < docs/modrinth.md) bytes)"
+
+          existing=$(curl -fsSL "${api}" -H "Authorization: ${MODRINTH_TOKEN}" -H "User-Agent: ${ua}" | jq -c '.gallery // []')
+
+          n=0
+          jq -r '.[] | [.file, .title, (.description // ""), ((.featured // false) | tostring)] | @tsv' docs/gallery.json \
+          | while IFS=$'\t' read -r file title description featured; do
+            n=$((n + 1))
+            ext="${file##*.}"
+            case "${ext}" in
+              png) mime="image/png" ;;
+              jpg|jpeg) mime="image/jpeg" ;;
+              webp) mime="image/webp" ;;
+              *) echo "::error::Unsupported image extension: ${ext}"; exit 1 ;;
+            esac
+
+            old_url=$(printf '%s' "${existing}" | jq -r --arg t "${title}" '.[] | select(.title == $t) | .url' | head -n 1)
+            if [ -n "${old_url}" ]; then
+              curl -fsSL -X DELETE "${api}/gallery" \
+                -H "Authorization: ${MODRINTH_TOKEN}" \
+                -H "User-Agent: ${ua}" \
+                -G --data-urlencode "url=${old_url}" > /dev/null || true
+            fi
+
+            code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${api}/gallery" \
+              -H "Authorization: ${MODRINTH_TOKEN}" \
+              -H "User-Agent: ${ua}" \
+              -H "Content-Type: ${mime}" \
+              -G \
+              --data-urlencode "ext=${ext}" \
+              --data-urlencode "featured=${featured}" \
+              --data-urlencode "title=${title}" \
+              --data-urlencode "description=${description}" \
+              --data-urlencode "ordering=${n}" \
+              --data-binary @"${file}")
+            if [ "${code}" = "204" ]; then
+              echo "Uploaded gallery image: ${title} (${file})"
+            elif [ "${code}" = "400" ] && grep -qi "duplicate" response.json; then
+              echo "Gallery image unchanged: ${title} (${file})"
+            else
+              cat response.json
+              echo "::error::Modrinth gallery upload for ${file} failed with HTTP ${code}"
+              exit 1
+            fi
+          done

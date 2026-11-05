@@ -1,14 +1,14 @@
 package com.kasper.mobsenses.server;
 
-import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.MobSenses;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.kasper.mobsenses.ModLog;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-/** The mod's log on the mod loaders, which all ship SLF4J with Minecraft. */
+/** The mod's log on the mod loaders (Log4j 2 ships with every Minecraft version from 1.16.5 to 26.x). */
 public final class Slf4jLog implements ModLog.Sink {
 
-    private final Logger log = LoggerFactory.getLogger(MobSenses.NAME);
+    private final Logger log = LogManager.getLogger(MobSenses.NAME);
 
     @Override
     public void info(String message) {

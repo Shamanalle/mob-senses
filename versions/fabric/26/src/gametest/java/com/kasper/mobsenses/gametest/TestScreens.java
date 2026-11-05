@@ -11,7 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -113,7 +113,7 @@ final class TestScreens {
 
             double[][] positions = {{-6.5, 6.5}, {6.5, 6.5}, {0.5, 9.5}};
             for (double[] pos : positions) {
-                Mob husk = EntityType.HUSK.create(level, EntitySpawnReason.COMMAND);
+                Mob husk = EntityTypes.HUSK.create(level, EntitySpawnReason.COMMAND);
                 if (husk != null) {
                     husk.setPos(pos[0], baseY + 1.0, pos[1]);
                     husk.setPersistenceRequired();

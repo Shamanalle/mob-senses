@@ -8,7 +8,6 @@ import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.ScentModel;
 import com.kasper.mobsenses.SightModel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -103,7 +103,7 @@ public final class ServerHearing {
             }
         }
 
-        BlockPos eventPos = BlockPos.containing(x, y, z);
+        BlockPos eventPos = new BlockPos((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
         BlockState surface = affectedState;
         if (surface == null || surface.isAir()) {
             BlockPos surfacePos = BlockAcoustics.blockUnderEvent(level, eventPos);
@@ -261,7 +261,11 @@ public final class ServerHearing {
                 if (dx * dx + dy * dy + dz * dz > effectiveSight * effectiveSight) {
                     continue;
                 }
-                if (mob.hasLineOfSight(player) && InvestigateGoal.alert(mob, px, py, pz, 1.10)) {
+                boolean lineOfSight = BlockAcoustics.traceSingleRay(
+                        level,
+                        new Vec3(mob.getX(), mob.getEyeY(), mob.getZ()),
+                        new Vec3(px, player.getEyeY(), pz)) <= 0.1;
+                if (lineOfSight && InvestigateGoal.alert(mob, px, py, pz, 1.10)) {
                     MobSenses.alerted().record(now);
                     if (MobSenses.debug()) {
                         ParticleSender.sendSightTrace(
@@ -293,23 +297,15 @@ public final class ServerHearing {
         if (mob == null) {
             return false;
         }
-        try {
-            String key = String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()));
-            return ScentModel.isScentTracker(key);
-        } catch (Throwable ignored) {
-            return false;
-        }
+        String key = Worlds.entityTypeId(mob.getType());
+        return ScentModel.isScentTracker(key);
     }
 
     public static String itemId(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return "";
         }
-        try {
-            return String.valueOf(BuiltInRegistries.ITEM.getKey(stack.getItem()));
-        } catch (Throwable ignored) {
-            return "";
-        }
+        return Worlds.itemId(stack);
     }
 
     public static List<NoiseCoalescer.Candidate<Mob>> findCandidateListeners(
@@ -332,14 +328,11 @@ public final class ServerHearing {
         if (Worlds.isTaggedListener(type)) {
             return true;
         }
-        try {
-            String key = String.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(type));
-            if (DEFAULT_LISTENERS.contains(key)) {
-                return true;
-            }
-        } catch (Throwable ignored) {
+        String key = Worlds.entityTypeId(type);
+        if (DEFAULT_LISTENERS.contains(key)) {
+            return true;
         }
-        return mob instanceof Enemy && !mob.getType().toString().contains("warden");
+        return mob instanceof Enemy && !key.contains("warden");
     }
 
     private static Player responsiblePlayer(ServerLevel level, Entity source, NoiseModel.Kind kind, double x, double y, double z) {

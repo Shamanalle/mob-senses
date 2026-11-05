@@ -1,0 +1,23 @@
+[
+  {
+    "file": "docs/images/store-hearing.png",
+    "title": "Mobs hear noise and investigate",
+    "description": "Hostile mobs hear footsteps, blocks, doors, fights and explosions through walls and walk to where the sound came from.",
+    "featured": true
+  },
+  {
+    "file": "docs/images/store-hud.png",
+    "title": "Noise, light and scent stealth HUD",
+    "description": "Optional client HUD showing your current noise, light exposure, voice activity and wounded blood trail."
+  },
+  {
+    "file": "docs/images/store-debug.png",
+    "title": "Admin debug sound traces (/mobsenses debug)",
+    "description": "Operators can turn on particle traces showing how sounds, light and scent reach nearby mobs."
+  },
+  {
+    "file": "docs/images/store-status.png",
+    "title": "Per-world presets and /mobsenses status",
+    "description": "Configure presets (Off, Subtle, Default, Hardcore), multipliers and per-world settings live in-game."
+  }
+]

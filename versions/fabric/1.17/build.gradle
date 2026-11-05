@@ -1,0 +1,70 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+evaluationDependsOn(':common-j8')
+
+// Minecraft 1.17 - 1.20.4 (compiled against 1.17.1, Java 16 bytecode)
+def target = "mc1.17-1.20.4"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-fabric"
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+            srcDir "${rootDir}/versions/fabric/1.16/src/main/java"
+            exclude "com/kasper/mobsenses/mixin/**"
+            exclude "com/kasper/mobsenses/server/GameEventHook.java"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common-j8')
+
+    minecraft "com.mojang:minecraft:${project.mc117_minecraft}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.mc117_fabric_loader}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.mc117_fabric_api}"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "mobsenses-refmap.json"
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 16
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_16
+    targetCompatibility = JavaVersion.VERSION_16
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common-j8').sourceSets.main.output
+}
+
+remapJar {
+    archiveClassifier = ''
+}

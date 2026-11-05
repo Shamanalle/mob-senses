@@ -39,8 +39,8 @@ public final class MobSensesCommand {
         CommandSourceStack source = ctx.getSource();
         Reply reply = AdminCommands.execute(args, context(source));
         for (Reply.Line line : reply.lines()) {
-            Component text = Component.literal(line.text()).withStyle(color(line.kind()));
-            source.sendSuccess(() -> text, false);
+            Component text = Worlds.literal(line.text()).withStyle(color(line.kind()));
+            Worlds.sendSuccess(source, text);
         }
         return reply.refused() ? 0 : 1;
     }
@@ -55,7 +55,9 @@ public final class MobSensesCommand {
     }
 
     private static AdminCommands.Context context(CommandSourceStack source) {
-        ServerPlayer player = source.getPlayer();
+        ServerPlayer player = source.getEntity() instanceof ServerPlayer
+                ? (ServerPlayer) source.getEntity()
+                : null;
         String language = player == null ? "" : PlayerLanguage.of(player);
         String world = player == null ? null : Worlds.id(source.getLevel());
         List<String> worlds = Worlds.ids(source.getServer());

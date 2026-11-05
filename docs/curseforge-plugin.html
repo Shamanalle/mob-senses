@@ -1,0 +1,127 @@
+<!--
+  CurseForge project description for the Bukkit / Spigot / Paper / Folia plugin.
+  Paste into the Description editor of the Bukkit Plugins project in source view (<> button).
+  For the Forge / NeoForge / Fabric mod project use docs/curseforge.html instead.
+-->
+
+<p style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/icon.png" width="128" alt="Mob Senses icon">
+</p>
+
+<h1 style="text-align: center;">Mob Senses</h1>
+
+<p style="text-align: center;">
+  <strong>Mobs hear you, see your light, smell blood trails and, with Simple Voice Chat, hear your voice.</strong><br>
+  A survival and stealth plugin for Paper, Purpur, Folia and Spigot, for Minecraft 1.16.5 – 26.3.
+</p>
+
+<p>Hostile mobs in vanilla notice you only within a fixed range. With <strong>Mob Senses</strong> they use their senses:</p>
+
+<ul>
+  <li><strong>Hearing.</strong> Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to <strong>where the noise came from</strong>, looks around and goes back to its business. Stone walls muffle noise, glass and wood less, an open door lets it through.</li>
+  <li><strong>Voice</strong> (with <a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a>). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal voice, so a quiet microphone gives no free stealth.</li>
+  <li><strong>Light and stealth.</strong> A torch or lantern in your hand makes you visible from afar; darkness and sneaking hide you.</li>
+  <li><strong>Scent.</strong> A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.</li>
+</ul>
+
+<p>Players join with a normal vanilla client — nothing to install on their side. Works like Zombie Awareness, for Minecraft <strong>1.16.5 – 26.3</strong> on <strong>Paper, Purpur, Folia and Spigot</strong>, with wall occlusion and voice chat built in.</p>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-hearing.png" alt="Mobs hear noise and investigate"></p>
+
+<h2>Quick start</h2>
+
+<ol>
+  <li>Put <code>mob-senses-bukkit-….jar</code> into <code>plugins/</code>.</li>
+  <li>Start the server. Players join with any client, vanilla too: they need nothing.</li>
+  <li>Choose how keen the senses are with <code>/mobsenses preset subtle|default|hardcore</code>, or in <code>plugins/MobSenses/mobsenses-server.properties</code>.</li>
+</ol>
+
+<p><a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a> is optional: without it everything but the voice works.</p>
+
+<h2>Supported servers</h2>
+
+<table>
+  <thead>
+    <tr><th>Server</th><th>Minecraft</th><th>File</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Paper, Purpur</strong></td><td>1.16.5 – 26.3</td><td><code>mob-senses-bukkit-….jar</code></td></tr>
+    <tr><td><strong>Folia</strong></td><td>1.20.1 – 26.3</td><td>the same file (<code>folia-supported: true</code>)</td></tr>
+    <tr><td><strong>Spigot</strong></td><td>1.16.5 – 26.3</td><td>the same file</td></tr>
+  </tbody>
+</table>
+
+<p>One file works across all supported Minecraft versions. Running a modded server (Forge, NeoForge, Fabric or Quilt)? Get the mod from the CurseForge Mods page or <a href="https://github.com/Shamanalle/mob-senses/releases">GitHub Releases</a>.</p>
+
+<h2>Commands and permissions</h2>
+
+<p><code>/mobsenses</code> requires the <code>mobsenses.admin</code> permission (granted to operators by default). Replies come in the player's language (English, Russian, Ukrainian, German, Spanish, Portuguese, Chinese).</p>
+
+<table>
+  <thead>
+    <tr><th>Command</th><th>What it does</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>/mobsenses</code> or <code>/mobsenses status</code></td><td>Version, preset, multipliers, voice chat, how much noise the server heard and how many mobs reacted in the last minute</td></tr>
+    <tr><td><code>/mobsenses preset &lt;off|subtle|default|hardcore&gt;</code></td><td>How keen the senses are; <code>off</code> makes mobs behave as in vanilla</td></tr>
+    <tr><td><code>/mobsenses hearing &lt;0-3&gt;</code></td><td>How far mobs hear, times the preset</td></tr>
+    <tr><td><code>/mobsenses sight &lt;0-3&gt;</code></td><td>How far mobs see you, times the preset</td></tr>
+    <tr><td><code>/mobsenses voice &lt;on|off&gt;</code></td><td>Whether mobs hear Simple Voice Chat</td></tr>
+    <tr><td><code>/mobsenses debug [on|off]</code></td><td>Particle traces for operators showing sound, light and scent paths</td></tr>
+    <tr><td><code>/mobsenses world &lt;world|here&gt; &lt;preset|inherit&gt;</code></td><td>A world's own preset (<code>inherit</code>: back to the server's)</td></tr>
+    <tr><td><code>/mobsenses reload</code></td><td>Read the settings file again</td></tr>
+    <tr><td><code>/mobsenses help</code></td><td>The list of commands</td></tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr><th>Preset</th><th>Hearing</th><th>Sight</th><th>For</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Off</td><td>—</td><td>—</td><td>Vanilla mobs</td></tr>
+    <tr><td>Subtle</td><td>×0.6</td><td>×0.8</td><td>Builders' servers: mobs notice only real noise</td></tr>
+    <tr><td>Default</td><td>×1</td><td>×1</td><td>Survival</td></tr>
+    <tr><td>Hardcore</td><td>×1.6</td><td>×1.3</td><td>Horror and hardcore: every step counts</td></tr>
+  </tbody>
+</table>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-debug.png" alt="Admin debug traces"></p>
+
+<hr>
+
+<details>
+<summary><strong>🇷🇺 Русский</strong></summary>
+
+<p>В обычном Minecraft враждебные мобы замечают вас только на фиксированном расстоянии. С <strong>Mob Senses</strong> у них появляются чувства:</p>
+
+<ul>
+  <li><strong>Слух.</strong> Бег громкий, шаг в приседе тихий, шерсть глушит шаги, а гравий выдаёт. Ломание и установка блоков, двери, сундуки, бой, стрелы, взрывы, колокола, нотные блоки и еда тоже шумят. Моб, который это услышал, идёт туда, <strong>откуда шёл звук</strong>, осматривается и возвращается к своим делам. Каменные стены глушат шум сильнее, стекло и дерево — слабее, открытая дверь пропускает.</li>
+  <li><strong>Голос</strong> (с <a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a>). Мобы слышат, как вы говорите. Крик разносится далеко, шёпот — только рядом; громкость отсчитывается от обычного голоса самого игрока, поэтому тихий микрофон не даёт бесплатной скрытности.</li>
+  <li><strong>Свет и скрытность.</strong> Факел или фонарь в руке делает вас заметным издалека; темнота и присед прячут.</li>
+  <li><strong>Запах.</strong> Сильно раненый игрок (половина здоровья или меньше) оставляет за собой след, по которому идут зомби и пауки.</li>
+</ul>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-status.png" alt="/mobsenses status"></p>
+
+<h3>Быстрый старт</h3>
+
+<ol>
+  <li>Положите <code>mob-senses-bukkit-….jar</code> в <code>plugins/</code>.</li>
+  <li>Запустите сервер. Игроки заходят с любым клиентом, в том числе с чистым: им ничего ставить не нужно.</li>
+  <li>Выберите чуткость мобов командой <code>/mobsenses preset subtle|default|hardcore</code> или в <code>plugins/MobSenses/mobsenses-server.properties</code>.</li>
+</ol>
+
+<h3>Команды и права</h3>
+
+<p>Команда <code>/mobsenses</code> требует право <code>mobsenses.admin</code> (по умолчанию есть у операторов). Ответы приходят на языке игрока (русский, украинский, английский, немецкий, испанский, португальский, китайский).</p>
+
+</details>
+
+<hr>
+
+<p style="text-align: center;">
+  <a href="https://github.com/Shamanalle/mob-senses/issues">Issues</a> ·
+  <a href="https://github.com/Shamanalle/mob-senses">Source</a> ·
+  <a href="https://github.com/Shamanalle/mob-senses/blob/main/LICENSE">License: MIT</a>
+</p>

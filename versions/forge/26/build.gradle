@@ -1,0 +1,22 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+ext {
+    bandTarget = "mc26.x"
+    mcVersion = project.forge26_minecraft
+    forgeVersion = project.forge26_version
+    unobfuscated = true
+}
+
+apply from: "${rootDir}/gradle/forge-band.gradle"
+
+sourceSets.main.java {
+    srcDir "${rootDir}/versions/forge/1.21.10/src/main/java"
+    srcDir "${rootDir}/versions/fabric/26/src/main/java"
+    exclude "com/kasper/mobsenses/MobSenses*.java"
+    exclude "com/kasper/mobsenses/ExtractorCanvas.java"
+    exclude "com/kasper/mobsenses/mixin/**"
+    exclude "com/kasper/mobsenses/server/GameEventHook.java"
+}

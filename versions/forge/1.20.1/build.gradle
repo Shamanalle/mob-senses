@@ -3,13 +3,9 @@ plugins {
     id 'java'
 }
 
-// Its jar carries the classes of ':common', so that module is configured first (configure-on-demand)
 evaluationDependsOn(':common')
 
-// Forge 1.20 - 1.20.1 (and NeoForge 1.20.1, a fork of Forge that loads this jar). The code shared with the
-// Fabric builds is compiled here against Minecraft's own names and turned into Forge's runtime names by
-// reobfJar; only the hooks into Forge (package com.kasper.mobsenses.forge) are Forge's own.
-def target = "mc1.20.1"
+def target = "mc1.16.5-1.20.4"
 version = "${project.mod_version}+${target}"
 
 base {
@@ -20,7 +16,16 @@ repositories {
     mavenCentral()
 }
 
-// The build against the oldest Forge it supports (1.20, .github/workflows/build.yml) passes -PloaderOverride.forge-1.20.1=<version>
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
 legacyForge {
     version = project.findProperty("loaderOverride.${project.name}") ?: project.forge120_version
 }
@@ -35,16 +40,6 @@ sourceSets {
 
 dependencies {
     implementation project(':common')
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.release = 17
-    options.encoding = 'UTF-8'
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
 }
 
 processResources {

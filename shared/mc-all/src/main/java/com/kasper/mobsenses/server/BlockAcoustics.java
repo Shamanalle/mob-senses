@@ -2,12 +2,9 @@ package com.kasper.mobsenses.server;
 
 import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.RayBundle;
+import com.kasper.mobsenses.VoxelRay;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.ClipBlockStateContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
@@ -34,11 +31,7 @@ public final class BlockAcoustics {
         if (state == null) {
             return "";
         }
-        try {
-            return String.valueOf(BuiltInRegistries.BLOCK.getKey(state.getBlock()));
-        } catch (Throwable ignored) {
-            return state.getBlock().toString().toLowerCase(Locale.ROOT);
-        }
+        return Worlds.blockId(state);
     }
 
     public static AcousticMaterial material(BlockState state) {
@@ -52,42 +45,38 @@ public final class BlockAcoustics {
         if (!state.getFluidState().isEmpty() && state.getBlock().defaultBlockState().getFluidState().isSource()) {
             return AcousticMaterial.LIQUID;
         }
+        String lower = id == null ? "" : id.toLowerCase(Locale.ROOT);
         if (state.getBlock() instanceof DoorBlock
                 || state.getBlock() instanceof TrapDoorBlock
                 || state.getBlock() instanceof FenceGateBlock
-                || state.is(BlockTags.DOORS)
-                || state.is(BlockTags.TRAPDOORS)
-                || state.is(BlockTags.FENCE_GATES)) {
+                || lower.contains("door")
+                || lower.contains("fence_gate")) {
             return AcousticMaterial.DOOR;
         }
-        if (state.getBlock() instanceof LeavesBlock || state.is(BlockTags.LEAVES)) {
+        if (state.getBlock() instanceof LeavesBlock || lower.contains("leaves")) {
             return AcousticMaterial.LEAVES;
         }
-        String lower = id == null ? "" : id.toLowerCase(Locale.ROOT);
-        if (state.is(BlockTags.WOOL)
-                || lower.contains("wool")
+        if (lower.contains("wool")
                 || lower.contains("carpet")
                 || lower.contains("sponge")
                 || lower.contains("sculk")) {
             return AcousticMaterial.WOOL;
         }
-        if (state.is(BlockTags.ICE) || lower.contains("ice")) {
+        if (lower.contains("ice")) {
             return AcousticMaterial.ICE;
         }
         if (lower.contains("glass") || lower.contains("tinted_glass")) {
             return AcousticMaterial.GLASS;
         }
-        if (state.is(BlockTags.BEDS)
-                || state.is(BlockTags.BANNERS)
+        if (lower.contains("bed")
+                || lower.contains("banner")
                 || lower.contains("snow")
                 || lower.contains("moss")
                 || lower.contains("hay_block")
                 || lower.contains("honeycomb")) {
             return AcousticMaterial.SOFT;
         }
-        if (state.is(BlockTags.PLANKS)
-                || state.is(BlockTags.LOGS)
-                || lower.contains("planks")
+        if (lower.contains("planks")
                 || lower.contains("log")
                 || lower.contains("wood")
                 || lower.contains("stem")
@@ -98,8 +87,7 @@ public final class BlockAcoustics {
                 || lower.contains("bookshelf")) {
             return AcousticMaterial.WOOD;
         }
-        if (state.is(BlockTags.ANVIL)
-                || state.is(BlockTags.RAILS)
+        if (lower.contains("rail")
                 || lower.contains("iron")
                 || lower.contains("copper")
                 || lower.contains("netherite")
@@ -110,8 +98,7 @@ public final class BlockAcoustics {
                 || lower.contains("hopper")) {
             return AcousticMaterial.METAL;
         }
-        if (state.is(BlockTags.SAND)
-                || lower.contains("dirt")
+        if (lower.contains("dirt")
                 || lower.contains("grass_block")
                 || lower.contains("podzol")
                 || lower.contains("mycelium")
@@ -137,7 +124,7 @@ public final class BlockAcoustics {
             return AcousticMaterial.SOFT;
         }
         if (sound == SoundType.WOOD
-                || sound == SoundType.NETHER_WOOD
+                || sound == SoundType.BAMBOO
                 || sound == SoundType.STEM) {
             return AcousticMaterial.WOOD;
         }
@@ -198,24 +185,29 @@ public final class BlockAcoustics {
     }
 
     public static double traceSingleRay(Level level, Vec3 start, Vec3 end) {
-        BlockPos startBlock = BlockPos.containing(start.x, start.y, start.z);
-        BlockPos endBlock = BlockPos.containing(end.x, end.y, end.z);
-        if (startBlock.equals(endBlock)) {
+        int sx = (int) Math.floor(start.x);
+        int sy = (int) Math.floor(start.y);
+        int sz = (int) Math.floor(start.z);
+        int ex = (int) Math.floor(end.x);
+        int ey = (int) Math.floor(end.y);
+        int ez = (int) Math.floor(end.z);
+        if (sx == ex && sy == ey && sz == ez) {
             return 0.0;
         }
         double[] total = {0.0};
-        BlockGetter.traverseBlocks(start, end, new ClipBlockStateContext(start, end, s -> false), (ctx, pos) -> {
-            if (pos.equals(startBlock) || pos.equals(endBlock)) {
-                return null;
+        VoxelRay.walk(start.x, start.y, start.z, end.x, end.y, end.z, 96, (x, y, z) -> {
+            if ((x == sx && y == sy && z == sz) || (x == ex && y == ey && z == ez)) {
+                return false;
             }
+            BlockPos pos = new BlockPos(x, y, z);
             BlockState state = level.getBlockState(pos);
             if (state.isAir()) {
-                return null;
+                return false;
             }
             AcousticMaterial mat = material(state);
             double weight = mat.wallWeight();
             if (weight <= 0.0) {
-                return null;
+                return false;
             }
             if (mat == AcousticMaterial.DOOR) {
                 boolean open = (state.getBlock() instanceof DoorBlock && Boolean.TRUE.equals(state.getValue(DoorBlock.OPEN)))
@@ -224,25 +216,22 @@ public final class BlockAcoustics {
                 VoxelShape shape = state.getCollisionShape(level, pos);
                 boolean hitShape = !shape.isEmpty() && shape.clip(start, end, pos) != null;
                 if (open && !hitShape) {
-                    return null;
+                    return false;
                 }
                 total[0] += weight * AcousticMaterial.panelShare(open);
             } else {
                 VoxelShape shape = state.getCollisionShape(level, pos);
                 if (shape.isEmpty()) {
-                    return null;
+                    return false;
                 }
                 double chord = chordInShape(shape, pos, start, end);
                 if (chord <= 0.0) {
-                    return null;
+                    return false;
                 }
                 total[0] += weight * RayBundle.chordWeight(chord);
             }
-            if (total[0] >= RayBundle.MAX_RAY_THICKNESS) {
-                return Boolean.TRUE;
-            }
-            return null;
-        }, ctx -> null);
+            return total[0] >= RayBundle.MAX_RAY_THICKNESS;
+        });
         return Math.min(total[0], RayBundle.MAX_RAY_THICKNESS);
     }
 

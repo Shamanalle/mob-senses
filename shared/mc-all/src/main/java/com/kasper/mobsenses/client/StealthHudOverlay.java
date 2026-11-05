@@ -7,6 +7,7 @@ import com.kasper.mobsenses.SightModel;
 import com.kasper.mobsenses.StealthHudState;
 import com.kasper.mobsenses.server.BlockAcoustics;
 import com.kasper.mobsenses.server.ServerHearing;
+import com.kasper.mobsenses.server.Worlds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -68,7 +69,7 @@ public final class StealthHudOverlay {
         boolean sprinting = player.isSprinting();
         double dx = player.getX() - player.xo;
         double dz = player.getZ() - player.zo;
-        boolean moving = player.onGround() && (dx * dx + dz * dz) > 1.0e-4;
+        boolean moving = Worlds.isOnGround(player) && (dx * dx + dz * dz) > 1.0e-4;
 
         BlockPos below = BlockAcoustics.blockUnderEvent(level, pos);
         BlockState stateBelow = level.getBlockState(below);
@@ -101,11 +102,11 @@ public final class StealthHudOverlay {
         int exposure = hud.overallExposure();
         int statusColor = exposure >= 65 ? COLOR_EXPOSED : (exposure >= 30 ? COLOR_CAUTION : COLOR_HIDDEN);
         canvas.fill(x + 6, y + 6, x + 11, y + 11, statusColor);
-        Component statusText = Component.translatable(hud.statusKey());
+        Component statusText = Worlds.translatable(hud.statusKey());
         canvas.text(statusText, x + 15, y + 5, statusColor);
 
         if (hud.voiceActive()) {
-            Component voiceTag = Component.translatable("gui.mobsenses.hud.voice");
+            Component voiceTag = Worlds.translatable("gui.mobsenses.hud.voice");
             int vw = canvas.textWidth(voiceTag);
             canvas.text(voiceTag, x + panelWidth - vw - 6, y + 5, COLOR_EXPOSED);
         }
@@ -115,19 +116,19 @@ public final class StealthHudOverlay {
         int noisePct = hud.noisePercent();
         int noiseColor = noisePct >= 65 ? COLOR_EXPOSED : (noisePct >= 30 ? COLOR_CAUTION : COLOR_HIDDEN);
         drawMeterRow(canvas, x + 6, rowY, panelWidth - 12,
-                Component.translatable("gui.mobsenses.hud.noise"), noisePct, noiseColor);
+                Worlds.translatable("gui.mobsenses.hud.noise"), noisePct, noiseColor);
 
         // Row 2: Light
         rowY += 12;
         int lightPct = hud.lightPercent();
         drawMeterRow(canvas, x + 6, rowY, panelWidth - 12,
-                Component.translatable("gui.mobsenses.hud.light"), lightPct, COLOR_LIGHT);
+                Worlds.translatable("gui.mobsenses.hud.light"), lightPct, COLOR_LIGHT);
 
         // Row 3: Scent (when wounded <= 50% HP)
         if (showScent) {
             rowY += 12;
             drawMeterRow(canvas, x + 6, rowY, panelWidth - 12,
-                    Component.translatable("gui.mobsenses.hud.scent"), hud.scentPercent(), COLOR_SCENT);
+                    Worlds.translatable("gui.mobsenses.hud.scent"), hud.scentPercent(), COLOR_SCENT);
         }
     }
 

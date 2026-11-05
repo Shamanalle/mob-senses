@@ -17,8 +17,9 @@ import java.util.List;
 import java.util.logging.Level;
 
 /**
- * The Bukkit / Spigot / Paper / Purpur / Folia plugin: the same server side as the mod, through the
- * Bukkit API only. Game events come from {@code GenericGameEvent} (1.17+, see {@link GameEventListener}).
+ * The Bukkit / Spigot / Paper / Purpur / Folia plugin: full server-side parity with the mod through
+ * the Bukkit and Paper APIs. Game events come from {@code GenericGameEvent} on 1.17+ (see
+ * {@link GameEventListener}) and from standard Bukkit events on 1.16.5 (see {@link LegacyNoiseListeners}).
  */
 public final class MobSensesBukkit extends JavaPlugin {
 
@@ -35,17 +36,28 @@ public final class MobSensesBukkit extends JavaPlugin {
                 getLogger().log(Level.WARNING, message, error);
             }
         });
+        boolean hasVoiceChat = Bukkit.getPluginManager().getPlugin("voicechat") != null;
         MobSenses.start(getDataFolder().toPath(), new MobSenses.Platform(Bukkit.getName(), minecraftVersion()),
-                Bukkit.getPluginManager().getPlugin("voicechat") != null);
+                hasVoiceChat);
+        if (hasVoiceChat && hasClass("de.maxhenkel.voicechat.api.BukkitVoicechatService")) {
+            try {
+                BukkitVoiceHook.register();
+            } catch (Throwable t) {
+                ModLog.failure("Registering Simple Voice Chat plugin", t);
+            }
+        }
         if (hasClass("org.bukkit.event.world.GenericGameEvent")) {
             modern("GameEventListener", "register", this);
         } else {
-            getLogger().info("This server has no game events (Minecraft 1.17+); noise from them is not heard here");
+            LegacyNoiseListeners.register(this);
         }
         Scheduling scheduling = hasClass("io.papermc.paper.threadedregions.RegionizedServer")
                 ? (Scheduling) modern("FoliaScheduling", "create", null) : new BukkitScheduling();
         if (scheduling != null) {
-            scheduling.everyTick(this, MobSenses::serverTick);
+            scheduling.everyTick(this, () -> {
+                BukkitSenses.tick(this, scheduling);
+                MobSenses.serverTick();
+            });
         }
     }
 

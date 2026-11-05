@@ -1,0 +1,21 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+    id 'java'
+}
+
+ext {
+    bandTarget = "mc26.x"
+    neoforgeVersion = project.nf26_neoforge
+}
+
+apply from: "${rootDir}/gradle/neoforge-band.gradle"
+
+sourceSets.main.java {
+    srcDir "${rootDir}/versions/neoforge/1.21/src/main/java"
+    exclude { e -> !e.directory && e.file.toPath().startsWith(file("${rootDir}/versions/neoforge/1.21").toPath()) && e.file.name != 'MobSensesNeoForge.java' }
+    srcDir "${rootDir}/versions/fabric/26/src/main/java"
+    exclude "com/kasper/mobsenses/MobSenses*.java"
+    exclude "com/kasper/mobsenses/ExtractorCanvas.java"
+    exclude "com/kasper/mobsenses/mixin/**"
+    exclude "com/kasper/mobsenses/server/GameEventHook.java"
+}

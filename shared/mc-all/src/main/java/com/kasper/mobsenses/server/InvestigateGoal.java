@@ -3,10 +3,12 @@ package com.kasper.mobsenses.server;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
-import net.minecraft.world.entity.ai.goal.WrappedGoal;
 
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Low-priority investigation goal attached lazily to listener mobs.
@@ -23,6 +25,7 @@ public final class InvestigateGoal extends Goal {
     private static final double ARRIVAL_DIST_SQ = 3.25;
 
     private static final Field GOAL_SELECTOR_FIELD = findGoalSelectorField();
+    private static final Map<Mob, InvestigateGoal> GOALS = Collections.synchronizedMap(new WeakHashMap<>());
 
     private final Mob mob;
     private double targetX;
@@ -58,17 +61,17 @@ public final class InvestigateGoal extends Goal {
     }
 
     public static InvestigateGoal getOrInstall(Mob mob) {
+        InvestigateGoal existing = GOALS.get(mob);
+        if (existing != null) {
+            return existing;
+        }
         GoalSelector selector = goalSelector(mob);
         if (selector == null) {
             return null;
         }
-        for (WrappedGoal wrapped : selector.getAvailableGoals()) {
-            if (wrapped.getGoal() instanceof InvestigateGoal existing) {
-                return existing;
-            }
-        }
         InvestigateGoal created = new InvestigateGoal(mob);
         selector.addGoal(PRIORITY, created);
+        GOALS.put(mob, created);
         return created;
     }
 

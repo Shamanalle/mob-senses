@@ -1,0 +1,70 @@
+// Shared build setup for NeoForge bands (1.21.x and 26.x).
+evaluationDependsOn(':common')
+
+def targetName = project.ext.bandTarget
+def nfVer = project.findProperty("loaderOverride.${project.name}") ?: project.ext.neoforgeVersion
+
+version = "${project.mod_version}+${targetName}"
+
+base {
+    archivesName = "mob-senses-neoforge"
+}
+
+repositories {
+    mavenCentral()
+}
+
+neoForge {
+    version = nfVer
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common')
+}
+
+def is26 = nfVer.toString().startsWith('26.')
+def javaVer = is26 ? 25 : 21
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaVer
+    options.encoding = 'UTF-8'
+    if (is26) {
+        doLast {
+            // Forge 1.20.1 / NeoForge 1.21.1 scan every class in the universal jar with ASM at startup;
+            // cap the class file version header at Java 21 (65) so older ASM readers do not reject it.
+            destinationDirectory.get().asFile.eachFileRecurse(groovy.io.FileType.FILES) { File f ->
+                if (f.name.endsWith('.class')) {
+                    byte[] b = f.bytes
+                    if (b.length >= 8 && b[7] == (byte) 69) {
+                        b[7] = (byte) 65
+                        f.bytes = b
+                    }
+                }
+            }
+        }
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(javaVer)
+    targetCompatibility = JavaVersion.toVersion(javaVer)
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+}

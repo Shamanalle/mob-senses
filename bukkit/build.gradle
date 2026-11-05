@@ -75,7 +75,9 @@ tasks.register('checkPluginJar') {
         def names = new java.util.zip.ZipFile(jarFile.get().asFile).withCloseable { zip -> zip.entries().collect { it.name } }
         for (String required : ['plugin.yml', 'assets/mobsenses/lang/en_us.json', 'assets/mobsenses/lang/ru_ru.json',
                                 'com/kasper/mobsenses/ServerText.class', 'com/kasper/mobsenses/bukkit/GameEventListener.class',
-                                'com/kasper/mobsenses/bukkit/FoliaScheduling.class']) {
+                                'com/kasper/mobsenses/bukkit/FoliaScheduling.class',
+                                'com/kasper/mobsenses/bukkit/BukkitSenses.class',
+                                'com/kasper/mobsenses/bukkit/PaperPathfinder.class']) {
             if (!names.contains(required)) {
                 throw new GradleException("The plugin jar lacks " + required)
             }

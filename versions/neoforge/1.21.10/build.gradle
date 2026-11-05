@@ -1,0 +1,15 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+    id 'java'
+}
+
+ext {
+    bandTarget = "mc1.21.9-1.21.10"
+    neoforgeVersion = project.nf12110_neoforge
+}
+
+apply from: "${rootDir}/gradle/neoforge-band.gradle"
+
+sourceSets.main.java {
+    srcDir "${rootDir}/versions/neoforge/1.21/src/main/java"
+}
