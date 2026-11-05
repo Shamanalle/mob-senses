@@ -3,11 +3,12 @@ package com.kasper.mobsenses.forge;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.server.MobSensesCommand;
+import com.kasper.mobsenses.server.ServerHearing;
 import com.kasper.mobsenses.server.Slf4jLog;
-import com.kasper.mobsenses.server.Worlds;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -33,6 +34,7 @@ public final class MobSensesForge {
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> MobSensesCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent e) -> {
             if (e.phase == TickEvent.Phase.END) {
+                ServerHearing.tickServer(e.getServer());
                 MobSenses.serverTick();
             }
         });
@@ -46,7 +48,13 @@ public final class MobSensesForge {
             }
             ResourceLocation id = BuiltInRegistries.GAME_EVENT.getKey(e.getVanillaEvent());
             Vec3 pos = e.getEventPosition();
-            MobSenses.gameEvent(id == null ? "unknown" : id.toString(), Worlds.id(level), pos.x, pos.y, pos.z);
+            GameEvent.Context ctx = e.getContext();
+            ServerHearing.onGameEvent(
+                    level,
+                    id == null ? "unknown" : id.toString(),
+                    pos.x, pos.y, pos.z,
+                    ctx == null ? e.getCause() : ctx.sourceEntity(),
+                    ctx == null ? null : ctx.affectedState());
         } catch (Throwable t) {
             ModLog.failure("Reading a game event", t);
         }

@@ -87,7 +87,7 @@ sourceSets {
         // The mod's texts: in the dev client ':common' is a plain library, so its assets are not loaded
         resources {
             srcDir "${rootDir}/common/src/main/resources"
-            include "assets/**", "fabric.mod.json"
+            include "assets/**", "data/**", "fabric.mod.json"
         }
     }
 }

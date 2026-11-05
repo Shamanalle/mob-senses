@@ -1,6 +1,7 @@
 package com.kasper.mobsenses;
 
 import com.kasper.mobsenses.server.MobSensesCommand;
+import com.kasper.mobsenses.server.ServerHearing;
 import com.kasper.mobsenses.server.Slf4jLog;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -20,7 +21,10 @@ public final class MobSensesFabric implements net.fabricmc.api.ModInitializer {
         String minecraft = loader.getModContainer("minecraft").map(m -> m.getMetadata().getVersion().getFriendlyString()).orElse("?");
         ServerLifecycleEvents.SERVER_STARTING.register(server -> MobSenses.start(loader.getConfigDir(),
                 new MobSenses.Platform("Fabric", minecraft), loader.isModLoaded("voicechat")));
-        ServerTickEvents.END_SERVER_TICK.register(server -> MobSenses.serverTick());
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            ServerHearing.tickServer(server);
+            MobSenses.serverTick();
+        });
         CommandRegistrationCallback.EVENT.register((dispatcher, registries, environment) -> MobSensesCommand.register(dispatcher));
     }
 }

@@ -3,9 +3,10 @@ package com.kasper.mobsenses.neoforge;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.server.MobSensesCommand;
+import com.kasper.mobsenses.server.ServerHearing;
 import com.kasper.mobsenses.server.Slf4jLog;
-import com.kasper.mobsenses.server.Worlds;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
@@ -30,7 +31,10 @@ public final class MobSensesNeoForge {
         NeoForge.EVENT_BUS.addListener((ServerStartingEvent e) -> MobSenses.start(FMLPaths.CONFIGDIR.get(),
                 new MobSenses.Platform("NeoForge", FMLLoader.versionInfo().mcVersion()), ModList.get().isLoaded("voicechat")));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> MobSensesCommand.register(e.getDispatcher()));
-        NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post e) -> MobSenses.serverTick());
+        NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post e) -> {
+            ServerHearing.tickServer(e.getServer());
+            MobSenses.serverTick();
+        });
         NeoForge.EVENT_BUS.addListener(MobSensesNeoForge::gameEvent);
     }
 
@@ -41,7 +45,13 @@ public final class MobSensesNeoForge {
             }
             String id = e.getVanillaEvent().unwrapKey().map(k -> k.location().toString()).orElse("unknown");
             Vec3 pos = e.getEventPosition();
-            MobSenses.gameEvent(id, Worlds.id(level), pos.x, pos.y, pos.z);
+            GameEvent.Context ctx = e.getContext();
+            ServerHearing.onGameEvent(
+                    level,
+                    id,
+                    pos.x, pos.y, pos.z,
+                    ctx == null ? e.getCause() : ctx.sourceEntity(),
+                    ctx == null ? null : ctx.affectedState());
         } catch (Throwable t) {
             ModLog.failure("Reading a game event", t);
         }

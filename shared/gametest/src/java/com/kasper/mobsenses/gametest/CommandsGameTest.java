@@ -3,20 +3,24 @@ package com.kasper.mobsenses.gametest;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Plays singleplayer with the mod: the world's own server runs Mob Senses inside the client. Runs
- * {@code /mobsenses} as the player, in English and in Russian, and takes a screenshot of the chat after
- * each group (uploaded by CI). Fails on a text key that was not translated, on a reply in the wrong
- * language, on an unknown command, and when the noise of a TNT explosion does not reach the mod.
+ * Plays singleplayer with the mod: the world's own server runs Mob Senses inside the client.
+ * Sets up a stone courtyard with listener mobs, triggers noise with debug particles enabled, verifies
+ * that mobs hear the sound and pathfind toward its origin, captures 4K {@code store-*} screenshots,
+ * and exercises {@code /mobsenses} in English and Russian.
  */
 public class CommandsGameTest implements FabricClientGameTest {
 
     private static final String[] LANGUAGES = {"en_us", "ru_ru"};
+    private static final int STORE_WIDTH = 3840;
+    private static final int STORE_HEIGHT = 2160;
+    private static final int STORE_GUI_SCALE = 5;
 
     /** Chat lines as the client received them. */
     private static final List<String> RECEIVED = new CopyOnWriteArrayList<>();
@@ -24,8 +28,8 @@ public class CommandsGameTest implements FabricClientGameTest {
     private static final String[][] GROUPS = {
             {"status", "mobsenses status"},
             {"help", "mobsenses help"},
-            {"changes", "mobsenses preset hardcore", "mobsenses hearing 1.5", "mobsenses world here subtle", "mobsenses prest"},
-            {"undo", "mobsenses preset default", "mobsenses hearing 1", "mobsenses world here inherit"},
+            {"changes", "mobsenses preset hardcore", "mobsenses hearing 1.5", "mobsenses debug on", "mobsenses world here subtle", "mobsenses prest"},
+            {"undo", "mobsenses preset default", "mobsenses hearing 1", "mobsenses debug off", "mobsenses world here inherit"},
     };
 
     @Override
@@ -37,11 +41,39 @@ public class CommandsGameTest implements FabricClientGameTest {
         });
         try (TestSingleplayerContext world = context.worldBuilder().adjustSettings(TestScreens::allowCommands).create()) {
             context.waitTicks(40);
-            // A primed TNT: its explosion is noise the mod must hear (in creative, so it does not kill the player)
             context.runOnClient(client -> TestScreens.command(client, "gamemode creative"));
             context.waitTicks(5);
-            context.runOnClient(client -> TestScreens.command(client, "summon minecraft:tnt ~8 ~ ~8 {fuse:1}"));
-            context.waitTicks(40);
+
+            // Set up the investigation courtyard and listener mobs
+            context.runOnClient(TestScreens::setupInvestigationScene);
+            context.waitTicks(20);
+            context.runOnClient(client -> TestScreens.guiScale(client, STORE_GUI_SCALE));
+            context.waitTicks(5);
+
+            // Enable debug particles, ring the bell, and capture 4K store screenshots as mobs investigate
+            context.runOnClient(TestScreens::clearChat);
+            context.runOnClient(client -> TestScreens.command(client, "mobsenses debug on"));
+            context.waitTicks(5);
+            context.runOnClient(TestScreens::ringSceneBell);
+            context.waitTicks(5);
+            storeShot(context, "store-debug");
+
+            context.waitTicks(35);
+            context.runOnClient(TestScreens::ringSceneBell);
+            context.waitTicks(5);
+            storeShot(context, "store-hearing");
+            TestScreens.verifyInvestigation();
+
+            context.runOnClient(client -> TestScreens.command(client, "mobsenses debug off"));
+            context.waitTicks(5);
+            context.runOnClient(TestScreens::clearChat);
+            context.runOnClient(client -> TestScreens.command(client, "mobsenses status"));
+            context.waitTicks(10);
+            storeShot(context, "store-status");
+
+            context.runOnClient(client -> TestScreens.guiScale(client, 0));
+            context.waitTicks(5);
+
             for (String language : LANGUAGES) {
                 context.runOnClient(client -> TestScreens.language(client, language));
                 context.waitTicks(5);
@@ -64,6 +96,10 @@ public class CommandsGameTest implements FabricClientGameTest {
         }
     }
 
+    private static void storeShot(ClientGameTestContext context, String name) {
+        context.takeScreenshot(TestScreenshotOptions.of(name).withSize(STORE_WIDTH, STORE_HEIGHT));
+    }
+
     private static void check(String[] group, String language) {
         if (RECEIVED.isEmpty()) {
             throw new AssertionError("No reply to " + String.join(", ", group) + " (" + language + ")");
@@ -83,7 +119,10 @@ public class CommandsGameTest implements FabricClientGameTest {
                 throw new AssertionError("No status in " + language + ": " + RECEIVED);
             }
             if (all.matches("(?s).*(Noise in the last minute|Шум за последнюю минуту): 0 .*")) {
-                throw new AssertionError("The TNT's explosion did not reach the mod: " + RECEIVED);
+                throw new AssertionError("Noise events did not reach the mod: " + RECEIVED);
+            }
+            if (all.matches("(?s).*(Mobs alerted in the last minute|Встревожено мобов за последнюю минуту): 0 .*")) {
+                throw new AssertionError("No mobs were alerted in status: " + RECEIVED);
             }
         }
     }

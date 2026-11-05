@@ -179,9 +179,18 @@ stop_server() {
 # "timeout". The console reads from a FIFO that stays open, so commands can be sent while it runs.
 start_server() {
   rm -f console
-  mkfifo console
-  exec 3<>console
-  "${run[@]}" < console > "${log}" 2>&1 &
+  case "$(uname -s)" in
+    MINGW* | MSYS*)
+      : > console
+      exec 3>>console
+      tail -f -n +1 console | "${run[@]}" > "${log}" 2>&1 &
+      ;;
+    *)
+      mkfifo console
+      exec 3<>console
+      "${run[@]}" < console > "${log}" 2>&1 &
+      ;;
+  esac
   server=$!
   for _ in $(seq 1 "${start_timeout}"); do
     if grep -q 'Done (' "${log}"; then
@@ -223,8 +232,8 @@ send "summon minecraft:tnt 0 -59 0 {Fuse:1,fuse:1}"
 sleep 4
 # "preset loud" must be refused, "prest" must get a suggestion, the world preset must be undone by inherit
 for command in "mobsenses status" "mobsenses help" "mobsenses preset hardcore" "mobsenses preset loud" "mobsenses prest" \
-               "mobsenses hearing 1.5" "mobsenses sight 9" "mobsenses voice off" "mobsenses world ${nether} off" \
-               "mobsenses world ${nether} inherit" "mobsenses world ${nether} subtle" "mobsenses reload"; do
+               "mobsenses hearing 1.5" "mobsenses sight 9" "mobsenses voice off" "mobsenses debug on" "mobsenses debug off" \
+               "mobsenses world ${nether} off" "mobsenses world ${nether} inherit" "mobsenses world ${nether} subtle" "mobsenses reload"; do
   send "${command}"
   sleep 1
 done
@@ -250,6 +259,7 @@ if ! grep -Eq 'Hearing is now (×|\?)1\.5\.' "${log}"; then
 fi
 for answer in 'Preset is now Hardcore (hardcore).' 'There is no preset loud.' 'Did you mean /mobsenses preset?' \
               '9 does not work here: give a number from 0 to 3.' 'Mobs no longer hear voice chat.' \
+              'Debug particles: on' 'Debug particles: off.' \
               "World ${nether} now uses the preset Off (off)." "World ${nether} uses the server's preset again" \
               'Read the settings again from' '/mobsenses world <world|here> <preset|inherit>'; do
   if ! grep -qF "${answer}" "${log}"; then

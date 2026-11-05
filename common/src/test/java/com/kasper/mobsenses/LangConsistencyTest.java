@@ -126,7 +126,7 @@ public class LangConsistencyTest {
         for (String sense : new String[]{"hearing", "sight"}) {
             used.add(ServerText.PREFIX + "sense." + sense);
         }
-        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "reload", "help"}) {
+        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "debug", "reload", "help"}) {
             used.add(ServerText.PREFIX + "help." + sub);
         }
         List<String> missing = new ArrayList<>();

@@ -14,7 +14,7 @@ public final class AdminCommands {
 
     public static final String NAME = "mobsenses";
 
-    private static final List<String> SUBCOMMANDS = Jv.listOf("status", "preset", "hearing", "sight", "voice", "world", "reload", "help");
+    private static final List<String> SUBCOMMANDS = Jv.listOf("status", "preset", "hearing", "sight", "voice", "world", "debug", "reload", "help");
     /** What {@code world <id>} takes besides a preset: the world goes back to the server's preset. */
     private static final String INHERIT = "inherit";
 
@@ -53,6 +53,8 @@ public final class AdminCommands {
                     return voice(lang, s, a);
                 case "world":
                     return world(lang, s, ctx, a);
+                case "debug":
+                    return debug(lang, a);
                 case "reload":
                     s.load();
                     return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "reload.done", fileName(s)));
@@ -66,6 +68,7 @@ public final class AdminCommands {
     }
 
     private static Reply status(String lang, ServerSettings s, Context ctx) {
+        long now = System.currentTimeMillis();
         Reply r = new Reply();
         r.add(Reply.Kind.TITLE, ServerText.get(lang, "status.title", BuildInfo.version(), MobSenses.platform()));
         r.add(Reply.Kind.INFO, ServerText.get(lang, "status.preset", presetName(lang, s.preset())));
@@ -76,8 +79,11 @@ public final class AdminCommands {
                 ServerSettings.format(s.hearing()), ServerSettings.format(s.sight())));
         String voice = !s.voice() ? "status.voice.off" : MobSenses.voiceChatInstalled() ? "status.voice.on" : "status.voice.missing";
         r.add(Reply.Kind.INFO, ServerText.get(lang, voice));
-        r.add(Reply.Kind.INFO, ServerText.get(lang, "status.noise", MobSenses.noise().lastMinute(System.currentTimeMillis())));
-        r.add(Reply.Kind.HINT, ServerText.get(lang, "status.early"));
+        r.add(Reply.Kind.INFO, ServerText.get(lang, "status.noise", MobSenses.noise().lastMinute(now)));
+        r.add(Reply.Kind.INFO, ServerText.get(lang, "status.alerted", MobSenses.alerted().lastMinute(now)));
+        if (MobSenses.debug()) {
+            r.add(Reply.Kind.INFO, ServerText.get(lang, "debug.on"));
+        }
         r.add(Reply.Kind.HINT, ServerText.get(lang, "status.file", fileName(s)));
         return r;
     }
@@ -149,6 +155,21 @@ public final class AdminCommands {
         return r;
     }
 
+    private static Reply debug(String lang, String[] a) {
+        boolean next;
+        if (a.length < 2) {
+            next = !MobSenses.debug();
+        } else {
+            String v = a[1].toLowerCase(Locale.ROOT);
+            if (!v.equals("on") && !v.equals("off")) {
+                return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "debug.usage"));
+            }
+            next = v.equals("on");
+        }
+        MobSenses.setDebug(next);
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, next ? "debug.on" : "debug.off"));
+    }
+
     private static Reply world(String lang, ServerSettings s, Context ctx, String[] a) {
         if (a.length < 3) {
             return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "world.usage"))
@@ -200,6 +221,7 @@ public final class AdminCommands {
                     options = presetList();
                     break;
                 case "voice":
+                case "debug":
                     options = Jv.listOf("on", "off");
                     break;
                 case "hearing":

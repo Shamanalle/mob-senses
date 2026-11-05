@@ -20,6 +20,6 @@ abstract class ServerLevelMixin {
     @Inject(method = "gameEvent(Lnet/minecraft/core/Holder;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/level/gameevent/GameEvent$Context;)V",
             at = @At("HEAD"))
     private void mobsenses$gameEvent(Holder<GameEvent> event, Vec3 pos, GameEvent.Context context, CallbackInfo ci) {
-        GameEventHook.heard((ServerLevel) (Object) this, event, pos);
+        GameEventHook.heard((ServerLevel) (Object) this, event, pos, context);
     }
 }

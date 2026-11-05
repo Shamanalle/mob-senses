@@ -22,9 +22,12 @@ public final class MobSenses {
     }
 
     private static final NoiseStats NOISE = new NoiseStats();
+    private static final NoiseStats ALERTED = new NoiseStats();
+    private static final NoiseCoalescer COALESCER = new NoiseCoalescer();
     private static volatile ServerSettings settings = new ServerSettings(null);
     private static volatile Platform platform = new Platform("unknown", "?");
     private static volatile boolean voiceChat;
+    private static volatile boolean debug;
 
     private MobSenses() {
     }
@@ -37,6 +40,8 @@ public final class MobSenses {
     public static void start(Path configDir, Platform where, boolean voiceChatInstalled) {
         platform = where;
         voiceChat = voiceChatInstalled;
+        debug = false;
+        COALESCER.clear();
         ServerSettings s = new ServerSettings(configDir.resolve(ServerSettings.FILE_NAME));
         s.load();
         settings = s;
@@ -70,8 +75,26 @@ public final class MobSenses {
         return voiceChat;
     }
 
+    /** Whether admins see debug particles for noises and alerted mobs. */
+    public static boolean debug() {
+        return debug;
+    }
+
+    public static void setDebug(boolean on) {
+        debug = on;
+    }
+
     public static NoiseStats noise() {
         return NOISE;
+    }
+
+    /** How many mobs heard a noise and went to investigate it. */
+    public static NoiseStats alerted() {
+        return ALERTED;
+    }
+
+    public static NoiseCoalescer coalescer() {
+        return COALESCER;
     }
 
     /**
@@ -82,11 +105,31 @@ public final class MobSenses {
      * @param world the world's id, "minecraft:overworld"
      */
     public static void gameEvent(String event, String world, double x, double y, double z) {
+        gameEvent(event, world, x, y, z, NoiseModel.Posture.WALKING, null, null, true);
+    }
+
+    /**
+     * A game event with its context: the player's posture, the block material under feet or acted upon,
+     * the block id, and whether a player caused or was involved in the event.
+     */
+    public static void gameEvent(String event, String world, double x, double y, double z,
+                                 NoiseModel.Posture posture, AcousticMaterial material,
+                                 String blockId, boolean playerInvolved) {
         try {
-            if (settings.presetOf(world) == Preset.OFF) {
+            Preset preset = settings.presetOf(world);
+            if (preset == Preset.OFF) {
                 return;
             }
             NOISE.record(System.currentTimeMillis());
+            NoiseModel.Kind kind = NoiseModel.classifyEvent(event);
+            if (kind == null || (kind.requiresPlayerSource() && !playerInvolved)) {
+                return;
+            }
+            double base = NoiseModel.baseRange(event, posture, material, blockId);
+            double range = NoiseModel.effectiveRange(base, preset, settings.hearing());
+            if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                COALESCER.record(world, kind, event, x, y, z, range);
+            }
         } catch (Throwable t) {
             ModLog.failure("Handling the game event " + event, t);
         }

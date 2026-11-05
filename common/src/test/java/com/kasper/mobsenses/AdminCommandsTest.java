@@ -94,7 +94,7 @@ class AdminCommandsTest {
     @Test
     void helpListsEverySubcommandWithoutBareKeys() {
         String r = AdminCommands.execute("help", as("de_de", null)).toString();
-        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "reload", "help"}) {
+        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "debug", "reload", "help"}) {
             assertTrue(r.contains("/mobsenses " + sub), sub + " in " + r);
         }
         assertFalse(r.contains("command.mobsenses."), r);
@@ -117,5 +117,11 @@ class AdminCommandsTest {
         assertEquals(List.of("on", "off"), AdminCommands.suggestions("voice ", CONSOLE));
         assertTrue(AdminCommands.suggestions("world ", as("en_us", "minecraft:overworld")).contains("here"));
         assertTrue(AdminCommands.suggestions("world here ", CONSOLE).contains("inherit"));
+        assertEquals(List.of("on", "off"), AdminCommands.suggestions("debug ", CONSOLE));
+        assertFalse(MobSenses.debug());
+        assertFalse(AdminCommands.execute("debug", CONSOLE).refused());
+        assertTrue(MobSenses.debug());
+        assertFalse(AdminCommands.execute("debug off", CONSOLE).refused());
+        assertFalse(MobSenses.debug());
     }
 }
