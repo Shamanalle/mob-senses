@@ -55,14 +55,14 @@ public final class ParticleSender {
         try {
             // Minecraft 1.21.2+: DustParticleOptions(int rgb, float scale)
             Constructor<DustParticleOptions> cInt = DustParticleOptions.class.getConstructor(int.class, float.class);
-            return cInt.newInstance(0xB80808, 1.35f);
+            return cInt.newInstance(0xB00808, 0.85f);
         } catch (Throwable ignored) {
         }
         try {
             // Minecraft 1.16.5: DustParticleOptions(float r, float g, float b, float scale)
             Constructor<DustParticleOptions> cFloat = DustParticleOptions.class.getConstructor(
                     float.class, float.class, float.class, float.class);
-            return cFloat.newInstance(0.72f, 0.03f, 0.03f, 1.35f);
+            return cFloat.newInstance(0.69f, 0.03f, 0.03f, 0.85f);
         } catch (Throwable ignored) {
         }
         try {
@@ -71,8 +71,8 @@ public final class ParticleSender {
                 Class<?>[] p = c.getParameterTypes();
                 if (p.length == 2 && p[1] == float.class && p[0] != int.class) {
                     Constructor<?> vecCtor = p[0].getConstructor(float.class, float.class, float.class);
-                    Object vec = vecCtor.newInstance(0.72f, 0.03f, 0.03f);
-                    return (ParticleOptions) c.newInstance(vec, 1.35f);
+                    Object vec = vecCtor.newInstance(0.69f, 0.03f, 0.03f);
+                    return (ParticleOptions) c.newInstance(vec, 0.85f);
                 }
             }
         } catch (Throwable ignored) {
@@ -80,28 +80,20 @@ public final class ParticleSender {
         return null;
     }
 
-    private static ParticleOptions bloodSplatter() {
-        return new BlockParticleOption(ParticleTypes.BLOCK, Blocks.REDSTONE_BLOCK.defaultBlockState());
-    }
-
     private static ParticleOptions bloodDrop() {
         return new BlockParticleOption(ParticleTypes.FALLING_DUST, Blocks.REDSTONE_BLOCK.defaultBlockState());
     }
 
     /**
-     * Spawns visible crimson blood droplets and floor splatters at a wounded player's scent crumb.
+     * Spawns subtle, low-profile crimson droplets on the ground at a wounded player's scent crumb.
      */
     public static void sendBloodCrumb(ServerLevel level, double x, double y, double z) {
-        ParticleOptions splatter = bloodSplatter();
-        ParticleOptions drop = bloodDrop();
-        ParticleOptions mist = BLOOD_MIST != null ? BLOOD_MIST : drop;
+        ParticleOptions drop = BLOOD_MIST != null ? BLOOD_MIST : bloodDrop();
         for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(x, y, z) > 48.0 * 48.0) {
+            if (player.distanceToSqr(x, y, z) > 32.0 * 32.0) {
                 continue;
             }
-            send(level, player, splatter, x, y + 0.08, z, 6, 0.22, 0.04, 0.22, 0.02);
-            send(level, player, drop, x, y + 0.45, z, 3, 0.18, 0.12, 0.18, 0.0);
-            send(level, player, mist, x, y + 0.12, z, 4, 0.20, 0.05, 0.20, 0.0);
+            send(level, player, drop, x, y + 0.06, z, 3, 0.14, 0.02, 0.14, 0.0);
         }
     }
 
@@ -120,13 +112,11 @@ public final class ParticleSender {
             ServerLevel level,
             double sx, double sy, double sz,
             double ex, double ey, double ez) {
-        ParticleOptions splatter = bloodSplatter();
         ParticleOptions mist = BLOOD_MIST != null ? BLOOD_MIST : bloodDrop();
         for (ServerPlayer player : level.players()) {
-            send(level, player, splatter, sx, sy + 0.10, sz, 8, 0.25, 0.05, 0.25, 0.02);
-            send(level, player, mist, sx, sy + 0.15, sz, 5, 0.22, 0.06, 0.22, 0.0);
+            send(level, player, mist, sx, sy + 0.10, sz, 2, 0.12, 0.02, 0.12, 0.0);
             send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
-            sendLine(level, player, mist, sx, sy + 0.18, sz, ex, ey - 0.3, ez, 7);
+            sendLine(level, player, mist, sx, sy + 0.15, sz, ex, ey - 0.3, ez, 5);
         }
     }
 

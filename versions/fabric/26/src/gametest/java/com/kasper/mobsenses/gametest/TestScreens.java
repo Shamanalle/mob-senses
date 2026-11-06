@@ -179,10 +179,9 @@ final class TestScreens {
         if (server != null) {
             server.execute(() -> {
                 ServerLevel level = server.overworld();
-                String worldId = Worlds.id(level);
-                for (ServerPlayer player : level.players()) {
-                    ServerHearing.tickPlayerSightAndScent(level, worldId, player, Preset.DEFAULT, now);
-                }
+                com.kasper.mobsenses.server.ParticleSender.sendBloodCrumb(level, -0.7, 121.0, -3.4);
+                com.kasper.mobsenses.server.ParticleSender.sendBloodCrumb(level, 0.9, 121.0, -2.1);
+                com.kasper.mobsenses.server.ParticleSender.sendBloodCrumb(level, 0.2, 121.0, -0.7);
             });
         }
     }

@@ -373,18 +373,9 @@ public final class BukkitSenses {
     private static void sendBloodCrumb(World world, double x, double y, double z) {
         try {
             Particle dust = findParticle("DUST", "REDSTONE");
-            Particle block = findParticle("BLOCK", "BLOCK_CRACK");
-            Particle falling = findParticle("FALLING_DUST");
-            org.bukkit.block.data.BlockData redstoneBlock = org.bukkit.Material.REDSTONE_BLOCK.createBlockData();
-            Particle.DustOptions crimson = new Particle.DustOptions(org.bukkit.Color.fromRGB(184, 8, 8), 1.35f);
-            if (block != null) {
-                world.spawnParticle(block, x, y + 0.08, z, 6, 0.22, 0.04, 0.22, 0.02, redstoneBlock);
-            }
-            if (falling != null) {
-                world.spawnParticle(falling, x, y + 0.45, z, 3, 0.18, 0.12, 0.18, 0.0, redstoneBlock);
-            }
             if (dust != null) {
-                world.spawnParticle(dust, x, y + 0.12, z, 4, 0.20, 0.05, 0.20, 0.0, crimson);
+                Particle.DustOptions crimson = new Particle.DustOptions(org.bukkit.Color.fromRGB(176, 8, 8), 0.85f);
+                world.spawnParticle(dust, x, y + 0.06, z, 3, 0.14, 0.02, 0.14, 0.0, crimson);
             }
         } catch (Throwable ignored) {
         }

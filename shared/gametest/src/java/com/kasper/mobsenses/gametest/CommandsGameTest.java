@@ -66,17 +66,20 @@ public class CommandsGameTest implements FabricClientGameTest {
             storeShot(context, "store-hearing");
             TestScreens.verifyInvestigation();
 
+            // Turn off debug particles for the normal player HUD screenshot so the view stays clean
+            context.runOnClient(client -> TestScreens.command(client, "mobsenses debug off"));
+            context.waitTicks(35);
+            context.runOnClient(TestScreens::clearChat);
+
             // Exercise voice, held-torch sight, wounded scent trail, and capture 4K HUD screenshot
             context.runOnClient(TestScreens::triggerVoiceSightAndScent);
-            context.waitTicks(15);
+            context.waitTicks(5);
             context.runOnClient(TestScreens::refreshVoiceAndNoiseForHud);
-            context.waitTicks(2);
+            context.waitTicks(1);
             storeShot(context, "store-hud");
             context.runOnClient(TestScreens::restorePlayerState);
             context.waitTicks(20);
 
-            context.runOnClient(client -> TestScreens.command(client, "mobsenses debug off"));
-            context.waitTicks(5);
             context.runOnClient(TestScreens::clearChat);
             context.runOnClient(client -> TestScreens.command(client, "mobsenses status"));
             context.waitTicks(10);
