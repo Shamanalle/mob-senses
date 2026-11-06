@@ -5,6 +5,18 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-06
+
+### English
+
+#### Added
+- **Visible blood trail:** badly wounded players (at or below half health) now leave small crimson blood droplets on the ground along the trail that zombies and spiders follow, so players without the client mod can also see when they are bleeding.
+
+### Русский
+
+#### Добавлено
+- **Видимый след крови:** сильно раненные игроки (половина здоровья и меньше) теперь оставляют на земле небольшие капли крови по следу, за которым идут зомби и пауки, поэтому кровотечение видно даже без клиентского мода.
+
 ## [1.0.0] - 2026-11-06
 
 ### English
