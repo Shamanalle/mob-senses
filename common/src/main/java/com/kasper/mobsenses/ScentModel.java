@@ -168,6 +168,23 @@ public final class ScentModel {
         return best;
     }
 
+    /**
+     * Returns a snapshot of all non-expired blood-scent crumbs currently active in {@code world}.
+     */
+    public List<Crumb> activeCrumbs(String world, long nowMs) {
+        if (world == null) {
+            return java.util.Collections.emptyList();
+        }
+        List<Crumb> crumbs = worldTrails.get(world);
+        if (crumbs == null) {
+            return java.util.Collections.emptyList();
+        }
+        synchronized (crumbs) {
+            pruneExpired(crumbs, nowMs);
+            return new ArrayList<>(crumbs);
+        }
+    }
+
     private static void pruneExpired(List<Crumb> crumbs, long nowMs) {
         Iterator<Crumb> it = crumbs.iterator();
         while (it.hasNext()) {

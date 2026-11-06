@@ -191,6 +191,11 @@ public final class BukkitSenses {
                 worldName, player.getUniqueId(), px, py, pz,
                 player.getHealth(), maxHealth, preset, now);
         if (scentRange > 0.0) {
+            for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldName, now)) {
+                if (player.getUniqueId().equals(c.playerId())) {
+                    sendBloodCrumb(world, c.x(), c.y(), c.z());
+                }
+            }
             Collection<Entity> nearby = world.getNearbyEntities(ploc, scentRange, 6.0, scentRange);
             int count = 0;
             for (Entity entity : nearby) {
@@ -209,7 +214,7 @@ public final class BukkitSenses {
                     if (investigate(mob, target, 1.10)) {
                         MobSenses.alerted().record(now);
                         if (MobSenses.debug()) {
-                            sendDebugTrace(world, target, mob.getEyeLocation());
+                            sendScentDebugTrace(world, target, mob.getEyeLocation());
                         }
                         if (++count >= 6) {
                             break;
@@ -353,6 +358,63 @@ public final class BukkitSenses {
         } catch (Throwable ignored) {
         }
         return player.getMaxHealth();
+    }
+
+    private static Particle findParticle(String... names) {
+        for (String name : names) {
+            try {
+                return Particle.valueOf(name);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static void sendBloodCrumb(World world, double x, double y, double z) {
+        try {
+            Particle dust = findParticle("DUST", "REDSTONE");
+            Particle block = findParticle("BLOCK", "BLOCK_CRACK");
+            Particle falling = findParticle("FALLING_DUST");
+            org.bukkit.block.data.BlockData redstoneBlock = org.bukkit.Material.REDSTONE_BLOCK.createBlockData();
+            Particle.DustOptions crimson = new Particle.DustOptions(org.bukkit.Color.fromRGB(184, 8, 8), 1.35f);
+            if (block != null) {
+                world.spawnParticle(block, x, y + 0.08, z, 6, 0.22, 0.04, 0.22, 0.02, redstoneBlock);
+            }
+            if (falling != null) {
+                world.spawnParticle(falling, x, y + 0.45, z, 3, 0.18, 0.12, 0.18, 0.0, redstoneBlock);
+            }
+            if (dust != null) {
+                world.spawnParticle(dust, x, y + 0.12, z, 4, 0.20, 0.05, 0.20, 0.0, crimson);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void sendScentDebugTrace(World world, Location from, Location to) {
+        Particle dust = findParticle("DUST", "REDSTONE");
+        Particle angry = findParticle("ANGRY_VILLAGER", "VILLAGER_ANGRY");
+        Particle.DustOptions crimson = new Particle.DustOptions(org.bukkit.Color.fromRGB(184, 8, 8), 1.35f);
+        for (Player viewer : world.getPlayers()) {
+            if (!viewer.isOp() && !viewer.hasPermission("mobsenses.admin")) {
+                continue;
+            }
+            try {
+                if (angry != null) {
+                    viewer.spawnParticle(angry, to.getX(), to.getY() + 0.45, to.getZ(), 1, 0.1, 0.1, 0.1, 0.0);
+                }
+                if (dust != null) {
+                    int steps = 7;
+                    for (int i = 1; i < steps; i++) {
+                        double t = (double) i / steps;
+                        double px = from.getX() + (to.getX() - from.getX()) * t;
+                        double py = from.getY() + 0.18 + (to.getY() - 0.3 - from.getY()) * t;
+                        double pz = from.getZ() + (to.getZ() - from.getZ()) * t;
+                        viewer.spawnParticle(dust, px, py, pz, 1, 0.0, 0.0, 0.0, 0.0, crimson);
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private static void sendDebugTrace(World world, Location from, Location to) {

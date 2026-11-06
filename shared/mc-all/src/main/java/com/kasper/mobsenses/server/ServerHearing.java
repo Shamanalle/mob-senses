@@ -207,6 +207,11 @@ public final class ServerHearing {
                 worldId, player.getUUID(), px, py, pz,
                 player.getHealth(), player.getMaxHealth(), preset, now);
         if (scentRange > 0.0) {
+            for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldId, now)) {
+                if (player.getUUID().equals(c.playerId())) {
+                    ParticleSender.sendBloodCrumb(level, c.x(), c.y(), c.z());
+                }
+            }
             AABB scentBox = new AABB(
                     px - scentRange, py - 6.0, pz - scentRange,
                     px + scentRange, py + 6.0, pz + scentRange);

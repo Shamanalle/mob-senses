@@ -138,11 +138,15 @@ final class TestScreens {
         }
         server.execute(() -> {
             ServerLevel level = server.overworld();
+            String worldId = Worlds.id(level);
             for (ServerPlayer player : level.players()) {
                 player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
                 player.setHealth(6.0f);
                 MobSenses.voice().onVoiceFrame(player.getUUID(), voiceFrame, false, now);
-                ServerHearing.tickPlayerSightAndScent(level, Worlds.id(level), player, Preset.DEFAULT, now);
+                MobSenses.scent().recordPlayer(worldId, player.getUUID(), -0.7, 121.0, -3.4, 6.0, 20.0, Preset.DEFAULT, now - 6000L);
+                MobSenses.scent().recordPlayer(worldId, player.getUUID(), 0.9, 121.0, -2.1, 6.0, 20.0, Preset.DEFAULT, now - 3000L);
+                MobSenses.scent().recordPlayer(worldId, player.getUUID(), 0.2, 121.0, -0.7, 6.0, 20.0, Preset.DEFAULT, now - 1000L);
+                ServerHearing.tickPlayerSightAndScent(level, worldId, player, Preset.DEFAULT, now);
             }
         });
     }
@@ -155,9 +159,20 @@ final class TestScreens {
         if (client.player != null) {
             client.player.hurtTime = 0;
         }
+        MinecraftServer server = client.getSingleplayerServer();
+        if (server != null) {
+            server.execute(() -> {
+                ServerLevel level = server.overworld();
+                String worldId = Worlds.id(level);
+                for (ServerPlayer player : level.players()) {
+                    ServerHearing.tickPlayerSightAndScent(level, worldId, player, Preset.DEFAULT, now);
+                }
+            });
+        }
     }
 
     static void restorePlayerState(Minecraft client) {
+        MobSenses.scent().clear();
         if (client.player != null) {
             client.player.setHealth(20.0f);
             client.player.hurtTime = 0;

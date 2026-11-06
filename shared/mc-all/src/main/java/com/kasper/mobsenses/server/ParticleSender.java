@@ -1,14 +1,18 @@
 package com.kasper.mobsenses.server;
 
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Blocks;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
 /**
- * Sends debug particles to admin players when {@code /mobsenses debug} is active.
+ * Sends blood-trail particles for wounded players and debug traces when {@code /mobsenses debug} is active.
  *
  * <p>{@code ServerLevel.sendParticles(ServerPlayer, ...)} gained a second boolean parameter in
  * Minecraft 1.21.4; resolving it reflectively lets one class serve every version band.
@@ -17,6 +21,7 @@ public final class ParticleSender {
 
     private static final Method SEND_11;
     private static final Method SEND_12;
+    private static final ParticleOptions BLOOD_MIST;
 
     static {
         Method m11 = null;
@@ -40,9 +45,64 @@ public final class ParticleSender {
         }
         SEND_11 = m11;
         SEND_12 = m12;
+        BLOOD_MIST = resolveBloodMist();
     }
 
     private ParticleSender() {
+    }
+
+    private static ParticleOptions resolveBloodMist() {
+        try {
+            // Minecraft 1.21.2+: DustParticleOptions(int rgb, float scale)
+            Constructor<DustParticleOptions> cInt = DustParticleOptions.class.getConstructor(int.class, float.class);
+            return cInt.newInstance(0xB80808, 1.35f);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // Minecraft 1.16.5: DustParticleOptions(float r, float g, float b, float scale)
+            Constructor<DustParticleOptions> cFloat = DustParticleOptions.class.getConstructor(
+                    float.class, float.class, float.class, float.class);
+            return cFloat.newInstance(0.72f, 0.03f, 0.03f, 1.35f);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // Minecraft 1.17 – 1.21.1: DustParticleOptions(Vector3f color, float scale)
+            for (Constructor<?> c : DustParticleOptions.class.getConstructors()) {
+                Class<?>[] p = c.getParameterTypes();
+                if (p.length == 2 && p[1] == float.class && p[0] != int.class) {
+                    Constructor<?> vecCtor = p[0].getConstructor(float.class, float.class, float.class);
+                    Object vec = vecCtor.newInstance(0.72f, 0.03f, 0.03f);
+                    return (ParticleOptions) c.newInstance(vec, 1.35f);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    private static ParticleOptions bloodSplatter() {
+        return new BlockParticleOption(ParticleTypes.BLOCK, Blocks.REDSTONE_BLOCK.defaultBlockState());
+    }
+
+    private static ParticleOptions bloodDrop() {
+        return new BlockParticleOption(ParticleTypes.FALLING_DUST, Blocks.REDSTONE_BLOCK.defaultBlockState());
+    }
+
+    /**
+     * Spawns visible crimson blood droplets and floor splatters at a wounded player's scent crumb.
+     */
+    public static void sendBloodCrumb(ServerLevel level, double x, double y, double z) {
+        ParticleOptions splatter = bloodSplatter();
+        ParticleOptions drop = bloodDrop();
+        ParticleOptions mist = BLOOD_MIST != null ? BLOOD_MIST : drop;
+        for (ServerPlayer player : level.players()) {
+            if (player.distanceToSqr(x, y, z) > 48.0 * 48.0) {
+                continue;
+            }
+            send(level, player, splatter, x, y + 0.08, z, 6, 0.22, 0.04, 0.22, 0.02);
+            send(level, player, drop, x, y + 0.45, z, 3, 0.18, 0.12, 0.18, 0.0);
+            send(level, player, mist, x, y + 0.12, z, 4, 0.20, 0.05, 0.20, 0.0);
+        }
     }
 
     public static void sendHearingTrace(
@@ -60,10 +120,13 @@ public final class ParticleSender {
             ServerLevel level,
             double sx, double sy, double sz,
             double ex, double ey, double ez) {
+        ParticleOptions splatter = bloodSplatter();
+        ParticleOptions mist = BLOOD_MIST != null ? BLOOD_MIST : bloodDrop();
         for (ServerPlayer player : level.players()) {
-            send(level, player, ParticleTypes.DAMAGE_INDICATOR, sx, sy + 0.4, sz, 1, 0.1, 0.1, 0.1, 0.0);
+            send(level, player, splatter, sx, sy + 0.10, sz, 8, 0.25, 0.05, 0.25, 0.02);
+            send(level, player, mist, sx, sy + 0.15, sz, 5, 0.22, 0.06, 0.22, 0.0);
             send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
-            sendLine(level, player, ParticleTypes.CRIT, sx, sy + 0.3, sz, ex, ey, ez, 5);
+            sendLine(level, player, mist, sx, sy + 0.18, sz, ex, ey - 0.3, ez, 7);
         }
     }
 
