@@ -45,7 +45,7 @@ body:
     attributes:
       label: "Mod version / Версия мода"
       description: "The file name from your mods or plugins folder / Имя файла из папки mods или plugins"
-      placeholder: "mob-senses-forge-neoforge-0.1.0+mc1.20.1-1.21.1.jar"
+      placeholder: "mob-senses-forge-neoforge-1.0.0+mc1.16.5-26.x.jar"
     validations:
       required: true
 
