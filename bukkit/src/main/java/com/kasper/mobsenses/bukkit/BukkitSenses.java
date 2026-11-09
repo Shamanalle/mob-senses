@@ -148,6 +148,7 @@ public final class BukkitSenses {
 
         int alerted = 0;
         double speed = noise.kind() == NoiseModel.Kind.EXPLOSION
+                || noise.kind() == NoiseModel.Kind.GUNSHOT
                 || noise.kind() == NoiseModel.Kind.COMBAT
                 || noise.kind() == NoiseModel.Kind.BELL
                 || noise.kind() == NoiseModel.Kind.VOICE

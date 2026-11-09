@@ -111,9 +111,21 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | `language` | `en_us` | Language of replies to the console and to players whose language is unknown |
 | `world.<id>.preset` | — | A world's own preset. On the mod loaders the id is the dimension (`world.minecraft\:the_nether.preset=off`, the colon written as `\:`), on Paper the world's folder (`world.world_nether.preset=off`) |
 
+**Client HUD settings (`config/mobsenses-client.properties`)** — written on the client and reloaded live whenever you save the file (no commands or restart needed):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Show (`true`) or hide (`false`) the Stealth & Noise HUD |
+| `position` | `top_left` | `top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center` or `hotbar` |
+| `x`, `y` | `10`, `10` | Pixel offset from the chosen position |
+| `opacity` | `100` | HUD opacity in percent (`10` – `100`) |
+| `compact` | `false` | `true` shows only the status line without the meter bars |
+| `show_noise`, `show_light`, `show_scent` | `true` | Show or hide individual bars when `compact=false` |
+
 ## Compatibility
 
 - **Vanilla clients** join a server with the mod; the mod does not change the network protocol.
+- **Gun mods (TaCZ / Timeless and Classics Zero, PointBlank, MrCrayfish's Gun Mod, Scorched Guns):** gunshots carry far across the area (`44` blocks) and attract mobs, while guns with a suppressor/silencer attachment are muffled (`16` blocks).
 - **Custom and modded mobs:** data packs can add or remove mobs from the `#mobsenses:listeners` entity type tag.
 - **Other AI mods** (In Control!, Enhanced AI, Improved Mobs and the like): Mob Senses adds its own low-priority investigation goal and yields immediately when a mob enters combat.
 - **Simple Voice Chat**: optional; without it everything but the voice works.

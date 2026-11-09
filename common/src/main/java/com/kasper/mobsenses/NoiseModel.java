@@ -19,6 +19,7 @@ public final class NoiseModel {
         CONTAINER(12.0, false),
         COMBAT(16.0, false),
         PROJECTILE(15.0, false),
+        GUNSHOT(44.0, false),
         EXPLOSION(48.0, false),
         BELL(40.0, false),
         NOTE_BLOCK(28.0, false),
@@ -125,6 +126,10 @@ public final class NoiseModel {
             case "projectile_shoot":
             case "projectile_land":
                 return Kind.PROJECTILE;
+            case "gunshot":
+            case "gunshot_silenced":
+            case "bullet_impact":
+                return Kind.GUNSHOT;
             case "explode":
             case "lightning_strike":
             case "prime_fuse":
@@ -223,6 +228,15 @@ public final class NoiseModel {
                 return "entity_die".equals(id) ? 18.0 : Kind.COMBAT.defaultRange();
             case PROJECTILE:
                 return "projectile_land".equals(id) ? 16.0 : 12.0;
+            case GUNSHOT: {
+                if ("gunshot_silenced".equals(id)) {
+                    return 16.0;
+                }
+                if ("bullet_impact".equals(id)) {
+                    return 20.0;
+                }
+                return Kind.GUNSHOT.defaultRange();
+            }
             case EXPLOSION:
                 return "prime_fuse".equals(id) ? 16.0 : Kind.EXPLOSION.defaultRange();
             case BELL:
@@ -272,5 +286,101 @@ public final class NoiseModel {
             return 0.0;
         }
         return effectiveRange * occlusionFactor(wallThickness);
+    }
+
+    /**
+     * Whether {@code itemId} (e.g. {@code "tacz:modern_kinetic_gun"}, {@code "pointblank:glock17"},
+     * {@code "cgm:rifle"}, {@code "scguns:iron_musket"}) is a firearm from a gun mod.
+     */
+    public static boolean isFirearmItem(String itemId) {
+        if (itemId == null || itemId.isEmpty()) {
+            return false;
+        }
+        String full = itemId.trim().toLowerCase(Locale.ROOT);
+        String name = normalizeEvent(full);
+        if (name.contains("gunpowder") || name.contains("ammo") || name.contains("bullet")
+                || name.contains("magazine") || name.contains("attachment") || name.contains("scope")
+                || name.contains("sight") || name.contains("grip") || name.contains("stock")
+                || name.contains("muzzle") || name.contains("workbench") || name.contains("table")
+                || name.contains("casing") || name.contains("blueprint") || name.contains("ingot")
+                || name.contains("nugget") || name.contains("ore") || name.contains("block")
+                || name.contains("water_gun") || name.contains("potato_cannon")) {
+            return false;
+        }
+        if (full.startsWith("tacz:") || full.startsWith("pointblank:")
+                || full.startsWith("cgm:") || full.startsWith("scguns:")
+                || full.startsWith("musketmod:") || full.startsWith("flansmod:")
+                || full.startsWith("ava:") || full.startsWith("techguns:")) {
+            return true;
+        }
+        return name.contains("kinetic_gun")
+                || name.contains("firearm")
+                || name.contains("pistol")
+                || name.contains("revolver")
+                || name.contains("rifle")
+                || name.contains("sniper")
+                || name.contains("shotgun")
+                || name.contains("submachine")
+                || name.contains("smg")
+                || name.contains("carbine")
+                || name.contains("musket")
+                || name.contains("blunderbuss")
+                || name.contains("minigun")
+                || name.contains("bazooka")
+                || name.contains("rocket_launcher")
+                || name.contains("grenade_launcher")
+                || name.equals("gun")
+                || name.endsWith("_gun")
+                || name.startsWith("gun_");
+    }
+
+    /**
+     * Whether a firearm item or its NBT/DataComponent summary indicates a suppressor/silencer is attached
+     * (such as TaCZ's {@code tacz:muzzle_silence_*} attachments).
+     */
+    public static boolean isSilencedFirearm(String itemId, String tagSummary) {
+        if (itemId != null) {
+            String lowId = itemId.toLowerCase(Locale.ROOT);
+            if (lowId.contains("silence") || lowId.contains("suppress") || lowId.contains("subsonic")) {
+                return true;
+            }
+        }
+        if (tagSummary != null && !tagSummary.isEmpty()) {
+            String lowTag = tagSummary.toLowerCase(Locale.ROOT);
+            return lowTag.contains("silence")
+                    || lowTag.contains("silencer")
+                    || lowTag.contains("suppress")
+                    || lowTag.contains("suppressor")
+                    || lowTag.contains("subsonic");
+        }
+        return false;
+    }
+
+    /**
+     * Whether {@code entityTypeId} (e.g. {@code "tacz:bullet"}, {@code "cgm:projectile"},
+     * {@code "scguns:bullet"}) is a firearm projectile or explosive ordnance from a gun mod.
+     */
+    public static boolean isBulletEntity(String entityTypeId) {
+        if (entityTypeId == null || entityTypeId.isEmpty()) {
+            return false;
+        }
+        String full = entityTypeId.trim().toLowerCase(Locale.ROOT);
+        String name = normalizeEvent(full);
+        if (full.startsWith("tacz:") || full.startsWith("pointblank:")
+                || full.startsWith("cgm:") || full.startsWith("scguns:")
+                || full.startsWith("musketmod:")) {
+            return name.contains("bullet") || name.contains("projectile")
+                    || name.contains("pellet") || name.contains("shell")
+                    || name.contains("rocket") || name.contains("missile")
+                    || name.contains("grenade") || name.contains("ammo");
+        }
+        return name.equals("bullet")
+                || name.endsWith("_bullet")
+                || name.startsWith("bullet_")
+                || name.contains("kinetic_bullet")
+                || name.equals("pellet")
+                || name.endsWith("_pellet")
+                || name.equals("slug")
+                || name.endsWith("_slug");
     }
 }

@@ -1,6 +1,7 @@
 package com.kasper.mobsenses.client;
 
 import com.kasper.mobsenses.AcousticMaterial;
+import com.kasper.mobsenses.ClientSettings;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.SightModel;
@@ -17,7 +18,8 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Updates and renders the client-side Stealth & Noise HUD.
+ * Updates and renders the client-side Stealth & Noise HUD, positioned and styled according to
+ * {@link ClientSettings} ({@code config/mobsenses-client.properties}).
  */
 public final class StealthHudOverlay {
 
@@ -40,12 +42,19 @@ public final class StealthHudOverlay {
      * level, updates {@link MobSenses#hud()}, and draws the HUD onto {@code canvas}.
      */
     public static void render(Canvas canvas) {
-        StealthHudState hud = MobSenses.hud();
-        if (!hud.enabled()) {
-            return;
-        }
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) {
+            return;
+        }
+        ClientSettings cfg = MobSenses.clientSettings();
+        if (cfg.file() == null && mc.gameDirectory != null) {
+            MobSenses.initClient(mc.gameDirectory.toPath().resolve("config"));
+            cfg = MobSenses.clientSettings();
+        }
+        cfg.pollReload(System.currentTimeMillis());
+
+        StealthHudState hud = MobSenses.hud();
+        if (!hud.enabled() || !cfg.enabled()) {
             return;
         }
         LocalPlayer player = mc.player;
@@ -54,7 +63,7 @@ public final class StealthHudOverlay {
             return;
         }
         samplePlayer(player, level, hud);
-        drawHud(canvas, hud);
+        drawHud(canvas, hud, cfg);
     }
 
     public static void samplePlayer(LocalPlayer player, Level level, StealthHudState hud) {
@@ -62,9 +71,11 @@ public final class StealthHudOverlay {
         BlockPos pos = player.blockPosition();
         int blockLight = level.getBrightness(LightLayer.BLOCK, pos);
         int skyLight = Math.max(0, level.getBrightness(LightLayer.SKY, pos) - level.getSkyDarken());
+        String mainHandId = ServerHearing.itemId(player.getMainHandItem());
+        String offHandId = ServerHearing.itemId(player.getOffhandItem());
         int heldLight = Math.max(
-                SightModel.heldItemLight(ServerHearing.itemId(player.getMainHandItem())),
-                SightModel.heldItemLight(ServerHearing.itemId(player.getOffhandItem())));
+                SightModel.heldItemLight(mainHandId),
+                SightModel.heldItemLight(offHandId));
         boolean sneaking = player.isShiftKeyDown() || player.isCrouching();
         boolean sprinting = player.isSprinting();
         double dx = player.getX() - player.xo;
@@ -87,20 +98,30 @@ public final class StealthHudOverlay {
     }
 
     public static void drawHud(Canvas canvas, StealthHudState hud) {
-        boolean showScent = hud.scentActive();
-        int rows = showScent ? 3 : 2;
-        int panelWidth = 118;
-        int panelHeight = 20 + rows * 12;
-        int x = 10;
-        int y = 10;
+        drawHud(canvas, hud, MobSenses.clientSettings());
+    }
+
+    public static void drawHud(Canvas canvas, StealthHudState hud, ClientSettings cfg) {
+        boolean compact = cfg.compact();
+        boolean drawNoise = !compact && cfg.showNoise();
+        boolean drawLight = !compact && cfg.showLight();
+        boolean drawScent = !compact && cfg.showScent() && hud.scentActive();
+
+        int rows = (drawNoise ? 1 : 0) + (drawLight ? 1 : 0) + (drawScent ? 1 : 0);
+        int panelWidth = compact ? 96 : 118;
+        int panelHeight = rows == 0 ? 17 : (20 + rows * 12);
+
+        int x = cfg.computeX(canvas.width(), panelWidth);
+        int y = cfg.computeY(canvas.height(), panelHeight);
 
         // Panel background & subtle border
-        canvas.fill(x - 1, y - 1, x + panelWidth + 1, y + panelHeight + 1, BORDER_COLOR);
-        canvas.fill(x, y, x + panelWidth, y + panelHeight, BG_COLOR);
+        canvas.fill(x - 1, y - 1, x + panelWidth + 1, y + panelHeight + 1, cfg.applyOpacity(BORDER_COLOR));
+        canvas.fill(x, y, x + panelWidth, y + panelHeight, cfg.applyOpacity(BG_COLOR));
 
         // Status indicator dot + status text
         int exposure = hud.overallExposure();
-        int statusColor = exposure >= 65 ? COLOR_EXPOSED : (exposure >= 30 ? COLOR_CAUTION : COLOR_HIDDEN);
+        int statusColor = cfg.applyOpacity(
+                exposure >= 65 ? COLOR_EXPOSED : (exposure >= 30 ? COLOR_CAUTION : COLOR_HIDDEN));
         canvas.fill(x + 6, y + 6, x + 11, y + 11, statusColor);
         Component statusText = Worlds.translatable(hud.statusKey());
         canvas.text(statusText, x + 15, y + 5, statusColor);
@@ -108,39 +129,41 @@ public final class StealthHudOverlay {
         if (hud.voiceActive()) {
             Component voiceTag = Worlds.translatable("gui.mobsenses.hud.voice");
             int vw = canvas.textWidth(voiceTag);
-            canvas.text(voiceTag, x + panelWidth - vw - 6, y + 5, COLOR_EXPOSED);
+            canvas.text(voiceTag, x + panelWidth - vw - 6, y + 5, cfg.applyOpacity(COLOR_EXPOSED));
         }
 
-        // Row 1: Noise
         int rowY = y + 18;
-        int noisePct = hud.noisePercent();
-        int noiseColor = noisePct >= 65 ? COLOR_EXPOSED : (noisePct >= 30 ? COLOR_CAUTION : COLOR_HIDDEN);
-        drawMeterRow(canvas, x + 6, rowY, panelWidth - 12,
-                Worlds.translatable("gui.mobsenses.hud.noise"), noisePct, noiseColor);
-
-        // Row 2: Light
-        rowY += 12;
-        int lightPct = hud.lightPercent();
-        drawMeterRow(canvas, x + 6, rowY, panelWidth - 12,
-                Worlds.translatable("gui.mobsenses.hud.light"), lightPct, COLOR_LIGHT);
-
-        // Row 3: Scent (when wounded <= 50% HP)
-        if (showScent) {
+        if (drawNoise) {
+            int noisePct = hud.noisePercent();
+            int noiseColor = cfg.applyOpacity(
+                    noisePct >= 65 ? COLOR_EXPOSED : (noisePct >= 30 ? COLOR_CAUTION : COLOR_HIDDEN));
+            drawMeterRow(canvas, cfg, x + 6, rowY, panelWidth - 12,
+                    Worlds.translatable("gui.mobsenses.hud.noise"), noisePct, noiseColor);
             rowY += 12;
-            drawMeterRow(canvas, x + 6, rowY, panelWidth - 12,
-                    Worlds.translatable("gui.mobsenses.hud.scent"), hud.scentPercent(), COLOR_SCENT);
+        }
+
+        if (drawLight) {
+            int lightPct = hud.lightPercent();
+            drawMeterRow(canvas, cfg, x + 6, rowY, panelWidth - 12,
+                    Worlds.translatable("gui.mobsenses.hud.light"), lightPct, cfg.applyOpacity(COLOR_LIGHT));
+            rowY += 12;
+        }
+
+        if (drawScent) {
+            drawMeterRow(canvas, cfg, x + 6, rowY, panelWidth - 12,
+                    Worlds.translatable("gui.mobsenses.hud.scent"), hud.scentPercent(), cfg.applyOpacity(COLOR_SCENT));
         }
     }
 
     private static void drawMeterRow(
-            Canvas canvas, int x, int y, int width,
+            Canvas canvas, ClientSettings cfg, int x, int y, int width,
             Component label, int percent, int barColor) {
-        canvas.text(label, x, y, SUBTEXT_COLOR);
+        canvas.text(label, x, y, cfg.applyOpacity(SUBTEXT_COLOR));
         int barX = x + 42;
         int barW = Math.max(24, width - 42);
         int barY = y + 2;
         int barH = 5;
-        canvas.fill(barX, barY, barX + barW, barY + barH, TRACK_COLOR);
+        canvas.fill(barX, barY, barX + barW, barY + barH, cfg.applyOpacity(TRACK_COLOR));
         int fillW = (int) Math.round((Math.max(0, Math.min(100, percent)) / 100.0) * barW);
         if (fillW > 0) {
             canvas.fill(barX, barY, barX + fillW, barY + barH, barColor);

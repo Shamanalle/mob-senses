@@ -76,4 +76,44 @@ class NoiseModelTest {
         assertTrue(twoStoneWalls > 0.0);
         assertEquals(0.0, NoiseModel.audibleRange(base, RayBundle.MAX_RAY_THICKNESS));
     }
+
+    @Test
+    void firearmAndTaCZGunshotsAreLoudWhileSuppressorsMuffleThem() {
+        assertTrue(NoiseModel.isFirearmItem("tacz:modern_kinetic_gun"));
+        assertTrue(NoiseModel.isFirearmItem("pointblank:glock17"));
+        assertTrue(NoiseModel.isFirearmItem("cgm:assault_rifle"));
+        assertTrue(NoiseModel.isFirearmItem("scguns:iron_musket"));
+        assertFalse(NoiseModel.isFirearmItem("minecraft:gunpowder"));
+        assertFalse(NoiseModel.isFirearmItem("tacz:ammo"));
+        assertFalse(NoiseModel.isFirearmItem("tacz:gun_smith_table"));
+        assertFalse(NoiseModel.isFirearmItem("minecraft:bow"));
+
+        assertTrue(NoiseModel.isBulletEntity("tacz:bullet"));
+        assertTrue(NoiseModel.isBulletEntity("tacz:kinetic_bullet"));
+        assertTrue(NoiseModel.isBulletEntity("cgm:projectile"));
+        assertFalse(NoiseModel.isBulletEntity("minecraft:arrow"));
+        assertFalse(NoiseModel.isBulletEntity("minecraft:zombie"));
+
+        assertTrue(NoiseModel.isSilencedFirearm(
+                "tacz:modern_kinetic_gun",
+                "{AttachmentMUZZLE:{id:\"tacz:muzzle_silence_phantom_s1\"}}"));
+        assertFalse(NoiseModel.isSilencedFirearm(
+                "tacz:modern_kinetic_gun",
+                "{AttachmentMUZZLE:{id:\"tacz:muzzle_brake_cthulhu\"}}"));
+
+        assertEquals(NoiseModel.Kind.GUNSHOT, NoiseModel.classifyEvent("mobsenses:gunshot"));
+        assertEquals(NoiseModel.Kind.GUNSHOT, NoiseModel.classifyEvent("mobsenses:gunshot_silenced"));
+        assertEquals(NoiseModel.Kind.GUNSHOT, NoiseModel.classifyEvent("mobsenses:bullet_impact"));
+
+        double gunshot = NoiseModel.baseRange("mobsenses:gunshot", NoiseModel.Posture.WALKING, null, null);
+        double silenced = NoiseModel.baseRange("mobsenses:gunshot_silenced", NoiseModel.Posture.WALKING, null, null);
+        double impact = NoiseModel.baseRange("mobsenses:bullet_impact", NoiseModel.Posture.WALKING, null, null);
+        double bow = NoiseModel.baseRange("minecraft:projectile_shoot", NoiseModel.Posture.WALKING, null, null);
+
+        assertEquals(44.0, gunshot, 1e-6);
+        assertEquals(16.0, silenced, 1e-6);
+        assertEquals(20.0, impact, 1e-6);
+        assertTrue(gunshot > silenced * 2.5);
+        assertTrue(gunshot > bow * 3.0);
+    }
 }

@@ -5,6 +5,20 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-09
+
+### English
+
+#### Added
+- **Gun mod support (TaCZ, PointBlank, MrCrayfish's Gun Mod, Scorched Guns):** firing a gun carries far across the area and draws nearby mobs to investigate, while attaching a suppressor or silencer muffles the shot to close range.
+- **Client HUD settings file (`config/mobsenses-client.properties`):** you can now move the HUD to any screen corner or above the hotbar (`position=top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center`, `hotbar`), adjust `x` and `y` offsets, change `opacity`, switch to `compact=true` mode, toggle individual bars, or hide the HUD (`enabled=false`) directly in the config file without commands or a restart.
+
+### Русский
+
+#### Добавлено
+- **Поддержка оружейных модов (TaCZ, PointBlank, MrCrayfish's Gun Mod, Scorched Guns):** выстрелы из огнестрельного оружия разносятся далеко по округе и стягивают мобов к стрелку, а установленный глушитель снижает слышимость выстрела до ближней дистанции.
+- **Файл настроек клиентского HUD (`config/mobsenses-client.properties`):** теперь прямо в файле настроек (без команд и без перезапуска игры) можно перенести HUD в любой угол экрана или над хотбаром (`position=top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center`, `hotbar`), задать отступы `x` и `y`, прозрачность `opacity`, компактный режим `compact=true`, скрыть отдельные полоски или полностью выключить HUD (`enabled=false`).
+
 ## [1.1.0] - 2026-11-06
 
 ### English

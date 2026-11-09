@@ -36,7 +36,30 @@ import java.util.Set;
 public final class ServerHearing {
 
     private static final int SENSE_TICK_INTERVAL = 10;
+    private static final int RECENT_BULLET_RING_SIZE = 128;
+    private static final int[] RECENT_BULLET_IDS = new int[RECENT_BULLET_RING_SIZE];
+    private static int recentBulletCursor;
     private static long levelTickCounter;
+    private static final java.lang.reflect.Method ITEM_GET_TAG;
+    private static final java.lang.reflect.Method ITEM_GET_COMPONENTS;
+
+    static {
+        java.lang.reflect.Method getTag = null;
+        java.lang.reflect.Method getComponents = null;
+        for (java.lang.reflect.Method m : ItemStack.class.getMethods()) {
+            if (m.getParameterCount() != 0) {
+                continue;
+            }
+            String name = m.getName();
+            if ("getTag".equals(name) || "method_7969".equals(name) || "m_41783_".equals(name)) {
+                getTag = m;
+            } else if ("getComponents".equals(name) || "method_57353".equals(name)) {
+                getComponents = m;
+            }
+        }
+        ITEM_GET_TAG = getTag;
+        ITEM_GET_COMPONENTS = getComponents;
+    }
 
     private static final Set<String> DEFAULT_LISTENERS = new HashSet<>(Arrays.asList(
             "minecraft:zombie",
@@ -113,7 +136,8 @@ public final class ServerHearing {
         String blockId = BlockAcoustics.blockId(surface);
         AcousticMaterial material = BlockAcoustics.material(surface, blockId);
 
-        MobSenses.gameEvent(eventId, worldId, x, y, z, posture, material, blockId, player != null);
+        String effectiveEvent = resolveFirearmEvent(eventId, sourceEntity, player);
+        MobSenses.gameEvent(effectiveEvent, worldId, x, y, z, posture, material, blockId, player != null);
     }
 
     /**
@@ -154,6 +178,14 @@ public final class ServerHearing {
             }
         }
 
+        // 1b. Detect newly spawned gun bullets (e.g. TaCZ EntityKineticBullet, PointBlank, CGM, Scorched Guns)
+        for (ServerPlayer player : level.players()) {
+            if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
+                continue;
+            }
+            detectPlayerGunshots(level, worldId, player);
+        }
+
         // 2. Dispatch coalesced hearing & voice events through wall occlusion
         List<NoiseCoalescer.Alerted<Mob>> alertedList = MobSenses.coalescer().dispatchWorld(
                 worldId,
@@ -164,6 +196,7 @@ public final class ServerHearing {
             Mob mob = alerted.mob();
             NoiseCoalescer.CoalescedNoise noise = alerted.noise();
             double speed = noise.kind() == NoiseModel.Kind.EXPLOSION
+                    || noise.kind() == NoiseModel.Kind.GUNSHOT
                     || noise.kind() == NoiseModel.Kind.COMBAT
                     || noise.kind() == NoiseModel.Kind.BELL
                     || noise.kind() == NoiseModel.Kind.VOICE
@@ -312,6 +345,127 @@ public final class ServerHearing {
             return "";
         }
         return Worlds.itemId(stack);
+    }
+
+    public static String itemTagSummary(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return "";
+        }
+        try {
+            if (ITEM_GET_COMPONENTS != null) {
+                Object comp = ITEM_GET_COMPONENTS.invoke(stack);
+                if (comp != null) {
+                    return comp.toString();
+                }
+            }
+            if (ITEM_GET_TAG != null) {
+                Object tag = ITEM_GET_TAG.invoke(stack);
+                if (tag != null) {
+                    return tag.toString();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return "";
+    }
+
+    /**
+     * Upgrades {@code projectile_shoot} / {@code projectile_land} / {@code entity_action} events to
+     * {@code mobsenses:gunshot}, {@code mobsenses:gunshot_silenced}, or {@code mobsenses:bullet_impact}
+     * when fired from a firearm (TaCZ, PointBlank, CGM, Scorched Guns, etc.) or caused by a bullet entity.
+     */
+    private static String resolveFirearmEvent(String eventId, Entity sourceEntity, Player player) {
+        String norm = NoiseModel.normalizeEvent(eventId);
+        boolean isShootLike = "projectile_shoot".equals(norm) || "entity_action".equals(norm);
+        boolean isLandLike = "projectile_land".equals(norm);
+        if (!isShootLike && !isLandLike) {
+            return eventId;
+        }
+        boolean bulletSource = sourceEntity != null
+                && NoiseModel.isBulletEntity(Worlds.entityTypeId(sourceEntity.getType()));
+        ItemStack firearmStack = findHeldFirearm(player);
+        if (!bulletSource && firearmStack == null) {
+            return eventId;
+        }
+        if (isLandLike) {
+            return "mobsenses:bullet_impact";
+        }
+        if (firearmStack != null) {
+            String fId = itemId(firearmStack);
+            String tag = itemTagSummary(firearmStack);
+            if (NoiseModel.isSilencedFirearm(fId, tag)) {
+                return "mobsenses:gunshot_silenced";
+            }
+        }
+        return "mobsenses:gunshot";
+    }
+
+    private static ItemStack findHeldFirearm(Player player) {
+        if (player == null) {
+            return null;
+        }
+        ItemStack main = player.getMainHandItem();
+        if (NoiseModel.isFirearmItem(itemId(main))) {
+            return main;
+        }
+        ItemStack off = player.getOffhandItem();
+        if (NoiseModel.isFirearmItem(itemId(off))) {
+            return off;
+        }
+        return null;
+    }
+
+    /**
+     * Detects newly spawned firearm bullets (such as TaCZ's {@code tacz:bullet} / {@code EntityKineticBullet})
+     * around a player holding a gun, even when the gun mod spawns the bullet directly via
+     * {@code addFreshEntity} without emitting a vanilla {@code GameEvent.PROJECTILE_SHOOT}.
+     */
+    private static void detectPlayerGunshots(ServerLevel level, String worldId, Player player) {
+        ItemStack firearm = findHeldFirearm(player);
+        if (firearm == null) {
+            return;
+        }
+        double px = player.getX();
+        double py = player.getEyeY();
+        double pz = player.getZ();
+        AABB box = new AABB(px - 5.0, py - 3.5, pz - 5.0, px + 5.0, py + 3.5, pz + 5.0);
+        List<Entity> nearby = level.getEntitiesOfClass(Entity.class, box, e -> {
+            if (e == null || e == player || e.tickCount > 2) {
+                return false;
+            }
+            if (e instanceof Projectile proj && proj.getOwner() == player) {
+                return true;
+            }
+            return NoiseModel.isBulletEntity(Worlds.entityTypeId(e.getType()));
+        });
+        if (nearby.isEmpty()) {
+            return;
+        }
+        boolean firedNewBullet = false;
+        for (Entity bullet : nearby) {
+            if (markBulletSeen(bullet.getId())) {
+                firedNewBullet = true;
+            }
+        }
+        if (firedNewBullet) {
+            String fId = itemId(firearm);
+            String tag = itemTagSummary(firearm);
+            String event = NoiseModel.isSilencedFirearm(fId, tag)
+                    ? "mobsenses:gunshot_silenced"
+                    : "mobsenses:gunshot";
+            MobSenses.gameEvent(event, worldId, px, py, pz, NoiseModel.Posture.WALKING, null, null, true);
+        }
+    }
+
+    private static synchronized boolean markBulletSeen(int entityId) {
+        for (int existing : RECENT_BULLET_IDS) {
+            if (existing == entityId) {
+                return false;
+            }
+        }
+        RECENT_BULLET_IDS[recentBulletCursor] = entityId;
+        recentBulletCursor = (recentBulletCursor + 1) % RECENT_BULLET_RING_SIZE;
+        return true;
     }
 
     public static List<NoiseCoalescer.Candidate<Mob>> findCandidateListeners(

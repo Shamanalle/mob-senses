@@ -28,6 +28,7 @@ public final class MobSenses {
     private static final ScentModel SCENT = new ScentModel();
     private static final StealthHudState HUD = new StealthHudState();
     private static volatile ServerSettings settings = new ServerSettings(null);
+    private static volatile ClientSettings clientSettings = new ClientSettings(null);
     private static volatile Platform platform = new Platform("unknown", "?");
     private static volatile boolean voiceChat;
     private static volatile boolean debug;
@@ -51,6 +52,27 @@ public final class MobSenses {
         s.load();
         settings = s;
         ModLog.info(NAME + " " + BuildInfo.version() + " on " + where + ", preset " + s.preset().id());
+    }
+
+    /**
+     * Initializes the client HUD settings file ({@code config/mobsenses-client.properties}) and ensures
+     * {@code config/mobsenses-server.properties} also exists on disk for singleplayer users who open the
+     * {@code config/} folder before starting a world.
+     */
+    public static synchronized void initClient(Path configDir) {
+        if (configDir == null) {
+            return;
+        }
+        if (clientSettings.file() == null) {
+            ClientSettings cs = new ClientSettings(configDir.resolve(ClientSettings.FILE_NAME));
+            cs.load();
+            clientSettings = cs;
+        }
+        if (settings.file() == null) {
+            ServerSettings ss = new ServerSettings(configDir.resolve(ServerSettings.FILE_NAME));
+            ss.load();
+            settings = ss;
+        }
     }
 
     /** Marks Simple Voice Chat as active when its plugin service initializes. */
@@ -117,6 +139,10 @@ public final class MobSenses {
 
     public static StealthHudState hud() {
         return HUD;
+    }
+
+    public static ClientSettings clientSettings() {
+        return clientSettings;
     }
 
     /**
