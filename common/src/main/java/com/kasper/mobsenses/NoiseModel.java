@@ -245,23 +245,28 @@ public final class NoiseModel {
                 } else {
                     posFactor = Posture.WALKING.factor();
                 }
-                return base * posFactor * surfaceStepFactor(material, blockId);
+                double surfaceMult = (settings == null || settings.surfaceSoundScaling())
+                        ? surfaceStepFactor(material, blockId) : 1.0;
+                return base * posFactor * surfaceMult;
             }
             case BLOCK_BREAK: {
                 double base = settings != null ? settings.blockBreakRange() : Kind.BLOCK_BREAK.defaultRange();
-                double factor = material != null ? material.blockFactor() : 1.0;
+                double factor = (settings == null || settings.surfaceSoundScaling()) && material != null
+                        ? material.blockFactor() : 1.0;
                 return base * factor;
             }
             case BLOCK_PLACE: {
                 double placeCfg = settings != null ? settings.blockPlaceRange() : Kind.BLOCK_PLACE.defaultRange();
                 double base = ("block_activate".equals(id) || "block_deactivate".equals(id) || "block_change".equals(id))
                         ? placeCfg * (10.0 / 12.0) : placeCfg;
-                double factor = material != null ? material.blockFactor() : 1.0;
+                double factor = (settings == null || settings.surfaceSoundScaling()) && material != null
+                        ? material.blockFactor() : 1.0;
                 return base * factor;
             }
             case DOOR: {
                 double base = settings != null ? settings.doorRange() : Kind.DOOR.defaultRange();
-                double factor = material == AcousticMaterial.METAL ? 1.25 : 1.0;
+                double factor = (settings == null || settings.surfaceSoundScaling()) && material == AcousticMaterial.METAL
+                        ? 1.25 : 1.0;
                 return base * factor;
             }
             case CONTAINER:
@@ -334,6 +339,9 @@ public final class NoiseModel {
      */
     public static double audibleRange(double effectiveRange, double wallThickness) {
         ServerSettings s = MobSenses.settings();
+        if (s != null && !s.throughWallHearing() && wallThickness >= 0.85) {
+            return 0.0;
+        }
         double muffling = s != null ? s.wallMuffling() : 1.0;
         return audibleRange(effectiveRange, wallThickness, muffling);
     }

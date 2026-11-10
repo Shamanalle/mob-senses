@@ -227,7 +227,8 @@ public final class ServerHearing {
                             noise.x(), noise.y(), noise.z(),
                             mob.getX(), mob.getEyeY(), mob.getZ());
                 }
-                if (hordeRadius > 0.0) {
+                int maxAllies = MobSenses.settings().hordeMaxAllies();
+                if (hordeRadius > 0.0 && maxAllies > 0) {
                     AABB hordeBox = new AABB(
                             mob.getX() - hordeRadius, mob.getY() - 5.0, mob.getZ() - hordeRadius,
                             mob.getX() + hordeRadius, mob.getY() + 5.0, mob.getZ() + hordeRadius);
@@ -237,7 +238,7 @@ public final class ServerHearing {
                     for (Mob ally : allies) {
                         if (InvestigateGoal.alert(ally, noise.x(), noise.y(), noise.z(), speed)) {
                             MobSenses.alerted().record(now);
-                            if (++pulled >= 4) {
+                            if (++pulled >= maxAllies) {
                                 break;
                             }
                         }
@@ -324,6 +325,9 @@ public final class ServerHearing {
         double baseSight = configuredSightRange * sightMult;
         double effectiveSight = SightModel.effectiveSightRange(
                 baseSight, blockLight, skyLight, heldLight, sneaking, sprinting, preset);
+        if (player.isInvisible() && heldLight == 0) {
+            effectiveSight *= 0.15;
+        }
 
         if (effectiveSight > configuredSightRange) {
             AABB sightBox = new AABB(

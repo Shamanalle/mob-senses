@@ -86,8 +86,10 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | `/mobsenses voice <on\|off>` | Whether mobs hear Simple Voice Chat |
 | `/mobsenses debug [on\|off]` | Particle traces for operators showing sound, light and scent paths |
 | `/mobsenses world <world\|here> <preset\|inherit>` | A world's own preset (`inherit`: back to the server's) |
-| `/mobsenses set <option> [value]` | View or change any setting from `mobsenses-server.properties` in-game with Tab-completion |
-| `/mobsenses hud <on\|off\|compact\|full\|auto_hide\|position>` | Adjust the client HUD in singleplayer without leaving the game |
+| `/mobsenses set <option> [value\|default]` | View or change any setting from `mobsenses-server.properties` in-game with Tab-completion |
+| `/mobsenses get <option\|category>` | Inspect a single setting or an entire category (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) |
+| `/mobsenses reset <option\|all>` | Restore a setting or the entire config back to factory defaults |
+| `/mobsenses hud <on\|off\|compact\|full\|auto_hide\|position\|opacity\|offset\|bar\|reset>` | Adjust the client HUD in singleplayer without leaving the game |
 | `/mobsenses reload` | Read the settings file again |
 | `/mobsenses help` | The list of commands |
 
@@ -109,19 +111,19 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | `preset` | `default` | `off`, `subtle`, `default` or `hardcore` |
 | `hearing` | `1` | How far mobs hear, times the preset (`0` – `3`) |
 | `sight` | `1` | How far mobs see the player, times the preset (`0` – `3`) |
-| `wall_muffling` | `1` | How strongly walls muffle sound (`0` = sound goes through walls, `1` = default, `2` = double muffling) |
+| `wall_muffling`, `through_wall_hearing`, `surface_sound_scaling` | `1`, `true`, `true` | How strongly walls muffle sound (`0` – `3`), whether loud sounds can pass through solid walls at all, and whether wool/metal/gravel block materials scale noise |
 | `gunshot_range` | `44` | Unsuppressed gunshot hearing range in blocks (`0` – `256`, `0` = disabled) |
 | `gunshot_silenced_range` | `16` | Suppressed / silenced gunshot hearing range in blocks (`0` – `256`, `0` = completely silent) |
-| `bullet_impact_range` | `20` | Bullet ricochet / impact hearing range in blocks (`0` – `256`, `0` = disabled) |
+| `bullet_impact_range` | `20` | Bullet wall impact / ricochet hearing range in blocks (`0` – `256`, `0` = disabled; works with TaCZ `EntityKineticBullet`, PointBlank, CGM, Scorched Guns and bows) |
 | `gun.<id>.range`, `gun.<id>.silenced_range` | — | Optional per-weapon overrides by gun ID or keyword (e.g. `gun.tacz\:ai_awp.range=85`, `gun.glock.silenced_range=8`) |
 | `step_range` | `8` | Walking footstep hearing range in blocks (`0` – `256`); scaled by `sneak_step_multiplier` (`0.25`) and `sprint_step_multiplier` (`1.75`) |
 | `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` | `18`, `12`, `14`, `12`, `16`, `15`, `48`, `40`, `28`, `8` | Base hearing distance in blocks (`0` – `256`, `0` = disabled) for each sound category |
 | `rain_muffling`, `thunder_muffling`, `feather_falling_muffling` | `0.25`, `0.45`, `0.2` | Sound reduction during rain (`25`%), thunderstorms (`45`%), and footsteps with Feather Falling / Swift Sneak (`20`%) |
 | `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Simple Voice Chat toggle, loud speaking range in blocks (`0` – `256`) and whisper multiplier (`0` – `1`) |
-| `sight_range`, `held_light_enabled`, `darkness_stealth_enabled` | `16`, `true`, `true` | Base sight distance (`0` – `256`), whether held torches/lanterns increase visibility, and whether sneaking in darkness hides you |
-| `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles` | `true`, `50`, `14`, `true` | Blood scent trail toggle, health percentage threshold (`5` – `100`%), tracking range (`0` – `256` blocks) and crimson blood droplets |
+| `sight_range`, `held_light_enabled`, `held_light_bonus`, `darkness_stealth_enabled`, `darkness_min_visibility`, `sneak_sight_multiplier`, `sprint_sight_multiplier` | `16`, `true`, `0.5`, `true`, `0.2`, `0.6`, `1.15` | Base sight distance (`0` – `256`), torchlight visibility bonus, darkness stealth floor, and posture sight multipliers |
+| `scent_enabled`, `scent_health_threshold`, `scent_range`, `scent_max_range`, `scent_duration_seconds`, `blood_particles`, `scent_mobs` | `true`, `50`, `14`, `24`, `15`, `true`, — | Blood scent trail toggle, health percentage threshold (`5` – `100`%), base & critical tracking range (`0` – `256` blocks), trail duration in seconds, blood droplets, and extra scent-tracking mob IDs |
 | `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds` | `1`, `1.15`, `8` | Mob walk speed when investigating normal vs. loud sounds (`gunshot`, `explosion`, `bell`), and search duration in seconds |
-| `max_alerted_mobs`, `horde_alert_range`, `alert_cooldown_ms` | `8`, `0`, `900` | Max mobs alerted per sound (`1` – `64`), horde chain-alert radius in blocks (`0` – `64`, `0` = off), and per-mob cooldown in ms |
+| `max_alerted_mobs`, `horde_alert_range`, `horde_max_allies`, `alert_cooldown_ms` | `8`, `0`, `4`, `900` | Max mobs alerted per sound (`1` – `64`), horde chain-alert radius in blocks (`0` – `64`, `0` = off), max allies pulled per mob, and per-mob cooldown in ms |
 | `extra_listeners`, `ignored_mobs` | — | Comma-separated mob IDs or `namespace:*` wildcards to add to or exclude from hearing/sight |
 | `language` | `en_us` | Language of replies to the console and to players whose language is unknown |
 | `world.<id>.preset` | — | A world's own preset. On the mod loaders the id is the dimension (`world.minecraft\:the_nether.preset=off`, the colon written as `\:`), on Paper the world's folder (`world.world_nether.preset=off`) |

@@ -200,6 +200,21 @@ public final class ClientSettings {
         this.showVoice = showVoice;
     }
 
+    /** Resets all client HUD settings to their factory defaults. */
+    public synchronized void reset() {
+        this.enabled = true;
+        this.position = Anchor.TOP_LEFT;
+        this.x = 10;
+        this.y = 10;
+        this.opacity = 100;
+        this.compact = false;
+        this.autoHide = false;
+        this.showNoise = true;
+        this.showLight = true;
+        this.showScent = true;
+        this.showVoice = true;
+    }
+
     /**
      * Computes the on-screen X coordinate of the HUD panel for the given screen and panel widths.
      */

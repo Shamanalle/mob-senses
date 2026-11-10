@@ -85,17 +85,21 @@ public final class ScentModel {
         double thresholdRatio = Math.max(0.05, s != null ? (s.scentHealthThreshold() / 100.0) : WOUNDED_HEALTH_RATIO);
         double ratio = Math.max(0.0, Math.min(thresholdRatio, health / maxHealth));
         double severity = 1.0 - (ratio / thresholdRatio);
-        double maxBase = baseCfg * (MAX_BASE_SCENT_RANGE / BASE_SCENT_RANGE);
+        double maxBase = s != null ? Math.max(baseCfg, s.scentMaxRange()) : baseCfg * (MAX_BASE_SCENT_RANGE / BASE_SCENT_RANGE);
         double base = baseCfg + (maxBase - baseCfg) * severity;
         return base * preset.hearing();
     }
 
     /**
-     * Whether a mob type tracks wounded players by scent (zombies and spiders).
+     * Whether a mob type tracks wounded players by scent (zombies, spiders, and configured {@code scent_mobs}).
      */
     public static boolean isScentTracker(String entityTypeId) {
         if (entityTypeId == null || entityTypeId.isEmpty()) {
             return false;
+        }
+        ServerSettings s = MobSenses.settings();
+        if (s != null && s.isScentMob(entityTypeId)) {
+            return true;
         }
         String id = NoiseModel.normalizeEvent(entityTypeId).toLowerCase(Locale.ROOT);
         return id.contains("zombie")
@@ -105,6 +109,11 @@ public final class ScentModel {
                 || id.equals("pig_zombie")
                 || id.equals("spider")
                 || id.equals("cave_spider");
+    }
+
+    private static long crumbLifetimeMs() {
+        ServerSettings s = MobSenses.settings();
+        return s != null ? Math.round(s.scentDurationSeconds() * 1000.0) : CRUMB_LIFETIME_MS;
     }
 
     /**
@@ -170,7 +179,7 @@ public final class ScentModel {
                 if (distSq > r * r) {
                     continue;
                 }
-                double freshness = 1.0 - Math.min(1.0, (double) (nowMs - c.timestampMs()) / (double) CRUMB_LIFETIME_MS);
+                double freshness = 1.0 - Math.min(1.0, (double) (nowMs - c.timestampMs()) / (double) crumbLifetimeMs());
                 double closeness = 1.0 - Math.sqrt(distSq) / Math.max(1.0, r);
                 double score = freshness * 0.6 + closeness * 0.4;
                 if (score > bestScore) {
@@ -200,10 +209,11 @@ public final class ScentModel {
     }
 
     private static void pruneExpired(List<Crumb> crumbs, long nowMs) {
+        long lifetime = crumbLifetimeMs();
         Iterator<Crumb> it = crumbs.iterator();
         while (it.hasNext()) {
             Crumb c = it.next();
-            if (nowMs - c.timestampMs() > CRUMB_LIFETIME_MS) {
+            if (nowMs - c.timestampMs() > lifetime) {
                 it.remove();
             }
         }

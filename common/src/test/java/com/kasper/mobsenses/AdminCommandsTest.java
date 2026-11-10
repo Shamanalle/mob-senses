@@ -128,7 +128,21 @@ class AdminCommandsTest {
         assertEquals(10.0, MobSenses.settings().gunshotSilencedRange(), 1e-6);
         assertTrue(AdminCommands.execute("set gunshot_silenced_range", CONSOLE).toString().contains("10"));
         assertTrue(AdminCommands.suggestions("set gun", CONSOLE).contains("gunshot_range"));
+        assertFalse(AdminCommands.execute("reset gunshot_silenced_range", CONSOLE).refused());
+        assertEquals(16.0, MobSenses.settings().gunshotSilencedRange(), 1e-6);
+        assertTrue(AdminCommands.execute("get guns", CONSOLE).toString().contains("gunshot_range"));
         assertFalse(AdminCommands.execute("hud hotbar", CONSOLE).refused());
         assertEquals(ClientSettings.Anchor.HOTBAR, MobSenses.clientSettings().position());
+        assertFalse(AdminCommands.execute("hud opacity 75", CONSOLE).refused());
+        assertEquals(75, MobSenses.clientSettings().opacity());
+        assertFalse(AdminCommands.execute("hud offset 14 22", CONSOLE).refused());
+        assertEquals(14, MobSenses.clientSettings().x());
+        assertEquals(22, MobSenses.clientSettings().y());
+        assertFalse(AdminCommands.execute("hud bar scent off", CONSOLE).refused());
+        assertFalse(MobSenses.clientSettings().showScent());
+        assertFalse(AdminCommands.execute("hud reset", CONSOLE).refused());
+        assertEquals(ClientSettings.Anchor.TOP_LEFT, MobSenses.clientSettings().position());
+        assertEquals(100, MobSenses.clientSettings().opacity());
+        assertTrue(MobSenses.clientSettings().showScent());
     }
 }

@@ -68,17 +68,20 @@ public final class SightModel {
         int h = clampLight(heldLight);
         int effectiveLight = Math.max(Math.max(b, s), h);
         double ambient = 0.35 + 0.65 * (effectiveLight / 15.0);
-        double heldBonus = h > 0 ? (0.50 * (h / 15.0)) : 0.0;
+        ServerSettings cfg = MobSenses.settings();
+        double bonusWeight = cfg != null ? cfg.heldLightBonus() : 0.50;
+        double heldBonus = h > 0 ? (bonusWeight * (h / 15.0)) : 0.0;
         return ambient + heldBonus;
     }
 
     /** Posture multiplier for visual detection: sneaking lowers profile, sprinting attracts attention. */
     public static double postureFactor(boolean sneaking, boolean sprinting) {
+        ServerSettings cfg = MobSenses.settings();
         if (sneaking) {
-            return 0.60;
+            return cfg != null ? cfg.sneakSightMultiplier() : 0.60;
         }
         if (sprinting) {
-            return 1.15;
+            return cfg != null ? cfg.sprintSightMultiplier() : 1.15;
         }
         return 1.00;
     }
@@ -86,8 +89,10 @@ public final class SightModel {
     /** Combined visibility multiplier in {@code [MIN_VISIBILITY_FACTOR, MAX_VISIBILITY_FACTOR]}. */
     public static double visibilityFactor(int blockLight, int skyLight, int heldLight,
                                           boolean sneaking, boolean sprinting) {
+        ServerSettings cfg = MobSenses.settings();
+        double minVis = cfg != null ? cfg.darknessMinVisibility() : MIN_VISIBILITY_FACTOR;
         double raw = lightFactor(blockLight, skyLight, heldLight) * postureFactor(sneaking, sprinting);
-        return Math.max(MIN_VISIBILITY_FACTOR, Math.min(MAX_VISIBILITY_FACTOR, raw));
+        return Math.max(minVis, Math.min(MAX_VISIBILITY_FACTOR, raw));
     }
 
     /**
@@ -99,9 +104,11 @@ public final class SightModel {
         if (baseRange <= 0.0 || preset == null || preset == Preset.OFF) {
             return Math.max(0.0, baseRange);
         }
+        ServerSettings cfg = MobSenses.settings();
+        double minVis = cfg != null ? cfg.darknessMinVisibility() : MIN_VISIBILITY_FACTOR;
         double factor = visibilityFactor(blockLight, skyLight, heldLight, sneaking, sprinting);
         double scaled = 1.0 + (factor - 1.0) * preset.hearing();
-        return Math.max(2.0, baseRange * Math.max(MIN_VISIBILITY_FACTOR, scaled));
+        return Math.max(2.0, baseRange * Math.max(minVis, scaled));
     }
 
     /**

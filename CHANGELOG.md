@@ -5,6 +5,38 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-10
+
+### English
+
+#### Added
+- **TaCZ & kinetic bullet wall-impact acoustics (`bullet_impact_range`):** firearm shots (including suppressed shots from TaCZ `EntityKineticBullet`, PointBlank, CGM and Scorched Guns) now raycast along the bullet trajectory up to `64` blocks and emit a `mobsenses:bullet_impact` sound at the distant impact point (`>= 12` blocks away), allowing silenced shots fired at a distant wall to attract or distract mobs near where the bullet lands.
+- **10 additional server config parameters (`config/mobsenses-server.properties`):**
+  - `through_wall_hearing=true` (toggle whether loud sounds can penetrate solid walls at all) and `surface_sound_scaling=true` (toggle whether wool/metal/gravel block materials scale sound).
+  - `held_light_bonus=0.5`, `darkness_min_visibility=0.2`, `sneak_sight_multiplier=0.6` and `sprint_sight_multiplier=1.15` for fine-tuning visual detection and torchlight stealth.
+  - `scent_max_range=24`, `scent_duration_seconds=15` and `scent_mobs=` (custom mob IDs or `namespace:*` wildcards that track blood trails alongside zombies and spiders).
+  - `horde_max_allies=4` (maximum nearby allies pulled per alerted mob when `horde_alert_range > 0`).
+- **Command & HUD conveniences:**
+  - `/mobsenses reset <option|all>` (and `/mobsenses set <option> default`) to restore any setting or the entire config to factory defaults.
+  - `/mobsenses get <category>` (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) to inspect a whole group of settings at once.
+  - `/mobsenses hud opacity <10..100>`, `/mobsenses hud offset <x> <y>`, `/mobsenses hud bar <noise|light|scent|voice> [on|off]` and `/mobsenses hud reset`.
+- **Invisibility & cross-version polish:** invisible players (`Potion of Invisibility`) without a held light source now have `85%` reduced visual detection range; added legacy `1.17–1.19` redstone/piston/bell `GameEvent` IDs (`piston_extend`, `piston_contract`, `block_press`, `block_switch`, `ring_bell`, `shulker_open`) and full rain/thunder/`Feather Falling` muffling parity on Bukkit/Paper/Purpur/Folia.
+
+### Русский
+
+#### Добавлено
+- **Звук попадания пули в стены для TaCZ (`bullet_impact_range`):** при выстреле из огнестрельного оружия (включая `EntityKineticBullet` из TaCZ, PointBlank, CGM и Scorched Guns) траектория пули просчитывается лучом до `64` блоков и создаёт событие `mobsenses:bullet_impact` в точке попадания (`>= 12` блоков от стрелка). Теперь выстрел с глушителем в дальнюю стену привлекает или отвлекает мобов возле места удара пули.
+- **10 новых параметров тонкой настройки в `config/mobsenses-server.properties`:**
+  - `through_wall_hearing=true` (разрешить или полностью запретить прохождение громких звуков сквозь сплошные стены) и `surface_sound_scaling=true` (влияние материала блока — шерсти, металла, гравия — на громкость шагов и ломания).
+  - `held_light_bonus=0.5`, `darkness_min_visibility=0.2`, `sneak_sight_multiplier=0.6` и `sprint_sight_multiplier=1.15` для детальной настройки зрения мобов и заметности с факелом.
+  - `scent_max_range=24`, `scent_duration_seconds=15` и `scent_mobs=` (дополнительные ID мобов или маски `namespace:*`, которые идут по следу крови наряду с зомби и пауками).
+  - `horde_max_allies=4` (сколько максимум союзников подтягивает за собой каждый встревоженный моб при `horde_alert_range > 0`).
+- **Удобства в командах `/mobsenses` и настройке HUD:**
+  - `/mobsenses reset <параметр|all>` (а также `/mobsenses set <параметр> default`) для быстрого сброса одной настройки или всего конфига к заводским значениям.
+  - `/mobsenses get <категория>` (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) для просмотра сразу всей группы настроек в чате.
+  - `/mobsenses hud opacity <10..100>`, `/mobsenses hud offset <x> <y>`, `/mobsenses hud bar <noise|light|scent|voice> [on|off]` и `/mobsenses hud reset`.
+- **Невидимость и полировка совместимости:** эффект невидимости (если в руке нет факела/фонаря) снижает дальность визуального обнаружения на `85%`; добавлены все идентификаторы редстоун-событий и поршней из `1.17–1.19` (`piston_extend`, `piston_contract`, `block_press`, `block_switch`, `ring_bell`, `shulker_open`) и полный паритет погодного заглушения и зачарования «Невесомость» в плагине для Bukkit/Paper/Purpur/Folia.
+
 ## [1.3.0] - 2026-11-10
 
 ### English

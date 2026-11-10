@@ -39,7 +39,7 @@ public final class ServerSettings {
     public static final double MAX_RANGE = 256.0;
 
     private static final List<String> OPTION_KEYS = Jv.listOf(
-            "preset", "hearing", "sight", "wall_muffling",
+            "preset", "hearing", "sight", "wall_muffling", "through_wall_hearing", "surface_sound_scaling",
             "gunshot_range", "gunshot_silenced_range", "bullet_impact_range",
             "step_range", "sneak_step_multiplier", "sprint_step_multiplier",
             "block_break_range", "block_place_range", "door_range", "container_range",
@@ -47,10 +47,13 @@ public final class ServerSettings {
             "note_block_range", "eat_range",
             "rain_muffling", "thunder_muffling", "feather_falling_muffling",
             "voice", "voice_range", "voice_whisper_multiplier",
-            "sight_range", "held_light_enabled", "darkness_stealth_enabled",
-            "scent_enabled", "scent_health_threshold", "scent_range", "blood_particles",
+            "sight_range", "held_light_enabled", "held_light_bonus",
+            "darkness_stealth_enabled", "darkness_min_visibility",
+            "sneak_sight_multiplier", "sprint_sight_multiplier",
+            "scent_enabled", "scent_health_threshold", "scent_range", "scent_max_range",
+            "scent_duration_seconds", "blood_particles", "scent_mobs",
             "investigate_speed", "urgent_investigate_speed", "investigation_seconds",
-            "max_alerted_mobs", "horde_alert_range", "alert_cooldown_ms",
+            "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
             "extra_listeners", "ignored_mobs", "language");
 
     private final Path file;
@@ -61,6 +64,8 @@ public final class ServerSettings {
     private volatile double hearing = 1.0;
     private volatile double sight = 1.0;
     private volatile double wallMuffling = 1.0;
+    private volatile boolean throughWallHearing = true;
+    private volatile boolean surfaceSoundScaling = true;
     private volatile String language = ServerText.DEFAULT_LANGUAGE;
 
     // 2. Firearms & Gun Mods (TaCZ, PointBlank, CGM, Scorched Guns)
@@ -98,13 +103,20 @@ public final class ServerSettings {
     // 6. Sight, Torchlight & Darkness Stealth
     private volatile double sightRange = 16.0;
     private volatile boolean heldLightEnabled = true;
+    private volatile double heldLightBonus = 0.50;
     private volatile boolean darknessStealthEnabled = true;
+    private volatile double darknessMinVisibility = 0.20;
+    private volatile double sneakSightMultiplier = 0.60;
+    private volatile double sprintSightMultiplier = 1.15;
 
     // 7. Blood Scent & Wounded Trail
     private volatile boolean scentEnabled = true;
     private volatile double scentHealthThreshold = 50.0;
     private volatile double scentRange = 14.0;
+    private volatile double scentMaxRange = 24.0;
+    private volatile double scentDurationSeconds = 15.0;
     private volatile boolean bloodParticles = true;
+    private volatile Set<String> scentMobs = Collections.emptySet();
 
     // 8. Mob Investigation, Horde & Custom Mob Lists
     private volatile double investigateSpeed = 1.0;
@@ -112,6 +124,7 @@ public final class ServerSettings {
     private volatile double investigationSeconds = 8.0;
     private volatile int maxAlertedMobs = 8;
     private volatile double hordeAlertRange = 0.0;
+    private volatile int hordeMaxAllies = 4;
     private volatile long alertCooldownMs = 900L;
     private volatile Set<String> extraListeners = Collections.emptySet();
     private volatile Set<String> ignoredMobs = Collections.emptySet();
@@ -153,6 +166,14 @@ public final class ServerSettings {
 
     public double wallMuffling() {
         return wallMuffling;
+    }
+
+    public boolean throughWallHearing() {
+        return throughWallHearing;
+    }
+
+    public boolean surfaceSoundScaling() {
+        return surfaceSoundScaling;
     }
 
     public double gunshotRange() {
@@ -300,8 +321,24 @@ public final class ServerSettings {
         return heldLightEnabled;
     }
 
+    public double heldLightBonus() {
+        return heldLightBonus;
+    }
+
     public boolean darknessStealthEnabled() {
         return darknessStealthEnabled;
+    }
+
+    public double darknessMinVisibility() {
+        return darknessMinVisibility;
+    }
+
+    public double sneakSightMultiplier() {
+        return sneakSightMultiplier;
+    }
+
+    public double sprintSightMultiplier() {
+        return sprintSightMultiplier;
     }
 
     public boolean scentEnabled() {
@@ -316,8 +353,20 @@ public final class ServerSettings {
         return scentRange;
     }
 
+    public double scentMaxRange() {
+        return scentMaxRange;
+    }
+
+    public double scentDurationSeconds() {
+        return scentDurationSeconds;
+    }
+
     public boolean bloodParticles() {
         return bloodParticles;
+    }
+
+    public Set<String> scentMobs() {
+        return scentMobs;
     }
 
     public double investigateSpeed() {
@@ -338,6 +387,10 @@ public final class ServerSettings {
 
     public double hordeAlertRange() {
         return hordeAlertRange;
+    }
+
+    public int hordeMaxAllies() {
+        return hordeMaxAllies;
     }
 
     public long alertCooldownMs() {
@@ -374,6 +427,13 @@ public final class ServerSettings {
      */
     public boolean isExtraListener(String entityId) {
         return matchesMobSet(extraListeners, entityId);
+    }
+
+    /**
+     * Checks whether the given entity ID is in {@link #scentMobs()}.
+     */
+    public boolean isScentMob(String entityId) {
+        return matchesMobSet(scentMobs, entityId);
     }
 
     private static boolean matchesMobSet(Set<String> set, String entityId) {
@@ -426,6 +486,14 @@ public final class ServerSettings {
 
     public void setWallMuffling(double wallMuffling) {
         this.wallMuffling = clamp(wallMuffling, MIN_MULTIPLIER, MAX_MULTIPLIER);
+    }
+
+    public void setThroughWallHearing(boolean throughWallHearing) {
+        this.throughWallHearing = throughWallHearing;
+    }
+
+    public void setSurfaceSoundScaling(boolean surfaceSoundScaling) {
+        this.surfaceSoundScaling = surfaceSoundScaling;
     }
 
     private static double clamp(double v, double min, double max) {
@@ -559,8 +627,24 @@ public final class ServerSettings {
         this.heldLightEnabled = heldLightEnabled;
     }
 
+    public void setHeldLightBonus(double heldLightBonus) {
+        this.heldLightBonus = checkBounded("held_light_bonus", heldLightBonus, 0.0, 2.0);
+    }
+
     public void setDarknessStealthEnabled(boolean darknessStealthEnabled) {
         this.darknessStealthEnabled = darknessStealthEnabled;
+    }
+
+    public void setDarknessMinVisibility(double darknessMinVisibility) {
+        this.darknessMinVisibility = checkBounded("darkness_min_visibility", darknessMinVisibility, 0.05, 1.0);
+    }
+
+    public void setSneakSightMultiplier(double sneakSightMultiplier) {
+        this.sneakSightMultiplier = checkBounded("sneak_sight_multiplier", sneakSightMultiplier, 0.1, 1.5);
+    }
+
+    public void setSprintSightMultiplier(double sprintSightMultiplier) {
+        this.sprintSightMultiplier = checkBounded("sprint_sight_multiplier", sprintSightMultiplier, 0.5, 2.5);
     }
 
     public void setScentEnabled(boolean scentEnabled) {
@@ -575,8 +659,20 @@ public final class ServerSettings {
         this.scentRange = checkRange("scent_range", scentRange);
     }
 
+    public void setScentMaxRange(double scentMaxRange) {
+        this.scentMaxRange = checkRange("scent_max_range", scentMaxRange);
+    }
+
+    public void setScentDurationSeconds(double scentDurationSeconds) {
+        this.scentDurationSeconds = checkBounded("scent_duration_seconds", scentDurationSeconds, 2.0, 120.0);
+    }
+
     public void setBloodParticles(boolean bloodParticles) {
         this.bloodParticles = bloodParticles;
+    }
+
+    public void setScentMobs(Set<String> ids) {
+        this.scentMobs = normalizeSet(ids);
     }
 
     public void setInvestigateSpeed(double investigateSpeed) {
@@ -600,6 +696,13 @@ public final class ServerSettings {
 
     public void setHordeAlertRange(double hordeAlertRange) {
         this.hordeAlertRange = checkBounded("horde_alert_range", hordeAlertRange, 0.0, 64.0);
+    }
+
+    public void setHordeMaxAllies(int hordeMaxAllies) {
+        if (hordeMaxAllies < 0 || hordeMaxAllies > 32) {
+            throw new IllegalArgumentException("horde_max_allies=" + hordeMaxAllies);
+        }
+        this.hordeMaxAllies = hordeMaxAllies;
     }
 
     public void setAlertCooldownMs(long alertCooldownMs) {
@@ -662,6 +765,10 @@ public final class ServerSettings {
                 return format(sight);
             case "wall_muffling":
                 return format(wallMuffling);
+            case "through_wall_hearing":
+                return String.valueOf(throughWallHearing);
+            case "surface_sound_scaling":
+                return String.valueOf(surfaceSoundScaling);
             case "gunshot_range":
                 return format(gunshotRange);
             case "gunshot_silenced_range":
@@ -710,16 +817,30 @@ public final class ServerSettings {
                 return format(sightRange);
             case "held_light_enabled":
                 return String.valueOf(heldLightEnabled);
+            case "held_light_bonus":
+                return format(heldLightBonus);
             case "darkness_stealth_enabled":
                 return String.valueOf(darknessStealthEnabled);
+            case "darkness_min_visibility":
+                return format(darknessMinVisibility);
+            case "sneak_sight_multiplier":
+                return format(sneakSightMultiplier);
+            case "sprint_sight_multiplier":
+                return format(sprintSightMultiplier);
             case "scent_enabled":
                 return String.valueOf(scentEnabled);
             case "scent_health_threshold":
                 return format(scentHealthThreshold);
             case "scent_range":
                 return format(scentRange);
+            case "scent_max_range":
+                return format(scentMaxRange);
+            case "scent_duration_seconds":
+                return format(scentDurationSeconds);
             case "blood_particles":
                 return String.valueOf(bloodParticles);
+            case "scent_mobs":
+                return String.join(",", scentMobs);
             case "investigate_speed":
                 return format(investigateSpeed);
             case "urgent_investigate_speed":
@@ -730,6 +851,8 @@ public final class ServerSettings {
                 return String.valueOf(maxAlertedMobs);
             case "horde_alert_range":
                 return format(hordeAlertRange);
+            case "horde_max_allies":
+                return String.valueOf(hordeMaxAllies);
             case "alert_cooldown_ms":
                 return String.valueOf(alertCooldownMs);
             case "extra_listeners":
@@ -744,6 +867,261 @@ public final class ServerSettings {
     }
 
     /**
+     * Returns the list of option keys belonging to a named category ({@code core}, {@code guns},
+     * {@code sounds}, {@code stealth}, {@code voice}, {@code sight}, {@code scent}, {@code mobs},
+     * or {@code all}), or an empty list if {@code category} is not a category name.
+     */
+    public static List<String> categoryKeys(String category) {
+        if (category == null || Jv.isBlank(category)) {
+            return Collections.emptyList();
+        }
+        switch (category.trim().toLowerCase(Locale.ROOT)) {
+            case "core":
+            case "general":
+                return Jv.listOf("preset", "hearing", "sight", "wall_muffling",
+                        "through_wall_hearing", "surface_sound_scaling", "language");
+            case "guns":
+            case "firearms":
+            case "tacz":
+                return Jv.listOf("gunshot_range", "gunshot_silenced_range", "bullet_impact_range");
+            case "sounds":
+            case "audio":
+                return Jv.listOf("step_range", "sneak_step_multiplier", "sprint_step_multiplier",
+                        "block_break_range", "block_place_range", "door_range", "container_range",
+                        "combat_range", "projectile_range", "explosion_range", "bell_range",
+                        "note_block_range", "eat_range");
+            case "stealth":
+            case "weather":
+                return Jv.listOf("rain_muffling", "thunder_muffling", "feather_falling_muffling",
+                        "through_wall_hearing", "surface_sound_scaling");
+            case "voice":
+                return Jv.listOf("voice", "voice_range", "voice_whisper_multiplier");
+            case "sight":
+            case "light":
+                return Jv.listOf("sight_range", "held_light_enabled", "held_light_bonus",
+                        "darkness_stealth_enabled", "darkness_min_visibility",
+                        "sneak_sight_multiplier", "sprint_sight_multiplier");
+            case "scent":
+            case "blood":
+                return Jv.listOf("scent_enabled", "scent_health_threshold", "scent_range",
+                        "scent_max_range", "scent_duration_seconds", "blood_particles", "scent_mobs");
+            case "mobs":
+            case "horde":
+            case "ai":
+                return Jv.listOf("investigate_speed", "urgent_investigate_speed", "investigation_seconds",
+                        "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
+                        "extra_listeners", "ignored_mobs");
+            case "all":
+                return OPTION_KEYS;
+            default:
+                return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Resets all server settings (except per-world presets and language) to their factory defaults.
+     */
+    public synchronized void resetAll() {
+        for (String key : OPTION_KEYS) {
+            if (!"language".equals(key)) {
+                resetOption(key);
+            }
+        }
+        gunRanges = Collections.emptyMap();
+        gunSilencedRanges = Collections.emptyMap();
+    }
+
+    /**
+     * Resets a single setting key to its factory default value.
+     */
+    public synchronized boolean resetOption(String rawKey) {
+        if (rawKey == null || Jv.isBlank(rawKey)) {
+            return false;
+        }
+        String key = rawKey.trim().toLowerCase(Locale.ROOT);
+        if ("all".equals(key)) {
+            resetAll();
+            return true;
+        }
+        if (key.startsWith("gun.") && key.endsWith(".range")) {
+            String gun = key.substring("gun.".length(), key.length() - ".range".length());
+            if (gun.isEmpty()) {
+                return false;
+            }
+            setGunRange(gun, null);
+            return true;
+        }
+        if (key.startsWith("gun.") && key.endsWith(".silenced_range")) {
+            String gun = key.substring("gun.".length(), key.length() - ".silenced_range".length());
+            if (gun.isEmpty()) {
+                return false;
+            }
+            setGunSilencedRange(gun, null);
+            return true;
+        }
+        switch (key) {
+            case "preset":
+                preset = Preset.DEFAULT;
+                return true;
+            case "hearing":
+                hearing = 1.0;
+                return true;
+            case "sight":
+                sight = 1.0;
+                return true;
+            case "wall_muffling":
+                wallMuffling = 1.0;
+                return true;
+            case "through_wall_hearing":
+                throughWallHearing = true;
+                return true;
+            case "surface_sound_scaling":
+                surfaceSoundScaling = true;
+                return true;
+            case "gunshot_range":
+                gunshotRange = 44.0;
+                return true;
+            case "gunshot_silenced_range":
+                gunshotSilencedRange = 16.0;
+                return true;
+            case "bullet_impact_range":
+                bulletImpactRange = 20.0;
+                return true;
+            case "step_range":
+                stepRange = 8.0;
+                return true;
+            case "sneak_step_multiplier":
+                sneakStepMultiplier = 0.25;
+                return true;
+            case "sprint_step_multiplier":
+                sprintStepMultiplier = 1.75;
+                return true;
+            case "block_break_range":
+                blockBreakRange = 18.0;
+                return true;
+            case "block_place_range":
+                blockPlaceRange = 12.0;
+                return true;
+            case "door_range":
+                doorRange = 14.0;
+                return true;
+            case "container_range":
+                containerRange = 12.0;
+                return true;
+            case "combat_range":
+                combatRange = 16.0;
+                return true;
+            case "projectile_range":
+                projectileRange = 15.0;
+                return true;
+            case "explosion_range":
+                explosionRange = 48.0;
+                return true;
+            case "bell_range":
+                bellRange = 40.0;
+                return true;
+            case "note_block_range":
+                noteBlockRange = 28.0;
+                return true;
+            case "eat_range":
+                eatRange = 8.0;
+                return true;
+            case "rain_muffling":
+                rainMuffling = 0.25;
+                return true;
+            case "thunder_muffling":
+                thunderMuffling = 0.45;
+                return true;
+            case "feather_falling_muffling":
+                featherFallingMuffling = 0.20;
+                return true;
+            case "voice":
+                voice = true;
+                return true;
+            case "voice_range":
+                voiceRange = 16.0;
+                return true;
+            case "voice_whisper_multiplier":
+                voiceWhisperMultiplier = 0.30;
+                return true;
+            case "sight_range":
+                sightRange = 16.0;
+                return true;
+            case "held_light_enabled":
+                heldLightEnabled = true;
+                return true;
+            case "held_light_bonus":
+                heldLightBonus = 0.50;
+                return true;
+            case "darkness_stealth_enabled":
+                darknessStealthEnabled = true;
+                return true;
+            case "darkness_min_visibility":
+                darknessMinVisibility = 0.20;
+                return true;
+            case "sneak_sight_multiplier":
+                sneakSightMultiplier = 0.60;
+                return true;
+            case "sprint_sight_multiplier":
+                sprintSightMultiplier = 1.15;
+                return true;
+            case "scent_enabled":
+                scentEnabled = true;
+                return true;
+            case "scent_health_threshold":
+                scentHealthThreshold = 50.0;
+                return true;
+            case "scent_range":
+                scentRange = 14.0;
+                return true;
+            case "scent_max_range":
+                scentMaxRange = 24.0;
+                return true;
+            case "scent_duration_seconds":
+                scentDurationSeconds = 15.0;
+                return true;
+            case "blood_particles":
+                bloodParticles = true;
+                return true;
+            case "scent_mobs":
+                scentMobs = Collections.emptySet();
+                return true;
+            case "investigate_speed":
+                investigateSpeed = 1.0;
+                return true;
+            case "urgent_investigate_speed":
+                urgentInvestigateSpeed = 1.15;
+                return true;
+            case "investigation_seconds":
+                investigationSeconds = 8.0;
+                return true;
+            case "max_alerted_mobs":
+                maxAlertedMobs = 8;
+                return true;
+            case "horde_alert_range":
+                hordeAlertRange = 0.0;
+                return true;
+            case "horde_max_allies":
+                hordeMaxAllies = 4;
+                return true;
+            case "alert_cooldown_ms":
+                alertCooldownMs = 900L;
+                return true;
+            case "extra_listeners":
+                extraListeners = Collections.emptySet();
+                return true;
+            case "ignored_mobs":
+                ignoredMobs = Collections.emptySet();
+                return true;
+            case "language":
+                language = ServerText.DEFAULT_LANGUAGE;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
      * Updates a setting by key and string value. Returns {@code true} if valid and applied, or
      * {@code false} if the key or value is invalid.
      */
@@ -753,15 +1131,14 @@ public final class ServerSettings {
         }
         String key = rawKey.trim().toLowerCase(Locale.ROOT);
         String val = rawVal.trim();
+        if (("default".equalsIgnoreCase(val) || "reset".equalsIgnoreCase(val)) && !"preset".equals(key)) {
+            return resetOption(key);
+        }
         try {
             if (key.startsWith("gun.") && key.endsWith(".range")) {
                 String gun = key.substring("gun.".length(), key.length() - ".range".length());
                 if (gun.isEmpty()) {
                     return false;
-                }
-                if ("default".equalsIgnoreCase(val) || "reset".equalsIgnoreCase(val)) {
-                    setGunRange(gun, null);
-                    return true;
                 }
                 setGunRange(gun, parseDouble(val));
                 return true;
@@ -770,10 +1147,6 @@ public final class ServerSettings {
                 String gun = key.substring("gun.".length(), key.length() - ".silenced_range".length());
                 if (gun.isEmpty()) {
                     return false;
-                }
-                if ("default".equalsIgnoreCase(val) || "reset".equalsIgnoreCase(val)) {
-                    setGunSilencedRange(gun, null);
-                    return true;
                 }
                 setGunSilencedRange(gun, parseDouble(val));
                 return true;
@@ -811,6 +1184,12 @@ public final class ServerSettings {
                     setWallMuffling(d);
                     return true;
                 }
+                case "through_wall_hearing":
+                    setThroughWallHearing(parseStrictBool(val));
+                    return true;
+                case "surface_sound_scaling":
+                    setSurfaceSoundScaling(parseStrictBool(val));
+                    return true;
                 case "gunshot_range":
                     setGunshotRange(parseDouble(val));
                     return true;
@@ -883,8 +1262,20 @@ public final class ServerSettings {
                 case "held_light_enabled":
                     setHeldLightEnabled(parseStrictBool(val));
                     return true;
+                case "held_light_bonus":
+                    setHeldLightBonus(parseDouble(val));
+                    return true;
                 case "darkness_stealth_enabled":
                     setDarknessStealthEnabled(parseStrictBool(val));
+                    return true;
+                case "darkness_min_visibility":
+                    setDarknessMinVisibility(parseDouble(val));
+                    return true;
+                case "sneak_sight_multiplier":
+                    setSneakSightMultiplier(parseDouble(val));
+                    return true;
+                case "sprint_sight_multiplier":
+                    setSprintSightMultiplier(parseDouble(val));
                     return true;
                 case "scent_enabled":
                     setScentEnabled(parseStrictBool(val));
@@ -895,8 +1286,19 @@ public final class ServerSettings {
                 case "scent_range":
                     setScentRange(parseDouble(val));
                     return true;
+                case "scent_max_range":
+                    setScentMaxRange(parseDouble(val));
+                    return true;
+                case "scent_duration_seconds":
+                    setScentDurationSeconds(parseDouble(val));
+                    return true;
                 case "blood_particles":
                     setBloodParticles(parseStrictBool(val));
+                    return true;
+                case "scent_mobs":
+                    setScentMobs("none".equalsIgnoreCase(val) || "clear".equalsIgnoreCase(val)
+                            ? Collections.<String>emptySet()
+                            : parseCsvSet(val));
                     return true;
                 case "investigate_speed":
                     setInvestigateSpeed(parseDouble(val));
@@ -912,6 +1314,9 @@ public final class ServerSettings {
                     return true;
                 case "horde_alert_range":
                     setHordeAlertRange(parseDouble(val));
+                    return true;
+                case "horde_max_allies":
+                    setHordeMaxAllies((int) Math.round(parseDouble(val)));
                     return true;
                 case "alert_cooldown_ms":
                     setAlertCooldownMs(Math.round(parseDouble(val)));
@@ -996,7 +1401,7 @@ public final class ServerSettings {
             modified = Files.getLastModifiedTime(file).toMillis();
             String text = Jv.readString(file, StandardCharsets.UTF_8);
             read(text);
-            if (!text.contains("gunshot_range=") || !text.contains("rain_muffling=")) {
+            if (!text.contains("gunshot_range=") || !text.contains("rain_muffling=") || !text.contains("through_wall_hearing=") || !text.contains("scent_max_range=")) {
                 save();
             }
         } catch (IOException | RuntimeException e) {
@@ -1029,6 +1434,8 @@ public final class ServerSettings {
         hearing = boundedNumber(p, "hearing", MIN_MULTIPLIER, MAX_MULTIPLIER, 1.0);
         sight = boundedNumber(p, "sight", MIN_MULTIPLIER, MAX_MULTIPLIER, 1.0);
         wallMuffling = boundedNumber(p, "wall_muffling", MIN_MULTIPLIER, MAX_MULTIPLIER, 1.0);
+        throughWallHearing = bool(p, "through_wall_hearing", true);
+        surfaceSoundScaling = bool(p, "surface_sound_scaling", true);
 
         gunshotRange = boundedNumber(p, "gunshot_range", MIN_RANGE, MAX_RANGE, 44.0);
         gunshotSilencedRange = boundedNumber(p, "gunshot_silenced_range", MIN_RANGE, MAX_RANGE, 16.0);
@@ -1058,18 +1465,26 @@ public final class ServerSettings {
 
         sightRange = boundedNumber(p, "sight_range", MIN_RANGE, MAX_RANGE, 16.0);
         heldLightEnabled = bool(p, "held_light_enabled", true);
+        heldLightBonus = boundedNumber(p, "held_light_bonus", 0.0, 2.0, 0.50);
         darknessStealthEnabled = bool(p, "darkness_stealth_enabled", true);
+        darknessMinVisibility = boundedNumber(p, "darkness_min_visibility", 0.05, 1.0, 0.20);
+        sneakSightMultiplier = boundedNumber(p, "sneak_sight_multiplier", 0.1, 1.5, 0.60);
+        sprintSightMultiplier = boundedNumber(p, "sprint_sight_multiplier", 0.5, 2.5, 1.15);
 
         scentEnabled = bool(p, "scent_enabled", true);
         scentHealthThreshold = boundedNumber(p, "scent_health_threshold", 5.0, 100.0, 50.0);
         scentRange = boundedNumber(p, "scent_range", MIN_RANGE, MAX_RANGE, 14.0);
+        scentMaxRange = boundedNumber(p, "scent_max_range", MIN_RANGE, MAX_RANGE, 24.0);
+        scentDurationSeconds = boundedNumber(p, "scent_duration_seconds", 2.0, 120.0, 15.0);
         bloodParticles = bool(p, "blood_particles", true);
+        scentMobs = parseCsvSet(p.getProperty("scent_mobs"));
 
         investigateSpeed = boundedNumber(p, "investigate_speed", 0.5, 2.5, 1.0);
         urgentInvestigateSpeed = boundedNumber(p, "urgent_investigate_speed", 0.5, 2.5, 1.15);
         investigationSeconds = boundedNumber(p, "investigation_seconds", 2.0, 60.0, 8.0);
         maxAlertedMobs = (int) Math.round(boundedNumber(p, "max_alerted_mobs", 1.0, 64.0, 8.0));
         hordeAlertRange = boundedNumber(p, "horde_alert_range", 0.0, 64.0, 0.0);
+        hordeMaxAllies = (int) Math.round(boundedNumber(p, "horde_max_allies", 0.0, 32.0, 4.0));
         alertCooldownMs = Math.round(boundedNumber(p, "alert_cooldown_ms", 0.0, 10000.0, 900.0));
         extraListeners = parseCsvSet(p.getProperty("extra_listeners"));
         ignoredMobs = parseCsvSet(p.getProperty("ignored_mobs"));
@@ -1212,6 +1627,11 @@ public final class ServerSettings {
         lines.add("# Насколько сильно стены глушат звук (0 - 3: 0 = стены не глушат, 1 = реалистично, 2 = вдвое сильнее).");
         lines.add("wall_muffling=" + format(wallMuffling));
         lines.add("");
+        lines.add("# Whether mobs can hear loud sounds through solid walls (attenuated by wall_muffling), and whether block materials scale sound.");
+        lines.add("# Слышат ли мобы громкие звуки сквозь стены (с учётом wall_muffling) и влияет ли материал блока на громкость.");
+        lines.add("through_wall_hearing=" + throughWallHearing);
+        lines.add("surface_sound_scaling=" + surfaceSoundScaling);
+        lines.add("");
         lines.add("# ============================================================================");
         lines.add("# 2. FIREARMS & GUN MODS (TaCZ, PointBlank, CGM, Scorched Guns) / ОГНЕСТРЕЛЬНОЕ ОРУЖИЕ");
         lines.add("# ============================================================================");
@@ -1292,7 +1712,11 @@ public final class ServerSettings {
         lines.add("# Whether holding a torch/lantern makes you visible from farther away, and whether darkness + sneaking hides you.");
         lines.add("# Делает ли факел/фонарь в руке игрока заметнее издалека и скрывает ли темнота в приседе.");
         lines.add("held_light_enabled=" + heldLightEnabled);
+        lines.add("held_light_bonus=" + format(heldLightBonus));
         lines.add("darkness_stealth_enabled=" + darknessStealthEnabled);
+        lines.add("darkness_min_visibility=" + format(darknessMinVisibility));
+        lines.add("sneak_sight_multiplier=" + format(sneakSightMultiplier));
+        lines.add("sprint_sight_multiplier=" + format(sprintSightMultiplier));
         lines.add("");
         lines.add("# ============================================================================");
         lines.add("# 7. BLOOD SCENT & WOUNDED TRAIL / ЗАПАХ КРОВИ И СЛЕД РАНЕНОГО ИГРОКА");
@@ -1302,7 +1726,10 @@ public final class ServerSettings {
         lines.add("scent_enabled=" + scentEnabled);
         lines.add("scent_health_threshold=" + format(scentHealthThreshold));
         lines.add("scent_range=" + format(scentRange));
+        lines.add("scent_max_range=" + format(scentMaxRange));
+        lines.add("scent_duration_seconds=" + format(scentDurationSeconds));
         lines.add("blood_particles=" + bloodParticles);
+        lines.add("scent_mobs=" + String.join(",", scentMobs));
         lines.add("");
         lines.add("# ============================================================================");
         lines.add("# 8. MOB INVESTIGATION, HORDE & CUSTOM MOB LISTS / ПОВЕДЕНИЕ, ОРДА И СПИСКИ МОБОВ");
@@ -1313,10 +1740,11 @@ public final class ServerSettings {
         lines.add("urgent_investigate_speed=" + format(urgentInvestigateSpeed));
         lines.add("investigation_seconds=" + format(investigationSeconds));
         lines.add("");
-        lines.add("# Maximum mobs alerted by a single sound (1 - 64), horde chain-alert radius in blocks (0 - 64, 0 = off), and per-mob cooldown in ms.");
-        lines.add("# Максимум мобов на один звук (1 - 64), радиус подтягивания соседних мобов ордой в блоках (0 - 64, 0 = выкл) и кулдаун в мс.");
+        lines.add("# Maximum mobs alerted by a single sound (1 - 64), horde chain-alert radius in blocks (0 - 64, 0 = off), max allies per mob, and cooldown in ms.");
+        lines.add("# Максимум мобов на один звук (1 - 64), радиус подтягивания соседних мобов ордой в блоках (0 - 64, 0 = выкл), лимит союзников и кулдаун в мс.");
         lines.add("max_alerted_mobs=" + maxAlertedMobs);
         lines.add("horde_alert_range=" + format(hordeAlertRange));
+        lines.add("horde_max_allies=" + hordeMaxAllies);
         lines.add("alert_cooldown_ms=" + alertCooldownMs);
         lines.add("");
         lines.add("# Comma-separated mob IDs or mod namespaces to add as listeners or to ignore completely.");

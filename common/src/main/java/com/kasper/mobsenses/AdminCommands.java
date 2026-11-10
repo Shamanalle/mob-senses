@@ -15,10 +15,13 @@ public final class AdminCommands {
     public static final String NAME = "mobsenses";
 
     private static final List<String> SUBCOMMANDS = Jv.listOf(
-            "status", "preset", "hearing", "sight", "voice", "world", "set", "hud", "debug", "reload", "help");
+            "status", "preset", "hearing", "sight", "voice", "world", "set", "get", "reset", "hud", "debug", "reload", "help");
+    private static final List<String> CATEGORIES = Jv.listOf(
+            "core", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "all");
     private static final List<String> HUD_MODES = Jv.listOf(
-            "on", "off", "compact", "full", "auto_hide",
+            "on", "off", "compact", "full", "auto_hide", "opacity", "offset", "bar", "reset",
             "top_left", "top_right", "bottom_left", "bottom_right", "top_center", "hotbar");
+    private static final List<String> HUD_BARS = Jv.listOf("noise", "light", "scent", "voice");
     /** What {@code world <id>} takes besides a preset: the world goes back to the server's preset. */
     private static final String INHERIT = "inherit";
 
@@ -60,6 +63,8 @@ public final class AdminCommands {
                 case "set":
                 case "get":
                     return setOrGet(lang, s, a);
+                case "reset":
+                    return reset(lang, s, a);
                 case "hud":
                     return hud(lang, a);
                 case "debug":
@@ -100,6 +105,9 @@ public final class AdminCommands {
     private static Reply help(String lang) {
         Reply r = new Reply().add(Reply.Kind.TITLE, ServerText.get(lang, "help.title"));
         for (String sub : SUBCOMMANDS) {
+            if ("get".equals(sub) || "reset".equals(sub)) {
+                continue;
+            }
             r.add(Reply.Kind.INFO, ServerText.get(lang, "help." + sub));
         }
         return r;
@@ -209,11 +217,22 @@ public final class AdminCommands {
         }
         String key = a[1].toLowerCase(Locale.ROOT);
         if (a.length == 2) {
+            List<String> catKeys = ServerSettings.categoryKeys(key);
+            if (!catKeys.isEmpty()) {
+                Reply r = new Reply().add(Reply.Kind.TITLE, "Mob Senses [" + key + "]");
+                for (String ck : catKeys) {
+                    String val = s.getOption(ck);
+                    if (val != null) {
+                        r.add(Reply.Kind.INFO, ServerText.get(lang, "set.show", ck, val.isEmpty() ? "(none)" : val));
+                    }
+                }
+                return r;
+            }
             String cur = s.getOption(key);
             if (cur == null) {
                 return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, "?"));
             }
-            return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "set.show", key, cur));
+            return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "set.show", key, cur.isEmpty() ? "(none)" : cur));
         }
         StringBuilder valBuilder = new StringBuilder(a[2]);
         for (int i = 3; i < a.length; i++) {
@@ -224,7 +243,24 @@ public final class AdminCommands {
             return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, val));
         }
         s.save();
-        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, s.getOption(key)));
+        String updated = s.getOption(key);
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, updated != null && updated.isEmpty() ? "(none)" : updated));
+    }
+
+    private static Reply reset(String lang, ServerSettings s, String[] a) {
+        if (a.length < 2) {
+            return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.usage"));
+        }
+        String key = a[1].toLowerCase(Locale.ROOT);
+        if (!s.resetOption(key)) {
+            return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, "default"));
+        }
+        s.save();
+        if ("all".equals(key)) {
+            return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", "all", "default"));
+        }
+        String updated = s.getOption(key);
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, updated != null && updated.isEmpty() ? "(none)" : updated));
     }
 
     private static Reply hud(String lang, String[] a) {
@@ -232,6 +268,7 @@ public final class AdminCommands {
         if (a.length < 2) {
             String summary = (cs.enabled() ? "on" : "off")
                     + ", position=" + cs.position().id()
+                    + ", opacity=" + cs.opacity() + "%"
                     + (cs.compact() ? ", compact" : "")
                     + (cs.autoHide() ? ", auto_hide" : "");
             return new Reply()
@@ -239,6 +276,7 @@ public final class AdminCommands {
                     .add(Reply.Kind.HINT, ServerText.get(lang, "hud.usage"));
         }
         String mode = a[1].toLowerCase(Locale.ROOT);
+        String appliedLabel = mode;
         switch (mode) {
             case "on":
             case "true":
@@ -263,7 +301,69 @@ public final class AdminCommands {
             case "auto_hide":
             case "autohide":
                 cs.setAutoHide(!cs.autoHide());
+                appliedLabel = "auto_hide=" + cs.autoHide();
                 break;
+            case "reset":
+                cs.reset();
+                MobSenses.hud().setEnabled(true);
+                appliedLabel = "reset";
+                break;
+            case "opacity": {
+                if (a.length < 3) {
+                    return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "hud.done", "opacity=" + cs.opacity() + "%"));
+                }
+                try {
+                    int op = Integer.parseInt(a[2]);
+                    cs.setOpacity(op);
+                    appliedLabel = "opacity=" + cs.opacity() + "%";
+                } catch (NumberFormatException e) {
+                    return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                }
+                break;
+            }
+            case "offset": {
+                if (a.length < 4) {
+                    return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "hud.done", "x=" + cs.x() + ", y=" + cs.y()));
+                }
+                try {
+                    int ox = Integer.parseInt(a[2]);
+                    int oy = Integer.parseInt(a[3]);
+                    cs.setX(ox);
+                    cs.setY(oy);
+                    appliedLabel = "offset=" + cs.x() + "," + cs.y();
+                } catch (NumberFormatException e) {
+                    return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                }
+                break;
+            }
+            case "bar": {
+                if (a.length < 3) {
+                    return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                }
+                String bar = a[2].toLowerCase(Locale.ROOT);
+                Boolean forced = a.length >= 4 ? ("on".equalsIgnoreCase(a[3]) || "true".equalsIgnoreCase(a[3])) : null;
+                switch (bar) {
+                    case "noise":
+                        cs.setShowNoise(forced != null ? forced : !cs.showNoise());
+                        appliedLabel = "show_noise=" + cs.showNoise();
+                        break;
+                    case "light":
+                        cs.setShowLight(forced != null ? forced : !cs.showLight());
+                        appliedLabel = "show_light=" + cs.showLight();
+                        break;
+                    case "scent":
+                        cs.setShowScent(forced != null ? forced : !cs.showScent());
+                        appliedLabel = "show_scent=" + cs.showScent();
+                        break;
+                    case "voice":
+                        cs.setShowVoice(forced != null ? forced : !cs.showVoice());
+                        appliedLabel = "show_voice=" + cs.showVoice();
+                        break;
+                    default:
+                        return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                }
+                break;
+            }
             default: {
                 ClientSettings.Anchor anchor = ClientSettings.Anchor.byId(mode);
                 if (anchor == null) {
@@ -276,7 +376,7 @@ public final class AdminCommands {
             }
         }
         cs.save();
-        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "hud.done", mode));
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "hud.done", appliedLabel));
     }
 
     private static Reply unknown(String lang, String typed) {
@@ -320,9 +420,19 @@ public final class AdminCommands {
                     }
                     break;
                 case "set":
-                case "get":
                     options = ServerSettings.optionKeys();
                     break;
+                case "get": {
+                    options = new ArrayList<>(CATEGORIES);
+                    options.addAll(ServerSettings.optionKeys());
+                    break;
+                }
+                case "reset": {
+                    options = new ArrayList<>();
+                    options.add("all");
+                    options.addAll(ServerSettings.optionKeys());
+                    break;
+                }
                 case "hud":
                     options = HUD_MODES;
                     break;
@@ -334,6 +444,21 @@ public final class AdminCommands {
             options.add(INHERIT);
         } else if (words.length == 3 && words[0].equals("set")) {
             options = suggestOptionValues(words[1]);
+        } else if (words.length == 3 && words[0].equals("hud")) {
+            switch (words[1]) {
+                case "opacity":
+                    options = Jv.listOf("50", "75", "90", "100");
+                    break;
+                case "offset":
+                    options = Jv.listOf("6", "10", "16", "24");
+                    break;
+                case "bar":
+                    options = HUD_BARS;
+                    break;
+                default:
+                    options = Collections.emptyList();
+                    break;
+            }
         } else {
             options = Collections.emptyList();
         }
@@ -355,17 +480,19 @@ public final class AdminCommands {
             case "preset":
                 return presetList();
             case "voice":
+            case "through_wall_hearing":
+            case "surface_sound_scaling":
             case "held_light_enabled":
             case "darkness_stealth_enabled":
             case "scent_enabled":
             case "blood_particles":
                 return Jv.listOf("true", "false");
             case "gunshot_range":
-                return Jv.listOf("32", "44", "64", "96", "128");
+                return Jv.listOf("32", "44", "64", "96", "128", "default");
             case "gunshot_silenced_range":
-                return Jv.listOf("0", "8", "12", "16", "24");
+                return Jv.listOf("0", "8", "12", "16", "24", "default");
             case "bullet_impact_range":
-                return Jv.listOf("0", "12", "20", "32");
+                return Jv.listOf("0", "12", "20", "32", "default");
             case "wall_muffling":
             case "hearing":
             case "sight":
@@ -374,13 +501,15 @@ public final class AdminCommands {
                 return Jv.listOf("4", "8", "16", "24", "32");
             case "horde_alert_range":
                 return Jv.listOf("0", "8", "16", "24");
+            case "horde_max_allies":
+                return Jv.listOf("0", "2", "4", "8", "12");
             case "rain_muffling":
             case "thunder_muffling":
             case "feather_falling_muffling":
                 return Jv.listOf("0", "0.25", "0.45", "0.6");
             default: {
                 String cur = MobSenses.settings().getOption(key);
-                return cur != null && !cur.isEmpty() ? Jv.listOf(cur) : Collections.emptyList();
+                return cur != null && !cur.isEmpty() ? Jv.listOf(cur, "default") : Jv.listOf("default");
             }
         }
     }

@@ -184,5 +184,40 @@ class ServerSettingsTest {
         assertTrue(upgraded.contains("gunshot_range=44"), upgraded);
         assertTrue(upgraded.contains("gunshot_silenced_range=16"), upgraded);
         assertTrue(upgraded.contains("rain_muffling=0.25"), upgraded);
+        assertTrue(upgraded.contains("through_wall_hearing=true"), upgraded);
+        assertTrue(upgraded.contains("scent_max_range=24"), upgraded);
+    }
+
+    @Test
+    void sightScentWallAndResetOptionsWork() throws Exception {
+        ServerSettings s = new ServerSettings(null);
+        assertTrue(s.setOption("through_wall_hearing", "false"));
+        assertFalse(s.throughWallHearing());
+        assertTrue(s.setOption("surface_sound_scaling", "false"));
+        assertFalse(s.surfaceSoundScaling());
+        assertTrue(s.setOption("held_light_bonus", "1.2"));
+        assertEquals(1.2, s.heldLightBonus(), 1e-6);
+        assertTrue(s.setOption("darkness_min_visibility", "0.1"));
+        assertEquals(0.1, s.darknessMinVisibility(), 1e-6);
+        assertTrue(s.setOption("sneak_sight_multiplier", "0.4"));
+        assertEquals(0.4, s.sneakSightMultiplier(), 1e-6);
+        assertTrue(s.setOption("sprint_sight_multiplier", "1.5"));
+        assertEquals(1.5, s.sprintSightMultiplier(), 1e-6);
+        assertTrue(s.setOption("scent_max_range", "36"));
+        assertEquals(36.0, s.scentMaxRange(), 1e-6);
+        assertTrue(s.setOption("scent_duration_seconds", "30"));
+        assertEquals(30.0, s.scentDurationSeconds(), 1e-6);
+        assertTrue(s.setOption("scent_mobs", "minecraft:wolf, alexsmobs:grizzly_bear"));
+        assertTrue(s.isScentMob("minecraft:wolf"));
+        assertTrue(s.setOption("horde_max_allies", "8"));
+        assertEquals(8, s.hordeMaxAllies());
+
+        assertTrue(s.setOption("horde_max_allies", "default"));
+        assertEquals(4, s.hordeMaxAllies());
+        s.resetAll();
+        assertTrue(s.throughWallHearing());
+        assertTrue(s.surfaceSoundScaling());
+        assertEquals(0.5, s.heldLightBonus(), 1e-6);
+        assertEquals(24.0, s.scentMaxRange(), 1e-6);
     }
 }

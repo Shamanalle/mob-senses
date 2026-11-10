@@ -217,7 +217,8 @@ public final class BukkitSenses {
                 if (MobSenses.debug()) {
                     sendDebugTrace(world, center, eye);
                 }
-                if (hordeRadius > 0.0) {
+                int maxAllies = MobSenses.settings().hordeMaxAllies();
+                if (hordeRadius > 0.0 && maxAllies > 0) {
                     Collection<Entity> allies = world.getNearbyEntities(mob.getLocation(), hordeRadius, 5.0, hordeRadius);
                     int pulled = 0;
                     for (Entity allyEnt : allies) {
@@ -225,7 +226,7 @@ public final class BukkitSenses {
                             Mob ally = (Mob) allyEnt;
                             if (isListener(ally) && ally.getTarget() == null && investigate(ally, center, speed)) {
                                 MobSenses.alerted().record(now);
-                                if (++pulled >= 4) {
+                                if (++pulled >= maxAllies) {
                                     break;
                                 }
                             }
@@ -307,6 +308,9 @@ public final class BukkitSenses {
         double effectiveSight = SightModel.effectiveSightRange(
                 baseSight, blockLight, skyLight, heldLight,
                 player.isSneaking(), player.isSprinting(), preset);
+        if (player.isInvisible() && heldLight == 0) {
+            effectiveSight *= 0.15;
+        }
 
         if (effectiveSight > configuredSightRange) {
             Collection<Entity> nearby = world.getNearbyEntities(ploc, effectiveSight, 8.0, effectiveSight);
