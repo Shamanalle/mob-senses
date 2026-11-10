@@ -10,52 +10,36 @@ each version is in English, then in Russian.
 ### English
 
 #### Added
-- **TaCZ & kinetic bullet wall-impact acoustics (`bullet_impact_range`):** firearm shots (including suppressed shots from TaCZ `EntityKineticBullet`, PointBlank, CGM and Scorched Guns) now raycast along the bullet trajectory up to `64` blocks and emit a `mobsenses:bullet_impact` sound at the distant impact point (`>= 12` blocks away), allowing silenced shots fired at a distant wall to attract or distract mobs near where the bullet lands.
-- **10 additional server config parameters (`config/mobsenses-server.properties`):**
-  - `through_wall_hearing=true` (toggle whether loud sounds can penetrate solid walls at all) and `surface_sound_scaling=true` (toggle whether wool/metal/gravel block materials scale sound).
-  - `held_light_bonus=0.5`, `darkness_min_visibility=0.2`, `sneak_sight_multiplier=0.6` and `sprint_sight_multiplier=1.15` for fine-tuning visual detection and torchlight stealth.
-  - `scent_max_range=24`, `scent_duration_seconds=15` and `scent_mobs=` (custom mob IDs or `namespace:*` wildcards that track blood trails alongside zombies and spiders).
-  - `horde_max_allies=4` (maximum nearby allies pulled per alerted mob when `horde_alert_range > 0`).
-- **Command & HUD conveniences:**
-  - `/mobsenses reset <option|all>` (and `/mobsenses set <option> default`) to restore any setting or the entire config to factory defaults.
-  - `/mobsenses get <category>` (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) to inspect a whole group of settings at once.
-  - `/mobsenses hud opacity <10..100>`, `/mobsenses hud offset <x> <y>`, `/mobsenses hud bar <noise|light|scent|voice> [on|off]` and `/mobsenses hud reset`.
-- **Invisibility & cross-version polish:** invisible players (`Potion of Invisibility`) without a held light source now have `85%` reduced visual detection range; added legacy `1.17–1.19` redstone/piston/bell `GameEvent` IDs (`piston_extend`, `piston_contract`, `block_press`, `block_switch`, `ring_bell`, `shulker_open`) and full rain/thunder/`Feather Falling` muffling parity on Bukkit/Paper/Purpur/Folia.
+- **Bullet impacts draw mobs where the shot lands:** firing at a distant wall now makes noise at the point of impact, so a silenced shot into a wall across the area can distract or lure nearby mobs away from you.
+- **More settings and easier commands:** server owners can now fine-tune sight, darkness stealth, blood trails, custom scent-tracking mobs, through-wall hearing and horde size in `config/mobsenses-server.properties`, view settings by group with `/mobsenses get <category>`, and reset any option (or the whole config) to defaults with `/mobsenses reset`.
+- **More `/mobsenses hud` options:** players can now adjust HUD opacity, screen offset and individual bars, or reset the HUD to defaults directly from chat.
+- **Invisibility and small fixes:** potions of invisibility now hide you from mobs at a distance as long as you are not holding a light source. Small fixes.
 
 ### Русский
 
 #### Добавлено
-- **Звук попадания пули в стены для TaCZ (`bullet_impact_range`):** при выстреле из огнестрельного оружия (включая `EntityKineticBullet` из TaCZ, PointBlank, CGM и Scorched Guns) траектория пули просчитывается лучом до `64` блоков и создаёт событие `mobsenses:bullet_impact` в точке попадания (`>= 12` блоков от стрелка). Теперь выстрел с глушителем в дальнюю стену привлекает или отвлекает мобов возле места удара пули.
-- **10 новых параметров тонкой настройки в `config/mobsenses-server.properties`:**
-  - `through_wall_hearing=true` (разрешить или полностью запретить прохождение громких звуков сквозь сплошные стены) и `surface_sound_scaling=true` (влияние материала блока — шерсти, металла, гравия — на громкость шагов и ломания).
-  - `held_light_bonus=0.5`, `darkness_min_visibility=0.2`, `sneak_sight_multiplier=0.6` и `sprint_sight_multiplier=1.15` для детальной настройки зрения мобов и заметности с факелом.
-  - `scent_max_range=24`, `scent_duration_seconds=15` и `scent_mobs=` (дополнительные ID мобов или маски `namespace:*`, которые идут по следу крови наряду с зомби и пауками).
-  - `horde_max_allies=4` (сколько максимум союзников подтягивает за собой каждый встревоженный моб при `horde_alert_range > 0`).
-- **Удобства в командах `/mobsenses` и настройке HUD:**
-  - `/mobsenses reset <параметр|all>` (а также `/mobsenses set <параметр> default`) для быстрого сброса одной настройки или всего конфига к заводским значениям.
-  - `/mobsenses get <категория>` (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) для просмотра сразу всей группы настроек в чате.
-  - `/mobsenses hud opacity <10..100>`, `/mobsenses hud offset <x> <y>`, `/mobsenses hud bar <noise|light|scent|voice> [on|off]` и `/mobsenses hud reset`.
-- **Невидимость и полировка совместимости:** эффект невидимости (если в руке нет факела/фонаря) снижает дальность визуального обнаружения на `85%`; добавлены все идентификаторы редстоун-событий и поршней из `1.17–1.19` (`piston_extend`, `piston_contract`, `block_press`, `block_switch`, `ring_bell`, `shulker_open`) и полный паритет погодного заглушения и зачарования «Невесомость» в плагине для Bukkit/Paper/Purpur/Folia.
+- **Звук попадания пули в стену:** выстрел в далёкую стену теперь создаёт шум в точке попадания, поэтому выстрелом с глушителем можно отвлечь или выманить мобов в сторону.
+- **Больше настроек и удобные команды:** в `config/mobsenses-server.properties` добавлены настройки зрения, скрытности в темноте, следа крови, дополнительных мобов-ищеек, слышимости сквозь стены и размера орды. Посмотреть группу настроек теперь можно через `/mobsenses get <категория>`, а сбросить отдельный параметр или весь конфиг к стандартным значениям — командой `/mobsenses reset`.
+- **Расширенная настройка `/mobsenses hud`:** прозрачность, сдвиг по экрану и отдельные полоски индикатора теперь можно менять или сбрасывать прямо из чата.
+- **Невидимость и мелкие исправления:** зелье невидимости теперь скрывает игрока от взгляда мобов на расстоянии, если в руке нет источника света. Мелкие исправления.
 
 ## [1.3.0] - 2026-11-10
 
 ### English
 
 #### Added
-- **Configurable firearm and suppressor detection distances (`config/mobsenses-server.properties`):** added `gunshot_range=44` (unsuppressed shots, `0` – `256` blocks), `gunshot_silenced_range=16` (suppressed/silenced shots, `0` – `256` blocks; set `0` to make suppressors completely silent), `bullet_impact_range=20` (bullet ricochets and impacts), plus optional per-weapon overrides `gun.<id>.range` and `gun.<id>.silenced_range` (e.g. `gun.tacz\:ai_awp.range=85`, `gun.glock.silenced_range=8`).
-- **Per-category sound ranges, weather & stealth gear muffling:** every sound category can now be tuned or disabled (`0` – `256` blocks) in `config/mobsenses-server.properties`: `step_range`, `sneak_step_multiplier`, `sprint_step_multiplier`, `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range`, `wall_muffling` (`0` = sound passes through walls, `1` = realistic, `2` = double muffling), `rain_muffling` (`0.25`), `thunder_muffling` (`0.45`) and `feather_falling_muffling` (`0.2`).
-- **Voice, Sight, Scent, Horde & Mob AI settings:** added `voice_range`, `voice_whisper_multiplier`, `sight_range`, `held_light_enabled`, `darkness_stealth_enabled`, `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles`, `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds`, `max_alerted_mobs` (`1` – `64`), `horde_alert_range` (`0` – `64` blocks), `alert_cooldown_ms`, `extra_listeners` and `ignored_mobs` (supports exact mob IDs and `namespace:*` wildcards).
-- **In-game `/mobsenses set` & `/mobsenses hud` commands + HUD `auto_hide`:** operators can now view or change any config setting in-game with Tab-completion via `/mobsenses set <option> [value]`, players can switch HUD position/mode via `/mobsenses hud <on|off|compact|full|auto_hide|position>`, and `config/mobsenses-client.properties` now includes `auto_hide` and `show_voice`.
-- **Long-range mob pathfinding:** mobs investigating distant sounds (up to `256` blocks) now step through intermediate waypoints so they reliably walk across large distances beyond vanilla `FOLLOW_RANGE`.
+- **Detailed server configuration:** server owners can now adjust the hearing distance of every sound type (footsteps, breaking and placing blocks, doors, chests, combat, explosions, gunshots, suppressors and individual weapons), wall muffling, voice chat, sight, blood scent, mob investigation speed and custom listener or ignored mobs in `config/mobsenses-server.properties` or in-game with `/mobsenses set`.
+- **Weather, Feather Falling and horde alerts:** rain and thunderstorms now help mask your sounds, boots with Feather Falling or Swift Sneak make footsteps quieter, and alerted mobs can optionally call nearby allies to investigate together.
+- **HUD command and auto-hide:** players can now toggle the stealth HUD, switch between compact and full mode, move it on the screen or enable auto-hide when everything is quiet via `/mobsenses hud`.
+- **Long-distance investigation:** mobs that hear a loud sound from far away now reliably walk the whole distance to investigate it.
 
 ### Русский
 
 #### Добавлено
-- **Настройка дальности слышимости выстрелов и глушителей (`config/mobsenses-server.properties`):** добавлены параметры `gunshot_range=44` (выстрелы без глушителя, `0` – `256` блоков), `gunshot_silenced_range=16` (выстрелы с глушителем, `0` – `256` блоков; `0` делает глушитель полностью бесшумным), `bullet_impact_range=20` (попадания пуль и рикошеты), а также индивидуальные оверрайды для конкретного оружия `gun.<id>.range` и `gun.<id>.silenced_range` (например, `gun.tacz\:ai_awp.range=85`, `gun.glock.silenced_range=8`).
-- **Индивидуальная дальность всех категорий звуков, погода и экипировка скрытности:** каждую категорию звука теперь можно тонко настроить или отключить (`0` – `256` блоков) в `config/mobsenses-server.properties`: `step_range`, `sneak_step_multiplier`, `sprint_step_multiplier`, `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range`, `wall_muffling` (`0` = стены не глушат звук, `1` = реалистично, `2` = двойное глушение), а также маскировка звука дождём (`rain_muffling=0.25`), грозой (`thunder_muffling=0.45`) и снижение шума шагов от «Невесомости» и «Проворства» (`feather_falling_muffling=0.2`).
-- **Настройки голоса, зрения, запаха крови, орды и ИИ мобов:** добавлены `voice_range`, `voice_whisper_multiplier`, `sight_range`, `held_light_enabled`, `darkness_stealth_enabled`, `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles`, `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds`, `max_alerted_mobs` (`1` – `64`), `horde_alert_range` (`0` – `64` блока — цепная реакция орды), `alert_cooldown_ms`, а также списки `extra_listeners` и `ignored_mobs` (с поддержкой ID мобов и масок `namespace:*`).
-- **Команды `/mobsenses set` и `/mobsenses hud` + автоскрытие HUD (`auto_hide`):** любую серверную настройку теперь можно посмотреть или изменить прямо из игры с автодополнением Tab через `/mobsenses set <параметр> [значение]`, клиентский HUD переключается командой `/mobsenses hud <on|off|compact|full|auto_hide|позиция>`, а в `config/mobsenses-client.properties` добавлены `auto_hide` и `show_voice`.
-- **Дальняя навигация мобов:** мобы, идущие проверять далёкие звуки (вплоть до `256` блоков), теперь строят маршрут через промежуточные точки и уверенно доходят даже с расстояний, превышающих ванильный `FOLLOW_RANGE`.
+- **Подробная настройка сервера:** в `config/mobsenses-server.properties` и в команде `/mobsenses set` теперь можно отдельно настроить дальность каждого вида звука (шагов, ломания и установки блоков, дверей, сундуков, боя, взрывов, выстрелов, глушителей и конкретного оружия), глушение стенами, голосовой чат, зрение, запах крови, скорость расследования, а также списки мобов.
+- **Погода, «Невесомость» и призыв орды:** дождь и гроза теперь приглушают звуки игрока, ботинки с «Невесомостью» или «Проворством» делают шаги тише, а встревоженные мобы при желании могут звать с собой ближайших сородичей.
+- **Команда `/mobsenses hud` и автоскрытие:** игроки могут включать и выключать HUD скрытности, менять его положение, компактный режим и автоскрытие в тишине прямо командой `/mobsenses hud`.
+- **Расследование далёких звуков:** мобы, услышавшие громкий шум издалека, теперь уверенно доходят до его источника даже с больших расстояний.
 
 ## [1.2.0] - 2026-11-09
 
@@ -63,13 +47,13 @@ each version is in English, then in Russian.
 
 #### Added
 - **Gun mod support (TaCZ, PointBlank, MrCrayfish's Gun Mod, Scorched Guns):** firing a gun carries far across the area and draws nearby mobs to investigate, while attaching a suppressor or silencer muffles the shot to close range.
-- **Client HUD settings file (`config/mobsenses-client.properties`):** you can now move the HUD to any screen corner or above the hotbar (`position=top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center`, `hotbar`), adjust `x` and `y` offsets, change `opacity`, switch to `compact=true` mode, toggle individual bars, or hide the HUD (`enabled=false`) directly in the config file without commands or a restart.
+- **Client HUD settings (`config/mobsenses-client.properties`):** you can now move the HUD to any screen corner or above the hotbar, adjust its offset and opacity, switch to compact mode, toggle individual bars, or hide it completely in the client config file without restarting the game.
 
 ### Русский
 
 #### Добавлено
 - **Поддержка оружейных модов (TaCZ, PointBlank, MrCrayfish's Gun Mod, Scorched Guns):** выстрелы из огнестрельного оружия разносятся далеко по округе и стягивают мобов к стрелку, а установленный глушитель снижает слышимость выстрела до ближней дистанции.
-- **Файл настроек клиентского HUD (`config/mobsenses-client.properties`):** теперь прямо в файле настроек (без команд и без перезапуска игры) можно перенести HUD в любой угол экрана или над хотбаром (`position=top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center`, `hotbar`), задать отступы `x` и `y`, прозрачность `opacity`, компактный режим `compact=true`, скрыть отдельные полоски или полностью выключить HUD (`enabled=false`).
+- **Файл настроек клиентского HUD (`config/mobsenses-client.properties`):** теперь в клиентском файле настроек (без команд и без перезапуска игры) можно перенести HUD в любой угол экрана или над хотбаром, задать отступы и прозрачность, включить компактный режим, скрыть отдельные полоски или полностью выключить HUD.
 
 ## [1.1.0] - 2026-11-06
 
