@@ -38,6 +38,7 @@ import java.util.Set;
 public final class ServerHearing {
 
     private static final int SENSE_TICK_INTERVAL = 10;
+    private static long serverTickCounter;
     private static final int RECENT_BULLET_RING_SIZE = 128;
     private static final int[] RECENT_BULLET_IDS = new int[RECENT_BULLET_RING_SIZE];
     private static int recentBulletCursor;
@@ -175,12 +176,17 @@ public final class ServerHearing {
                 }
             }
         }
+        boolean runSenses = (++serverTickCounter % SENSE_TICK_INTERVAL) == 0;
         for (ServerLevel level : server.getAllLevels()) {
-            tickLevel(level);
+            tickLevel(level, runSenses);
         }
     }
 
     public static void tickLevel(ServerLevel level) {
+        tickLevel(level, true);
+    }
+
+    private static void tickLevel(ServerLevel level, boolean runSenses) {
         if (level == null) {
             return;
         }
@@ -260,7 +266,7 @@ public final class ServerHearing {
         }
 
         // 3. Sight (held light / darkness + sneaking) and Scent (wounded blood trail)
-        if (level.getGameTime() % SENSE_TICK_INTERVAL == 0) {
+        if (runSenses) {
             for (ServerPlayer player : level.players()) {
                 if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
                     continue;

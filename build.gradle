@@ -272,12 +272,13 @@ side = "BOTH"
         new File(dir, 'META-INF/neoforge.mods.toml').setText(neoToml, 'UTF-8')
 
         // Forge refuses a mod without it. pack_format for the oldest, supported_formats for 1.20.2 and later,
-        // min_format / max_format for 1.21.9 and later; the loader puts every mod's resources into one pack anyway.
+        // min_format / max_format for 1.21.9 and later (which requires multi-version min_format >= 15);
+        // the loader puts every mod's resources into one pack anyway.
         new File(dir, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([pack: [
                 description      : 'Mob Senses',
-                pack_format      : 8,
-                supported_formats: [8, 1000],
-                min_format       : 8,
+                pack_format      : 15,
+                supported_formats: [15, 1000],
+                min_format       : 15,
                 max_format       : 1000,
         ]])) + '\n'
 
