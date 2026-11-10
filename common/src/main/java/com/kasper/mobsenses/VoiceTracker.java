@@ -65,8 +65,11 @@ public final class VoiceTracker {
                     cachedMedian = Math.max(-44.0, Math.min(-8.0, raw));
                 }
             }
-            double scale = volumeScale(db, cachedMedian, whispering);
-            double range = BASE_VOICE_RANGE * scale;
+            ServerSettings s = MobSenses.settings();
+            double baseVoice = s != null ? s.voiceRange() : BASE_VOICE_RANGE;
+            double whisperMult = s != null ? s.voiceWhisperMultiplier() : WHISPER_FACTOR;
+            double scale = volumeScale(db, cachedMedian, whispering, whisperMult);
+            double range = baseVoice * scale;
             if (range > pendingRange) {
                 pendingRange = range;
             }
@@ -120,13 +123,19 @@ public final class VoiceTracker {
      * multiplies the result by {@link #WHISPER_FACTOR}.
      */
     public static double volumeScale(double db, double medianDb, boolean whispering) {
+        ServerSettings s = MobSenses.settings();
+        double whisperMult = s != null ? s.voiceWhisperMultiplier() : WHISPER_FACTOR;
+        return volumeScale(db, medianDb, whispering, whisperMult);
+    }
+
+    public static double volumeScale(double db, double medianDb, boolean whispering, double whisperMultiplier) {
         if (db < MIN_SPEECH_DB) {
             return 0.0;
         }
         double delta = db - medianDb;
         double scale = Math.pow(2.0, delta / 10.0);
         double clamped = Math.max(0.35, Math.min(2.25, scale));
-        return whispering ? clamped * WHISPER_FACTOR : clamped;
+        return whispering ? clamped * whisperMultiplier : clamped;
     }
 
     /**

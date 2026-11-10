@@ -192,6 +192,8 @@ public final class ServerHearing {
                 (ex, ey, ez, radius) -> findCandidateListeners(level, ex, ey, ez, radius),
                 (sx, sy, sz, tx, ty, tz) -> BlockAcoustics.traceBundle(level, sx, sy, sz, tx, ty, tz));
 
+        double normalSpeed = MobSenses.settings().investigateSpeed();
+        double urgentSpeed = MobSenses.settings().urgentInvestigateSpeed();
         for (NoiseCoalescer.Alerted<Mob> alerted : alertedList) {
             Mob mob = alerted.mob();
             NoiseCoalescer.CoalescedNoise noise = alerted.noise();
@@ -200,7 +202,7 @@ public final class ServerHearing {
                     || noise.kind() == NoiseModel.Kind.COMBAT
                     || noise.kind() == NoiseModel.Kind.BELL
                     || noise.kind() == NoiseModel.Kind.VOICE
-                    ? 1.15 : 1.0;
+                    ? urgentSpeed : normalSpeed;
             if (InvestigateGoal.alert(mob, noise.x(), noise.y(), noise.z(), speed)) {
                 MobSenses.alerted().record(now);
                 if (MobSenses.debug()) {
@@ -235,14 +237,16 @@ public final class ServerHearing {
         double py = player.getY();
         double pz = player.getZ();
 
-        // Scent: badly wounded players (<= 50% health) leave a trail followed by zombies and spiders
+        // Scent: badly wounded players leave a trail followed by zombies and spiders
         double scentRange = MobSenses.scent().recordPlayer(
                 worldId, player.getUUID(), px, py, pz,
                 player.getHealth(), player.getMaxHealth(), preset, now);
         if (scentRange > 0.0) {
-            for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldId, now)) {
-                if (player.getUUID().equals(c.playerId())) {
-                    ParticleSender.sendBloodCrumb(level, c.x(), c.y(), c.z());
+            if (MobSenses.settings().bloodParticles()) {
+                for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldId, now)) {
+                    if (player.getUUID().equals(c.playerId())) {
+                        ParticleSender.sendBloodCrumb(level, c.x(), c.y(), c.z());
+                    }
                 }
             }
             AABB scentBox = new AABB(
@@ -270,23 +274,26 @@ public final class ServerHearing {
 
         // Sight & Light: holding a torch/lantern increases detection range; darkness + sneaking hides
         double sightMult = MobSenses.settings().sight();
-        if (!(sightMult > 0.0)) {
+        double configuredSightRange = MobSenses.settings().sightRange();
+        if (!(sightMult > 0.0) || !(configuredSightRange > 0.0)) {
             return;
         }
         BlockPos pos = player.blockPosition();
         int blockLight = level.getBrightness(LightLayer.BLOCK, pos);
         int skyLight = Math.max(0, level.getBrightness(LightLayer.SKY, pos) - level.getSkyDarken());
-        int heldLight = Math.max(
-                SightModel.heldItemLight(itemId(player.getMainHandItem())),
-                SightModel.heldItemLight(itemId(player.getOffhandItem())));
+        int heldLight = MobSenses.settings().heldLightEnabled()
+                ? Math.max(
+                        SightModel.heldItemLight(itemId(player.getMainHandItem())),
+                        SightModel.heldItemLight(itemId(player.getOffhandItem())))
+                : 0;
         boolean sneaking = player.isShiftKeyDown() || player.isCrouching();
         boolean sprinting = player.isSprinting();
 
-        double baseSight = SightModel.DEFAULT_SIGHT_RANGE * sightMult;
+        double baseSight = configuredSightRange * sightMult;
         double effectiveSight = SightModel.effectiveSightRange(
                 baseSight, blockLight, skyLight, heldLight, sneaking, sprinting, preset);
 
-        if (effectiveSight > SightModel.DEFAULT_SIGHT_RANGE) {
+        if (effectiveSight > configuredSightRange) {
             AABB sightBox = new AABB(
                     px - effectiveSight, py - 8.0, pz - effectiveSight,
                     px + effectiveSight, py + 8.0, pz + effectiveSight);
@@ -316,8 +323,8 @@ public final class ServerHearing {
                     }
                 }
             }
-        } else if (effectiveSight < SightModel.DEFAULT_SIGHT_RANGE * 0.75) {
-            double checkRadius = SightModel.DEFAULT_SIGHT_RANGE + 6.0;
+        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < configuredSightRange * 0.75) {
+            double checkRadius = configuredSightRange + 6.0;
             AABB darkBox = new AABB(
                     px - checkRadius, py - 8.0, pz - checkRadius,
                     px + checkRadius, py + 8.0, pz + checkRadius);
@@ -337,7 +344,10 @@ public final class ServerHearing {
             return false;
         }
         String key = Worlds.entityTypeId(mob.getType());
-        return ScentModel.isScentTracker(key);
+        if (MobSenses.settings().isIgnoredMob(key)) {
+            return false;
+        }
+        return ScentModel.isScentTracker(key) || MobSenses.settings().isExtraListener(key);
     }
 
     public static String itemId(ItemStack stack) {
@@ -485,10 +495,16 @@ public final class ServerHearing {
             return false;
         }
         EntityType<?> type = mob.getType();
+        String key = Worlds.entityTypeId(type);
+        if (MobSenses.settings().isIgnoredMob(key)) {
+            return false;
+        }
+        if (MobSenses.settings().isExtraListener(key)) {
+            return true;
+        }
         if (Worlds.isTaggedListener(type)) {
             return true;
         }
-        String key = Worlds.entityTypeId(type);
         if (DEFAULT_LISTENERS.contains(key)) {
             return true;
         }

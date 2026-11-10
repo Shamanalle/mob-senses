@@ -47,19 +47,26 @@ public final class ScentModel {
         if (!(health > 0.0) || !(maxHealth > 0.0)) {
             return false;
         }
-        return (health / maxHealth) <= WOUNDED_HEALTH_RATIO;
+        ServerSettings s = MobSenses.settings();
+        if (s != null && !s.scentEnabled()) {
+            return false;
+        }
+        double thresholdRatio = s != null ? (s.scentHealthThreshold() / 100.0) : WOUNDED_HEALTH_RATIO;
+        return (health / maxHealth) <= thresholdRatio;
     }
 
     /**
-     * Normalized scent intensity in {@code [0.0, 1.0]}: {@code 0.0} above 50% health, rising from
-     * {@code 0.40} at 50% health to {@code 1.00} as health approaches {@code 0}.
+     * Normalized scent intensity in {@code [0.0, 1.0]}: {@code 0.0} above the health threshold, rising
+     * from {@code 0.40} at the threshold to {@code 1.00} as health approaches {@code 0}.
      */
     public static double scentStrength(double health, double maxHealth) {
         if (!isWounded(health, maxHealth)) {
             return 0.0;
         }
-        double ratio = Math.max(0.0, Math.min(WOUNDED_HEALTH_RATIO, health / maxHealth));
-        double severity = 1.0 - (ratio / WOUNDED_HEALTH_RATIO);
+        ServerSettings s = MobSenses.settings();
+        double thresholdRatio = Math.max(0.05, s != null ? (s.scentHealthThreshold() / 100.0) : WOUNDED_HEALTH_RATIO);
+        double ratio = Math.max(0.0, Math.min(thresholdRatio, health / maxHealth));
+        double severity = 1.0 - (ratio / thresholdRatio);
         return 0.40 + 0.60 * severity;
     }
 
@@ -70,9 +77,16 @@ public final class ScentModel {
         if (!isWounded(health, maxHealth) || preset == null || preset == Preset.OFF) {
             return 0.0;
         }
-        double ratio = Math.max(0.0, Math.min(WOUNDED_HEALTH_RATIO, health / maxHealth));
-        double severity = 1.0 - (ratio / WOUNDED_HEALTH_RATIO);
-        double base = BASE_SCENT_RANGE + (MAX_BASE_SCENT_RANGE - BASE_SCENT_RANGE) * severity;
+        ServerSettings s = MobSenses.settings();
+        double baseCfg = s != null ? s.scentRange() : BASE_SCENT_RANGE;
+        if (baseCfg <= 0.0) {
+            return 0.0;
+        }
+        double thresholdRatio = Math.max(0.05, s != null ? (s.scentHealthThreshold() / 100.0) : WOUNDED_HEALTH_RATIO);
+        double ratio = Math.max(0.0, Math.min(thresholdRatio, health / maxHealth));
+        double severity = 1.0 - (ratio / thresholdRatio);
+        double maxBase = baseCfg * (MAX_BASE_SCENT_RANGE / BASE_SCENT_RANGE);
+        double base = baseCfg + (maxBase - baseCfg) * severity;
         return base * preset.hearing();
     }
 

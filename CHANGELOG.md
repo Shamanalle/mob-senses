@@ -5,6 +5,24 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-10
+
+### English
+
+#### Added
+- **Configurable firearm and suppressor detection distances (`config/mobsenses-server.properties`):** added `gunshot_range=44` (unsuppressed shots, `0` – `256` blocks), `gunshot_silenced_range=16` (suppressed/silenced shots, `0` – `256` blocks; set `0` to make suppressors completely silent) and `bullet_impact_range=20` (bullet ricochets and impacts).
+- **Per-category sound ranges & wall muffling:** every sound category can now be tuned or disabled (`0` – `256` blocks) in `config/mobsenses-server.properties`: `step_range`, `sneak_step_multiplier`, `sprint_step_multiplier`, `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` and `wall_muffling` (`0` = sound passes through walls, `1` = realistic, `2` = double muffling).
+- **Voice, Sight, Scent & Mob AI settings:** added `voice_range`, `voice_whisper_multiplier`, `sight_range`, `held_light_enabled`, `darkness_stealth_enabled`, `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles`, `investigate_speed`, `urgent_investigate_speed`, `extra_listeners` and `ignored_mobs` (supports exact mob IDs and `namespace:*` wildcards), plus `show_voice` in `config/mobsenses-client.properties`.
+- **Long-range mob pathfinding:** mobs investigating distant sounds (up to `256` blocks) now step through intermediate waypoints so they reliably walk across large distances beyond vanilla `FOLLOW_RANGE`.
+
+### Русский
+
+#### Добавлено
+- **Настройка дальности слышимости выстрелов и глушителей (`config/mobsenses-server.properties`):** добавлены параметры `gunshot_range=44` (выстрелы без глушителя, `0` – `256` блоков), `gunshot_silenced_range=16` (выстрелы с глушителем, `0` – `256` блоков; `0` делает глушитель полностью бесшумным) и `bullet_impact_range=20` (попадания пуль и рикошеты).
+- **Индивидуальная дальность всех категорий звуков и глушение стенами:** каждую категорию звука теперь можно тонко настроить или отключить (`0` – `256` блоков) в `config/mobsenses-server.properties`: `step_range`, `sneak_step_multiplier`, `sprint_step_multiplier`, `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` и `wall_muffling` (`0` = стены не глушат звук, `1` = реалистично, `2` = двойное глушение).
+- **Настройки голоса, зрения, запаха крови и ИИ мобов:** добавлены `voice_range`, `voice_whisper_multiplier`, `sight_range`, `held_light_enabled`, `darkness_stealth_enabled`, `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles`, `investigate_speed`, `urgent_investigate_speed`, а также списки `extra_listeners` и `ignored_mobs` (с поддержкой ID мобов и масок `namespace:*`) и `show_voice` в `config/mobsenses-client.properties`.
+- **Дальняя навигация мобов:** мобы, идущие проверять далёкие звуки (вплоть до `256` блоков), теперь строят маршрут через промежуточные точки и уверенно доходят даже с расстояний, превышающих ванильный `FOLLOW_RANGE`.
+
 ## [1.2.0] - 2026-11-09
 
 ### English

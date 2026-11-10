@@ -152,7 +152,8 @@ public final class BukkitSenses {
                 || noise.kind() == NoiseModel.Kind.COMBAT
                 || noise.kind() == NoiseModel.Kind.BELL
                 || noise.kind() == NoiseModel.Kind.VOICE
-                ? 1.15 : 1.0;
+                ? MobSenses.settings().urgentInvestigateSpeed()
+                : MobSenses.settings().investigateSpeed();
 
         for (Mob mob : candidates) {
             if (alerted >= NoiseCoalescer.DEFAULT_MAX_TRACES_PER_EVENT) {
@@ -187,14 +188,16 @@ public final class BukkitSenses {
         double pz = ploc.getZ();
         double maxHealth = maxHealth(player);
 
-        // Scent trail for badly wounded players (<= 50% health)
+        // Scent trail for badly wounded players
         double scentRange = MobSenses.scent().recordPlayer(
                 worldName, player.getUniqueId(), px, py, pz,
                 player.getHealth(), maxHealth, preset, now);
         if (scentRange > 0.0) {
-            for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldName, now)) {
-                if (player.getUniqueId().equals(c.playerId())) {
-                    sendBloodCrumb(world, c.x(), c.y(), c.z());
+            if (MobSenses.settings().bloodParticles()) {
+                for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldName, now)) {
+                    if (player.getUniqueId().equals(c.playerId())) {
+                        sendBloodCrumb(world, c.x(), c.y(), c.z());
+                    }
                 }
             }
             Collection<Entity> nearby = world.getNearbyEntities(ploc, scentRange, 6.0, scentRange);
@@ -227,7 +230,8 @@ public final class BukkitSenses {
 
         // Sight & Light
         double sightMult = MobSenses.settings().sight();
-        if (!(sightMult > 0.0)) {
+        double configuredSightRange = MobSenses.settings().sightRange();
+        if (!(sightMult > 0.0) || !(configuredSightRange > 0.0)) {
             return;
         }
         Block block = ploc.getBlock();
@@ -235,17 +239,17 @@ public final class BukkitSenses {
         int skyLight = block.getLightFromSky();
         EntityEquipment eq = player.getEquipment();
         int heldLight = 0;
-        if (eq != null) {
+        if (eq != null && MobSenses.settings().heldLightEnabled()) {
             heldLight = Math.max(
                     SightModel.heldItemLight(itemId(eq.getItemInMainHand())),
                     SightModel.heldItemLight(itemId(eq.getItemInOffHand())));
         }
-        double baseSight = SightModel.DEFAULT_SIGHT_RANGE * sightMult;
+        double baseSight = configuredSightRange * sightMult;
         double effectiveSight = SightModel.effectiveSightRange(
                 baseSight, blockLight, skyLight, heldLight,
                 player.isSneaking(), player.isSprinting(), preset);
 
-        if (effectiveSight > SightModel.DEFAULT_SIGHT_RANGE) {
+        if (effectiveSight > configuredSightRange) {
             Collection<Entity> nearby = world.getNearbyEntities(ploc, effectiveSight, 8.0, effectiveSight);
             int spotted = 0;
             for (Entity entity : nearby) {
@@ -268,8 +272,8 @@ public final class BukkitSenses {
                     }
                 }
             }
-        } else if (effectiveSight < SightModel.DEFAULT_SIGHT_RANGE * 0.75) {
-            double checkRadius = SightModel.DEFAULT_SIGHT_RANGE + 6.0;
+        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < configuredSightRange * 0.75) {
+            double checkRadius = configuredSightRange + 6.0;
             double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
             Collection<Entity> nearby = world.getNearbyEntities(ploc, checkRadius, 8.0, checkRadius);
             for (Entity entity : nearby) {
@@ -332,6 +336,12 @@ public final class BukkitSenses {
             return false;
         }
         String type = mob.getType().name().toLowerCase(Locale.ROOT);
+        if (MobSenses.settings().isIgnoredMob(type)) {
+            return false;
+        }
+        if (MobSenses.settings().isExtraListener(type)) {
+            return true;
+        }
         if (type.contains("warden")) {
             return false;
         }
@@ -339,7 +349,11 @@ public final class BukkitSenses {
     }
 
     private static boolean isScentTracker(Mob mob) {
-        return ScentModel.isScentTracker(mob.getType().name().toLowerCase(Locale.ROOT));
+        String type = mob.getType().name().toLowerCase(Locale.ROOT);
+        if (MobSenses.settings().isIgnoredMob(type)) {
+            return false;
+        }
+        return ScentModel.isScentTracker(type) || MobSenses.settings().isExtraListener(type);
     }
 
     private static String itemId(ItemStack stack) {

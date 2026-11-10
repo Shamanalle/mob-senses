@@ -100,14 +100,24 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 
 ## Settings file
 
-`config/mobsenses-server.properties` (Fabric, Forge, NeoForge) or `plugins/MobSenses/mobsenses-server.properties` (Paper). It is written with comments on the first start and read again when you save it, without a restart.
+`config/mobsenses-server.properties` (Fabric, Forge, NeoForge) or `plugins/MobSenses/mobsenses-server.properties` (Paper). It is written with bilingual comments on the first start and read again whenever you save it, without a restart.
 
 | Key | Default | Meaning |
 |---|---|---|
 | `preset` | `default` | `off`, `subtle`, `default` or `hardcore` |
-| `hearing` | `1` | How far mobs hear, times the preset (0 – 3) |
-| `sight` | `1` | How far mobs see the player, times the preset (0 – 3) |
-| `voice` | `true` | Whether mobs hear players in Simple Voice Chat |
+| `hearing` | `1` | How far mobs hear, times the preset (`0` – `3`) |
+| `sight` | `1` | How far mobs see the player, times the preset (`0` – `3`) |
+| `wall_muffling` | `1` | How strongly walls muffle sound (`0` = sound goes through walls, `1` = default, `2` = double muffling) |
+| `gunshot_range` | `44` | Unsuppressed gunshot hearing range in blocks (`0` – `256`, `0` = disabled) |
+| `gunshot_silenced_range` | `16` | Suppressed / silenced gunshot hearing range in blocks (`0` – `256`, `0` = completely silent) |
+| `bullet_impact_range` | `20` | Bullet ricochet / impact hearing range in blocks (`0` – `256`, `0` = disabled) |
+| `step_range` | `8` | Walking footstep hearing range in blocks (`0` – `256`); scaled by `sneak_step_multiplier` (`0.25`) and `sprint_step_multiplier` (`1.75`) |
+| `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` | `18`, `12`, `14`, `12`, `16`, `15`, `48`, `40`, `28`, `8` | Base hearing distance in blocks (`0` – `256`, `0` = disabled) for each sound category |
+| `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Simple Voice Chat toggle, loud speaking range in blocks (`0` – `256`) and whisper multiplier (`0` – `1`) |
+| `sight_range`, `held_light_enabled`, `darkness_stealth_enabled` | `16`, `true`, `true` | Base sight distance (`0` – `256`), whether held torches/lanterns increase visibility, and whether sneaking in darkness hides you |
+| `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles` | `true`, `50`, `14`, `true` | Blood scent trail toggle, health percentage threshold (`5` – `100`%), tracking range (`0` – `256` blocks) and crimson blood droplets |
+| `investigate_speed`, `urgent_investigate_speed` | `1`, `1.15` | Mob walk speed when investigating normal sounds vs. loud sounds (`gunshot`, `explosion`, `bell`) |
+| `extra_listeners`, `ignored_mobs` | — | Comma-separated mob IDs or `namespace:*` wildcards to add to or exclude from hearing/sight |
 | `language` | `en_us` | Language of replies to the console and to players whose language is unknown |
 | `world.<id>.preset` | — | A world's own preset. On the mod loaders the id is the dimension (`world.minecraft\:the_nether.preset=off`, the colon written as `\:`), on Paper the world's folder (`world.world_nether.preset=off`) |
 
@@ -120,7 +130,7 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | `x`, `y` | `10`, `10` | Pixel offset from the chosen position |
 | `opacity` | `100` | HUD opacity in percent (`10` – `100`) |
 | `compact` | `false` | `true` shows only the status line without the meter bars |
-| `show_noise`, `show_light`, `show_scent` | `true` | Show or hide individual bars when `compact=false` |
+| `show_noise`, `show_light`, `show_scent`, `show_voice` | `true` | Show or hide individual bars and the voice badge when `compact=false` |
 
 ## Compatibility
 

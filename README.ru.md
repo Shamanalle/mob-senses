@@ -100,14 +100,24 @@ Java: та, что нужна вашей версии Minecraft (8 для 1.16.5
 
 ## Файл настроек
 
-`config/mobsenses-server.properties` (Fabric, Forge, NeoForge) или `plugins/MobSenses/mobsenses-server.properties` (Paper). Он создаётся с комментариями при первом запуске и перечитывается, когда вы его сохраняете, без перезапуска.
+`config/mobsenses-server.properties` (Fabric, Forge, NeoForge) или `plugins/MobSenses/mobsenses-server.properties` (Paper). Он создаётся с подробными комментариями при первом запуске и перечитывается, когда вы его сохраняете, без перезапуска.
 
 | Ключ | По умолчанию | Значение |
 |---|---|---|
 | `preset` | `default` | `off`, `subtle`, `default` или `hardcore` |
-| `hearing` | `1` | Как далеко мобы слышат, множитель к пресету (0 – 3) |
-| `sight` | `1` | Как далеко мобы видят игрока, множитель к пресету (0 – 3) |
-| `voice` | `true` | Слышат ли мобы игроков в Simple Voice Chat |
+| `hearing` | `1` | Как далеко мобы слышат, множитель к пресету (`0` – `3`) |
+| `sight` | `1` | Как далеко мобы видят игрока, множитель к пресету (`0` – `3`) |
+| `wall_muffling` | `1` | Насколько сильно стены глушат звук (`0` = стены не глушат, `1` = обычно, `2` = вдвое сильнее) |
+| `gunshot_range` | `44` | Дальность слышимости выстрела без глушителя в блоках (`0` – `256`, `0` = выключено) |
+| `gunshot_silenced_range` | `16` | Дальность слышимости выстрела с глушителем в блоках (`0` – `256`, `0` = полностью бесшумно) |
+| `bullet_impact_range` | `20` | Дальность слышимости попадания пули / рикошета в блоках (`0` – `256`, `0` = выключено) |
+| `step_range` | `8` | Базовая дальность обычных шагов в блоках (`0` – `256`); умножается на `sneak_step_multiplier` (`0.25`) и `sprint_step_multiplier` (`1.75`) |
+| `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` | `18`, `12`, `14`, `12`, `16`, `15`, `48`, `40`, `28`, `8` | Базовая дальность слышимости в блоках (`0` – `256`, `0` = выключено) для каждой категории звуков |
+| `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Включение Simple Voice Chat, дальность громкой речи в блоках (`0` – `256`) и множитель шёпота (`0` – `1`) |
+| `sight_range`, `held_light_enabled`, `darkness_stealth_enabled` | `16`, `true`, `true` | Базовая дальность зрения (`0` – `256`), заметность факела/фонаря в руке и скрытность в темноте в приседе |
+| `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles` | `true`, `50`, `14`, `true` | Запах крови, порог здоровья (`5` – `100`%), радиус чутья (`0` – `256` блоков) и частицы капель крови |
+| `investigate_speed`, `urgent_investigate_speed` | `1`, `1.15` | Скорость хода мобов при проверке обычных и громких (`gunshot`, `explosion`, `bell`) звуков |
+| `extra_listeners`, `ignored_mobs` | — | Списки ID мобов или масок `namespace:*` через запятую для добавления или исключения из системы слуха |
 | `language` | `en_us` | Язык ответов консоли и игрокам, чей язык неизвестен |
 | `world.<id>.preset` | — | Свой пресет мира. На загрузчиках модов id — это измерение (`world.minecraft\:the_nether.preset=off`, двоеточие пишется как `\:`), на Paper — папка мира (`world.world_nether.preset=off`) |
 
@@ -120,7 +130,7 @@ Java: та, что нужна вашей версии Minecraft (8 для 1.16.5
 | `x`, `y` | `10`, `10` | Отступ в пикселях от выбранной позиции |
 | `opacity` | `100` | Непрозрачность HUD в процентах (`10` – `100`) |
 | `compact` | `false` | `true` оставляет только строку статуса без полосок |
-| `show_noise`, `show_light`, `show_scent` | `true` | Показ отдельных полосок при `compact=false` |
+| `show_noise`, `show_light`, `show_scent`, `show_voice` | `true` | Показ отдельных полосок и индикатора микрофона при `compact=false` |
 
 ## Совместимость
 

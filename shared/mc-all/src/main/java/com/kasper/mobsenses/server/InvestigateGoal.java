@@ -23,6 +23,7 @@ public final class InvestigateGoal extends Goal {
     private static final int MAX_INVESTIGATE_TICKS = 160;
     private static final int LOOK_AROUND_TICKS = 50;
     private static final double ARRIVAL_DIST_SQ = 3.25;
+    private static final double WAYPOINT_STEP_DIST = 14.0;
 
     private static final Field GOAL_SELECTOR_FIELD = findGoalSelectorField();
     private static final Map<Mob, InvestigateGoal> GOALS = Collections.synchronizedMap(new WeakHashMap<>());
@@ -51,13 +52,34 @@ public final class InvestigateGoal extends Goal {
         }
         InvestigateGoal goal = getOrInstall(mob);
         if (goal == null) {
-            // Fallback if goalSelector reflection fails: issue a direct navigation moveTo
-            mob.getNavigation().moveTo(x, y, z, speed);
+            // Fallback if goalSelector reflection fails: issue a direct or stepped navigation moveTo
+            moveTowards(mob, x, y, z, speed);
             mob.getLookControl().setLookAt(x, y + 0.5, z);
             return true;
         }
         goal.trigger(x, y, z, speed);
         return true;
+    }
+
+    private static void moveTowards(Mob mob, double targetX, double targetY, double targetZ, double speed) {
+        double dx = targetX - mob.getX();
+        double dy = targetY - mob.getY();
+        double dz = targetZ - mob.getZ();
+        double horizDist = Math.hypot(dx, dz);
+        if (horizDist <= WAYPOINT_STEP_DIST && mob.getNavigation().moveTo(targetX, targetY, targetZ, speed)) {
+            return;
+        }
+        if (horizDist > 1.0e-3) {
+            double step = Math.min(WAYPOINT_STEP_DIST, horizDist);
+            double wx = mob.getX() + (dx / horizDist) * step;
+            double wy = mob.getY() + (dy / Math.max(1.0, horizDist)) * Math.min(4.0, step);
+            double wz = mob.getZ() + (dz / horizDist) * step;
+            if (!mob.getNavigation().moveTo(wx, wy, wz, speed)) {
+                mob.getNavigation().moveTo(targetX, targetY, targetZ, speed);
+            }
+        } else {
+            mob.getNavigation().moveTo(targetX, targetY, targetZ, speed);
+        }
     }
 
     public static InvestigateGoal getOrInstall(Mob mob) {
@@ -80,11 +102,12 @@ public final class InvestigateGoal extends Goal {
         this.targetY = y;
         this.targetZ = z;
         this.speedModifier = speed;
-        this.ticksRemaining = MAX_INVESTIGATE_TICKS;
+        double dist = Math.hypot(x - mob.getX(), z - mob.getZ());
+        this.ticksRemaining = Math.max(MAX_INVESTIGATE_TICKS, (int) Math.min(1200, dist * 7.0));
         this.lookTicks = 0;
         this.repathCooldown = 0;
         if (mob.getTarget() == null) {
-            mob.getNavigation().moveTo(x, y, z, speed);
+            moveTowards(mob, x, y, z, speed);
             mob.getLookControl().setLookAt(x, y + 0.5, z);
         }
     }
@@ -118,7 +141,7 @@ public final class InvestigateGoal extends Goal {
     @Override
     public void start() {
         repathCooldown = 0;
-        mob.getNavigation().moveTo(targetX, targetY, targetZ, speedModifier);
+        moveTowards(mob, targetX, targetY, targetZ, speedModifier);
         mob.getLookControl().setLookAt(targetX, targetY + 0.5, targetZ);
     }
 
@@ -155,7 +178,7 @@ public final class InvestigateGoal extends Goal {
         mob.getLookControl().setLookAt(targetX, targetY + 0.5, targetZ);
         if (--repathCooldown <= 0 || mob.getNavigation().isDone()) {
             repathCooldown = 15;
-            mob.getNavigation().moveTo(targetX, targetY, targetZ, speedModifier);
+            moveTowards(mob, targetX, targetY, targetZ, speedModifier);
         }
     }
 

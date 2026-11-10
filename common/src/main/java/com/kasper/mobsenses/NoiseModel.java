@@ -179,15 +179,26 @@ public final class NoiseModel {
     }
 
     /**
-     * Base audible radius (in blocks, before preset, hearing multiplier and walls) for a game event.
+     * Base audible radius (in blocks, before preset, hearing multiplier and walls) for a game event,
+     * using the active {@link MobSenses#settings()}.
+     */
+    public static double baseRange(String eventId, Posture posture, AcousticMaterial material, String blockId) {
+        return baseRange(eventId, posture, material, blockId, MobSenses.settings());
+    }
+
+    /**
+     * Base audible radius (in blocks, before preset, hearing multiplier and walls) for a game event,
+     * using the configured category ranges and posture multipliers in {@code settings}.
      *
-     * @param eventId   the event id, e.g. {@code "minecraft:step"} or {@code "minecraft:explode"}
+     * @param eventId   the event id, e.g. {@code "minecraft:step"} or {@code "mobsenses:gunshot"}
      * @param posture   the player's posture ({@code null} defaults to {@link Posture#WALKING})
      * @param material  acoustic material of the block under feet or the block acted upon ({@code null} for default)
      * @param blockId   optional block id (e.g. {@code "minecraft:gravel"}, {@code "minecraft:white_wool"})
-     * @return audible radius in blocks, or {@code 0.0} when silent
+     * @param settings  server settings supplying custom base ranges ({@code null} uses built-in defaults)
+     * @return audible radius in blocks, or {@code 0.0} when silent or disabled ({@code 0})
      */
-    public static double baseRange(String eventId, Posture posture, AcousticMaterial material, String blockId) {
+    public static double baseRange(String eventId, Posture posture, AcousticMaterial material, String blockId,
+                                   ServerSettings settings) {
         Kind kind = classifyEvent(eventId);
         if (kind == null) {
             return 0.0;
@@ -196,57 +207,83 @@ public final class NoiseModel {
         Posture pos = posture != null ? posture : Posture.WALKING;
         switch (kind) {
             case STEP: {
+                double stepCfg = settings != null ? settings.stepRange() : Kind.STEP.defaultRange();
+                if (stepCfg <= 0.0) {
+                    return 0.0;
+                }
+                double scale = stepCfg / Kind.STEP.defaultRange();
                 double base;
                 if ("hit_ground".equals(id)) {
-                    base = 12.0;
+                    base = 12.0 * scale;
                 } else if ("splash".equals(id)) {
-                    base = 12.0;
+                    base = 12.0 * scale;
                 } else if ("swim".equals(id)) {
-                    base = 6.0;
+                    base = 6.0 * scale;
                 } else {
-                    base = Kind.STEP.defaultRange();
+                    base = stepCfg;
                 }
-                return base * pos.factor() * surfaceStepFactor(material, blockId);
+                double posFactor;
+                if (pos == Posture.SNEAKING) {
+                    posFactor = settings != null ? settings.sneakStepMultiplier() : Posture.SNEAKING.factor();
+                } else if (pos == Posture.SPRINTING) {
+                    posFactor = settings != null ? settings.sprintStepMultiplier() : Posture.SPRINTING.factor();
+                } else {
+                    posFactor = Posture.WALKING.factor();
+                }
+                return base * posFactor * surfaceStepFactor(material, blockId);
             }
             case BLOCK_BREAK: {
+                double base = settings != null ? settings.blockBreakRange() : Kind.BLOCK_BREAK.defaultRange();
                 double factor = material != null ? material.blockFactor() : 1.0;
-                return Kind.BLOCK_BREAK.defaultRange() * factor;
+                return base * factor;
             }
             case BLOCK_PLACE: {
+                double placeCfg = settings != null ? settings.blockPlaceRange() : Kind.BLOCK_PLACE.defaultRange();
                 double base = ("block_activate".equals(id) || "block_deactivate".equals(id) || "block_change".equals(id))
-                        ? 10.0 : Kind.BLOCK_PLACE.defaultRange();
+                        ? placeCfg * (10.0 / 12.0) : placeCfg;
                 double factor = material != null ? material.blockFactor() : 1.0;
                 return base * factor;
             }
             case DOOR: {
+                double base = settings != null ? settings.doorRange() : Kind.DOOR.defaultRange();
                 double factor = material == AcousticMaterial.METAL ? 1.25 : 1.0;
-                return Kind.DOOR.defaultRange() * factor;
+                return base * factor;
             }
             case CONTAINER:
-                return Kind.CONTAINER.defaultRange();
-            case COMBAT:
-                return "entity_die".equals(id) ? 18.0 : Kind.COMBAT.defaultRange();
-            case PROJECTILE:
-                return "projectile_land".equals(id) ? 16.0 : 12.0;
+                return settings != null ? settings.containerRange() : Kind.CONTAINER.defaultRange();
+            case COMBAT: {
+                double base = settings != null ? settings.combatRange() : Kind.COMBAT.defaultRange();
+                return "entity_die".equals(id) ? base * (18.0 / 16.0) : base;
+            }
+            case PROJECTILE: {
+                double base = settings != null ? settings.projectileRange() : Kind.PROJECTILE.defaultRange();
+                return "projectile_land".equals(id) ? base * (16.0 / 15.0) : base * (12.0 / 15.0);
+            }
             case GUNSHOT: {
                 if ("gunshot_silenced".equals(id)) {
-                    return 16.0;
+                    return settings != null ? settings.gunshotSilencedRange() : 16.0;
                 }
                 if ("bullet_impact".equals(id)) {
-                    return 20.0;
+                    return settings != null ? settings.bulletImpactRange() : 20.0;
                 }
-                return Kind.GUNSHOT.defaultRange();
+                return settings != null ? settings.gunshotRange() : Kind.GUNSHOT.defaultRange();
             }
-            case EXPLOSION:
-                return "prime_fuse".equals(id) ? 16.0 : Kind.EXPLOSION.defaultRange();
+            case EXPLOSION: {
+                double base = settings != null ? settings.explosionRange() : Kind.EXPLOSION.defaultRange();
+                return "prime_fuse".equals(id) ? base * (16.0 / 48.0) : base;
+            }
             case BELL:
-                return Kind.BELL.defaultRange();
-            case NOTE_BLOCK:
-                return "jukebox_play".equals(id) ? 24.0 : Kind.NOTE_BLOCK.defaultRange();
-            case EAT:
-                return Kind.EAT.defaultRange() * (pos == Posture.SNEAKING ? 0.6 : 1.0);
+                return settings != null ? settings.bellRange() : Kind.BELL.defaultRange();
+            case NOTE_BLOCK: {
+                double base = settings != null ? settings.noteBlockRange() : Kind.NOTE_BLOCK.defaultRange();
+                return "jukebox_play".equals(id) ? base * (24.0 / 28.0) : base;
+            }
+            case EAT: {
+                double base = settings != null ? settings.eatRange() : Kind.EAT.defaultRange();
+                return base * (pos == Posture.SNEAKING ? 0.6 : 1.0);
+            }
             case VOICE:
-                return Kind.VOICE.defaultRange();
+                return settings != null ? settings.voiceRange() : Kind.VOICE.defaultRange();
             default:
                 return 0.0;
         }
@@ -278,14 +315,31 @@ public final class NoiseModel {
     }
 
     /**
-     * Final audible range after wall attenuation. When the thickness reaches {@link RayBundle#MAX_RAY_THICKNESS},
-     * the sound is completely blocked ({@code 0.0}).
+     * Final audible range after wall attenuation, scaled by {@link ServerSettings#wallMuffling()}.
      */
     public static double audibleRange(double effectiveRange, double wallThickness) {
-        if (effectiveRange <= 0.0 || wallThickness >= RayBundle.MAX_RAY_THICKNESS) {
+        ServerSettings s = MobSenses.settings();
+        double muffling = s != null ? s.wallMuffling() : 1.0;
+        return audibleRange(effectiveRange, wallThickness, muffling);
+    }
+
+    /**
+     * Final audible range after wall attenuation with explicit {@code wallMuffling} multiplier.
+     * When {@code wallMuffling <= 0}, walls do not block sound; when {@code wallThickness * wallMuffling}
+     * reaches {@link RayBundle#MAX_RAY_THICKNESS}, the sound is completely blocked ({@code 0.0}).
+     */
+    public static double audibleRange(double effectiveRange, double wallThickness, double wallMuffling) {
+        if (effectiveRange <= 0.0) {
             return 0.0;
         }
-        return effectiveRange * occlusionFactor(wallThickness);
+        if (!(wallMuffling > 0.0) || !(wallThickness > 0.0)) {
+            return effectiveRange;
+        }
+        double scaledThickness = wallThickness * wallMuffling;
+        if (scaledThickness >= RayBundle.MAX_RAY_THICKNESS) {
+            return 0.0;
+        }
+        return effectiveRange * occlusionFactor(scaledThickness);
     }
 
     /**

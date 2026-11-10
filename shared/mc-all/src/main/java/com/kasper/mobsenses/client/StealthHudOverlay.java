@@ -73,9 +73,9 @@ public final class StealthHudOverlay {
         int skyLight = Math.max(0, level.getBrightness(LightLayer.SKY, pos) - level.getSkyDarken());
         String mainHandId = ServerHearing.itemId(player.getMainHandItem());
         String offHandId = ServerHearing.itemId(player.getOffhandItem());
-        int heldLight = Math.max(
-                SightModel.heldItemLight(mainHandId),
-                SightModel.heldItemLight(offHandId));
+        int heldLight = MobSenses.settings().heldLightEnabled()
+                ? Math.max(SightModel.heldItemLight(mainHandId), SightModel.heldItemLight(offHandId))
+                : 0;
         boolean sneaking = player.isShiftKeyDown() || player.isCrouching();
         boolean sprinting = player.isSprinting();
         double dx = player.getX() - player.xo;
@@ -126,7 +126,7 @@ public final class StealthHudOverlay {
         Component statusText = Worlds.translatable(hud.statusKey());
         canvas.text(statusText, x + 15, y + 5, statusColor);
 
-        if (hud.voiceActive()) {
+        if (hud.voiceActive() && cfg.showVoice()) {
             Component voiceTag = Worlds.translatable("gui.mobsenses.hud.voice");
             int vw = canvas.textWidth(voiceTag);
             canvas.text(voiceTag, x + panelWidth - vw - 6, y + 5, cfg.applyOpacity(COLOR_EXPOSED));

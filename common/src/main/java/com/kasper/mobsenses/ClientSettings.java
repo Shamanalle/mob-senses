@@ -95,6 +95,7 @@ public final class ClientSettings {
     private volatile boolean showNoise = true;
     private volatile boolean showLight = true;
     private volatile boolean showScent = true;
+    private volatile boolean showVoice = true;
 
     /** @param file the client settings file; {@code null} keeps everything in memory (tests) */
     public ClientSettings(Path file) {
@@ -143,6 +144,10 @@ public final class ClientSettings {
         return showScent;
     }
 
+    public boolean showVoice() {
+        return showVoice;
+    }
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
@@ -179,6 +184,10 @@ public final class ClientSettings {
 
     public void setShowScent(boolean showScent) {
         this.showScent = showScent;
+    }
+
+    public void setShowVoice(boolean showVoice) {
+        this.showVoice = showVoice;
     }
 
     /**
@@ -305,6 +314,7 @@ public final class ClientSettings {
         showNoise = parseBool(p.getProperty("show_noise", "true"), true);
         showLight = parseBool(p.getProperty("show_light", "true"), true);
         showScent = parseBool(p.getProperty("show_scent", "true"), true);
+        showVoice = parseBool(p.getProperty("show_voice", "true"), true);
     }
 
     /** Writes the current client HUD settings with English and Russian comments. */
@@ -352,11 +362,12 @@ public final class ClientSettings {
         lines.add("# Компактный режим (true = только строка статуса без полосок, false = полная панель с полосками).");
         lines.add("compact=" + compact);
         lines.add("");
-        lines.add("# Which bars to show when compact=false: true or false.");
-        lines.add("# Какие шкалы показывать при compact=false: true или false.");
+        lines.add("# Which bars and indicators to show: true or false.");
+        lines.add("# Какие шкалы и индикаторы показывать: true или false.");
         lines.add("show_noise=" + showNoise);
         lines.add("show_light=" + showLight);
         lines.add("show_scent=" + showScent);
+        lines.add("show_voice=" + showVoice);
         return String.join(System.lineSeparator(), lines) + System.lineSeparator();
     }
 
