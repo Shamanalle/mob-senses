@@ -22,7 +22,7 @@ Hostile mobs in vanilla notice you only within a fixed range. With Mob Senses th
 - **Scent.** A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.
 - **Stealth HUD.** Players with the mod on the client see a compact indicator of their current noise, light exposure, voice activity and blood trail.
 
-It works like Zombie Awareness, for Minecraft 1.16.5 – 26.3 on Forge, NeoForge, Fabric, Quilt and Paper, with no library dependencies, wall occlusion, gun mods and voice chat built in.
+**A next-generation alternative to Zombie Awareness** — built with real wall occlusion, **TaCZ** gun and suppressor acoustics, **Simple Voice Chat** detection, darkness stealth, a customizable client Stealth HUD, and **zero library dependencies** (no CoroUtil needed) in one universal file for **Minecraft 1.16.5 – 26.3** on **Forge, NeoForge, Fabric, Quilt and Paper**.
 
 <p align="center"><img src="docs/images/store-demo.gif" width="840" alt="Mob Senses — hearing, gunshots, voice chat, light and blood trails"></p>
 
@@ -148,6 +148,18 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 - **Custom and modded mobs:** data packs or `extra_listeners` / `ignored_mobs` in the config can add or remove any mob ID or `namespace:*` wildcard.
 - **Other AI & sound mods** (In Control!, Enhanced AI, Improved Mobs, Sound Physics Remastered): Mob Senses adds its own low-priority investigation goal and yields immediately when a mob enters combat.
 - **Simple Voice Chat**: optional; without it everything but the voice works.
+
+### How Mob Senses compares to Zombie Awareness
+
+| Feature | Mob Senses | Zombie Awareness |
+|---|---|---|
+| **Walls & surface materials** | Raycasts through blocks: stone walls muffle heavily, glass/wood less, open doors pass sound, wool/rain/Feather Falling quiet steps | Ignores walls (plain radius check) |
+| **Gun mods & suppressors** | Native **TaCZ, PointBlank, CGM & Scorched Guns** support: suppressors, distant bullet wall impacts & per-weapon ranges | Generic sound hook only (no suppressor or bullet impact logic) |
+| **Simple Voice Chat** | Built-in with per-player microphone auto-calibration (whisper vs. shout) | None |
+| **Darkness stealth & sight** | Held torches expose you from afar; sneaking in the dark or invisibility hides you and drops distant pursuit | Surface light lures only; no darkness stealth |
+| **Blood trails & server TPS** | Zero dummy entities spawned in the world; fast in-memory scent trails with crimson blood droplets | Spawns invisible marker entities in the world |
+| **Client Stealth HUD** | Customizable HUD (Noise, Light, Scent, Voice, compact & auto-hide modes) | None |
+| **Dependencies & platforms** | **Zero dependencies** (no CoroUtil) · **1 universal jar** for `1.16.5 – 26.3` across Forge, NeoForge, Fabric, Quilt & Paper/Folia | Requires **CoroUtil** · Separate jars per version/loader · No Paper/Folia |
 
 ## Questions and problems
 

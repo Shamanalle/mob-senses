@@ -30,7 +30,7 @@
   <li><strong>Customizable Stealth HUD.</strong> Players who install the mod on the client see a compact indicator of their noise, light exposure, voice activity and blood scent — with adjustable position, opacity, compact mode and auto-hide when quiet.</li>
 </ul>
 
-<p>Works like Zombie Awareness for <strong>Minecraft 1.16.5 – 26.3</strong> across <strong>Forge, NeoForge, Fabric and Quilt</strong> (and Paper / Purpur / Folia / Spigot via the plugin) — in a single lightweight file with <strong>no external library mods required</strong>.</p>
+<p><strong>A next-generation alternative to Zombie Awareness</strong> — built with real wall occlusion, <strong>TaCZ</strong> gun and suppressor acoustics, <strong>Simple Voice Chat</strong> detection, darkness stealth, a customizable client Stealth HUD, and <strong>zero library dependencies</strong> (no CoroUtil needed) in a single universal file for <strong>Minecraft 1.16.5 – 26.3</strong> across <strong>Forge, NeoForge, Fabric and Quilt</strong> (and Paper / Purpur / Folia / Spigot via the plugin).</p>
 
 <blockquote>
   <p><strong>Modpacks:</strong> You are free to include <strong>Mob Senses</strong> in any modpack.</p>
@@ -129,6 +129,23 @@
   <li><strong>Custom and modded mobs:</strong> configure via <code>extra_listeners</code>, <code>ignored_mobs</code> and <code>scent_mobs</code> (supports exact IDs and <code>namespace:*</code> wildcards) or the <code>#mobsenses:listeners</code> entity type tag.</li>
   <li><strong>Other AI &amp; sound mods</strong> (In Control!, Enhanced AI, Improved Mobs, Sound Physics Remastered): Mob Senses adds a low-priority investigation goal that yields immediately when a mob enters combat.</li>
 </ul>
+
+<h3>How Mob Senses compares to Zombie Awareness</h3>
+
+<table>
+  <thead>
+    <tr><th>Feature</th><th>Mob Senses</th><th>Zombie Awareness</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Walls &amp; surface materials</strong></td><td>Raycasts through blocks: stone walls muffle heavily, glass/wood less, open doors pass sound, wool/rain/Feather Falling quiet steps</td><td>Ignores walls (plain radius check)</td></tr>
+    <tr><td><strong>Gun mods &amp; suppressors</strong></td><td>Native <strong>TaCZ, PointBlank, CGM &amp; Scorched Guns</strong> support: suppressors, distant bullet wall impacts &amp; per-weapon ranges</td><td>Generic sound hook only (no suppressor or bullet impact logic)</td></tr>
+    <tr><td><strong>Simple Voice Chat</strong></td><td>Built-in with per-player microphone auto-calibration (whisper vs. shout)</td><td>None</td></tr>
+    <tr><td><strong>Darkness stealth &amp; sight</strong></td><td>Held torches expose you from afar; sneaking in the dark or invisibility hides you and drops distant pursuit</td><td>Surface light lures only; no darkness stealth</td></tr>
+    <tr><td><strong>Blood trails &amp; server TPS</strong></td><td>Zero dummy entities spawned in the world; fast in-memory scent trails with crimson blood droplets</td><td>Spawns invisible marker entities in the world</td></tr>
+    <tr><td><strong>Client Stealth HUD</strong></td><td>Customizable HUD (Noise, Light, Scent, Voice, compact &amp; auto-hide modes)</td><td>None</td></tr>
+    <tr><td><strong>Dependencies &amp; platforms</strong></td><td><strong>Zero dependencies</strong> (no CoroUtil) · <strong>1 universal jar</strong> for <code>1.16.5 – 26.3</code> across Forge, NeoForge, Fabric, Quilt &amp; Paper/Folia</td><td>Requires <strong>CoroUtil</strong> · Separate jars per version/loader · No Paper/Folia</td></tr>
+  </tbody>
+</table>
 
 <hr>
 
