@@ -16,7 +16,7 @@
 
 Hostile mobs in vanilla notice you only within a fixed range. With Mob Senses they also use their senses:
 
-- **Hearing.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls muffle noise, glass and wood less, an open door lets it through.
+- **Hearing.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, gunshots (including suppressors and bullet wall impacts in TaCZ, PointBlank, CGM and Scorched Guns), explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls muffle noise, glass and wood less, an open door lets it through.
 - **Voice** (with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat)). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal voice, so a quiet microphone gives no free stealth.
 - **Light and stealth.** A torch or lantern in your hand makes you visible from afar, darkness and sneaking hide you.
 - **Scent.** A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.
