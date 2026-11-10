@@ -64,9 +64,10 @@ public final class GameEventListener implements Listener {
             }
             AcousticMaterial mat = BukkitAcoustics.material(block);
             String blockId = BukkitAcoustics.blockId(block);
+            double envMult = BukkitSenses.envMultiplier(at.getWorld(), player, kind);
             MobSenses.gameEvent(eventId, at.getWorld().getName(),
                     at.getX(), at.getY(), at.getZ(),
-                    posture, mat, blockId, player != null);
+                    posture, mat, blockId, player != null, envMult);
         } catch (Throwable t) {
             ModLog.failure("Reading a game event", t);
         }

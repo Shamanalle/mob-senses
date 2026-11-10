@@ -159,8 +159,9 @@ public final class LegacyNoiseListeners implements Listener {
         Block surface = to.clone().subtract(0.0, 0.2, 0.0).getBlock();
         AcousticMaterial mat = BukkitAcoustics.material(surface);
         NoiseModel.Posture posture = BukkitSenses.posture(p);
+        double envMult = BukkitSenses.envMultiplier(to.getWorld(), p, NoiseModel.Kind.STEP);
         MobSenses.gameEvent("minecraft:step", to.getWorld().getName(),
                 to.getX(), to.getY(), to.getZ(),
-                posture, mat, BukkitAcoustics.blockId(surface), true);
+                posture, mat, BukkitAcoustics.blockId(surface), true, envMult);
     }
 }

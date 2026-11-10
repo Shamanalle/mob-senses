@@ -7,6 +7,7 @@ import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.ScentModel;
 import com.kasper.mobsenses.SightModel;
+import com.kasper.mobsenses.VoxelRay;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -505,6 +506,42 @@ public final class ServerHearing {
                     : "mobsenses:gunshot";
             double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
             MobSenses.gameEvent(event, worldId, px, py, pz, NoiseModel.Posture.WALKING, null, fId + " " + tag, true, envMult);
+
+            if (MobSenses.settings().bulletImpactRange() > 0.0) {
+                Vec3 look = player.getLookAngle();
+                double endX = px + look.x * 64.0;
+                double endY = py + look.y * 64.0;
+                double endZ = pz + look.z * 64.0;
+                int[] hitBlock = new int[3];
+                boolean[] foundHit = {false};
+                VoxelRay.walk(px, py, pz, endX, endY, endZ, 68, (bx, by, bz) -> {
+                    double dx = (bx + 0.5) - px;
+                    double dy = (by + 0.5) - py;
+                    double dz = (bz + 0.5) - pz;
+                    if (dx * dx + dy * dy + dz * dz < 4.0) {
+                        return false;
+                    }
+                    BlockState st = level.getBlockState(new BlockPos(bx, by, bz));
+                    if (!st.isAir() && st.getFluidState().isEmpty()) {
+                        hitBlock[0] = bx;
+                        hitBlock[1] = by;
+                        hitBlock[2] = bz;
+                        foundHit[0] = true;
+                        return true;
+                    }
+                    return false;
+                });
+                if (foundHit[0]) {
+                    double hx = hitBlock[0] + 0.5;
+                    double hy = hitBlock[1] + 0.5;
+                    double hz = hitBlock[2] + 0.5;
+                    double distSq = (hx - px) * (hx - px) + (hy - py) * (hy - py) + (hz - pz) * (hz - pz);
+                    if (distSq >= 144.0) {
+                        MobSenses.gameEvent("mobsenses:bullet_impact", worldId, hx, hy, hz,
+                                NoiseModel.Posture.WALKING, null, null, true, envMult);
+                    }
+                }
+            }
         }
     }
 

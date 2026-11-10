@@ -204,11 +204,16 @@ public final class InvestigateGoal extends Goal {
     }
 
     private static Field findGoalSelectorField() {
-        for (Field f : Mob.class.getDeclaredFields()) {
-            if (GoalSelector.class.isAssignableFrom(f.getType())) {
-                f.setAccessible(true);
-                return f;
+        try {
+            for (Field f : Mob.class.getDeclaredFields()) {
+                if (GoalSelector.class.isAssignableFrom(f.getType())) {
+                    if (!java.lang.reflect.Modifier.isPublic(f.getModifiers())) {
+                        f.setAccessible(true);
+                    }
+                    return f;
+                }
             }
+        } catch (Throwable ignored) {
         }
         return null;
     }

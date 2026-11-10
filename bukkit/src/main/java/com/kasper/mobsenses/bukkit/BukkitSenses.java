@@ -74,6 +74,48 @@ public final class BukkitSenses {
         return NoiseModel.Posture.WALKING;
     }
 
+    public static double envMultiplier(World world, Player player, NoiseModel.Kind kind) {
+        double mult = 1.0;
+        if (world != null) {
+            mult = MobSenses.settings().weatherMultiplier(world.hasStorm(), world.isThundering());
+        }
+        if (kind == NoiseModel.Kind.STEP && hasStealthBoots(player)) {
+            mult *= Math.max(0.0, 1.0 - MobSenses.settings().featherFallingMuffling());
+        }
+        return mult;
+    }
+
+    public static boolean hasStealthBoots(Player player) {
+        if (player == null) {
+            return false;
+        }
+        try {
+            EntityEquipment eq = player.getEquipment();
+            if (eq == null) {
+                return false;
+            }
+            ItemStack boots = eq.getBoots();
+            if (boots == null || boots.getType().isAir()) {
+                return false;
+            }
+            for (org.bukkit.enchantments.Enchantment ench : boots.getEnchantments().keySet()) {
+                String name = ench.getName().toLowerCase(Locale.ROOT);
+                if (name.contains("feather_falling") || name.contains("protection_fall") || name.contains("swift_sneak")) {
+                    return true;
+                }
+                try {
+                    String key = ench.getKey().getKey().toLowerCase(Locale.ROOT);
+                    if (key.contains("feather_falling") || key.contains("swift_sneak")) {
+                        return true;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     public static void tick(Plugin plugin, Scheduling scheduling) {
         try {
             activePlugin = plugin;

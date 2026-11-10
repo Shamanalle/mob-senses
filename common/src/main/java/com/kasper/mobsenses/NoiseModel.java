@@ -106,6 +106,13 @@ public final class NoiseModel {
             case "block_change":
             case "block_activate":
             case "block_deactivate":
+            case "block_press":
+            case "block_unpress":
+            case "block_switch":
+            case "piston_extend":
+            case "piston_contract":
+            case "dispense_fail":
+            case "flint_and_steel_use":
             case "Block_attach":
             case "block_attach":
             case "block_detach":
@@ -116,15 +123,21 @@ public final class NoiseModel {
                 return Kind.DOOR;
             case "container_open":
             case "container_close":
+            case "shulker_open":
+            case "shulker_close":
                 return Kind.CONTAINER;
             case "entity_damage":
             case "entity_die":
             case "entity_action":
             case "entity_interact":
+            case "mob_interact":
+            case "ravager_roar":
             case "shear":
                 return Kind.COMBAT;
             case "projectile_shoot":
             case "projectile_land":
+            case "fishing_rod_cast":
+            case "fishing_rod_reel_in":
                 return Kind.PROJECTILE;
             case "gunshot":
             case "gunshot_silenced":
@@ -135,6 +148,7 @@ public final class NoiseModel {
             case "prime_fuse":
                 return Kind.EXPLOSION;
             case "bell_ring":
+            case "ring_bell":
                 return Kind.BELL;
             case "note_block_play":
             case "instrument_play":
@@ -142,6 +156,7 @@ public final class NoiseModel {
                 return Kind.NOTE_BLOCK;
             case "eat":
             case "drink":
+            case "drinking_finish":
             case "equip":
             case "item_interact_finish":
                 return Kind.EAT;
