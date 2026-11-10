@@ -16,15 +16,15 @@
 
 Hostile mobs in vanilla notice you only within a fixed range. With Mob Senses they also use their senses:
 
-- **Hearing.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, gunshots (including suppressors and bullet wall impacts in TaCZ, PointBlank, CGM and Scorched Guns), explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls muffle noise, glass and wood less, an open door lets it through.
+- **Hearing.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, gunshots (including suppressors and distant bullet wall impacts in TaCZ, PointBlank, CGM and Scorched Guns), explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls, rain, thunderstorms and Feather Falling / Swift Sneak boots muffle noise, glass and wood less, and an open door lets it through.
 - **Voice** (with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat)). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal voice, so a quiet microphone gives no free stealth.
-- **Light and stealth.** A torch or lantern in your hand makes you visible from afar, darkness and sneaking hide you.
+- **Light and stealth.** A torch or lantern in your hand makes you visible from afar; darkness, sneaking and invisibility potions hide you.
 - **Scent.** A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.
 - **Stealth HUD.** Players with the mod on the client see a compact indicator of their current noise, light exposure, voice activity and blood trail.
 
-It works like Zombie Awareness, for Minecraft 1.16.5 – 26.3 on Forge, NeoForge, Fabric, Quilt and Paper, with walls and voice chat taken into account.
+It works like Zombie Awareness, for Minecraft 1.16.5 – 26.3 on Forge, NeoForge, Fabric, Quilt and Paper, with no library dependencies, wall occlusion, gun mods and voice chat built in.
 
-<p align="center"><img src="docs/images/store-hearing.png" width="840" alt="Mobs hear noise and investigate"></p>
+<p align="center"><img src="docs/images/store-demo.gif" width="840" alt="Mob Senses — hearing, gunshots, voice chat, light and blood trails"></p>
 
 ## Contents
 
@@ -142,10 +142,11 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 
 ## Compatibility
 
+- **Modpacks:** you are free to include Mob Senses in any modpack — no external library mods (such as CoroUtil) are needed.
 - **Vanilla clients** join a server with the mod; the mod does not change the network protocol.
-- **Gun mods (TaCZ / Timeless and Classics Zero, PointBlank, MrCrayfish's Gun Mod, Scorched Guns):** gunshots carry far across the area (`44` blocks) and attract mobs, while guns with a suppressor/silencer attachment are muffled (`16` blocks).
-- **Custom and modded mobs:** data packs can add or remove mobs from the `#mobsenses:listeners` entity type tag.
-- **Other AI mods** (In Control!, Enhanced AI, Improved Mobs and the like): Mob Senses adds its own low-priority investigation goal and yields immediately when a mob enters combat.
+- **Gun mods (TaCZ / Timeless and Classics Zero, Vic's Point Blank, MrCrayfish's Gun Mod, Scorched Guns):** gunshots carry far across the area (`44` blocks) and attract mobs, suppressed/silenced shots are muffled (`16` blocks), and bullets hitting distant walls (`20` blocks) draw mobs to the impact spot.
+- **Custom and modded mobs:** data packs or `extra_listeners` / `ignored_mobs` in the config can add or remove any mob ID or `namespace:*` wildcard.
+- **Other AI & sound mods** (In Control!, Enhanced AI, Improved Mobs, Sound Physics Remastered): Mob Senses adds its own low-priority investigation goal and yields immediately when a mob enters combat.
 - **Simple Voice Chat**: optional; without it everything but the voice works.
 
 ## Questions and problems

@@ -10,7 +10,7 @@ softdepend: [voicechat]
 commands:
   mobsenses:
     description: Mob Senses settings for admins
-    usage: /mobsenses [status|preset|hearing|sight|voice|world|reload|help]
+    usage: /mobsenses [status|preset|hearing|sight|voice|set|get|reset|debug|world|reload|help]
     permission: mobsenses.admin
 permissions:
   mobsenses.admin:

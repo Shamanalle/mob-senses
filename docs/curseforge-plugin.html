@@ -11,20 +11,22 @@
 <h1 style="text-align: center;">Mob Senses</h1>
 
 <p style="text-align: center;">
-  <strong>Mobs hear you, see your light, smell blood trails and, with Simple Voice Chat, hear your voice.</strong><br>
-  A survival and stealth plugin for Paper, Purpur, Folia and Spigot, for Minecraft 1.16.5 – 26.3.
+  <strong>Mobs hear your steps, blocks and fights, see your light, smell blood trails and, with Simple Voice Chat, hear your voice.</strong><br>
+  A survival, horror and stealth plugin for Paper, Purpur, Folia and Spigot (Minecraft 1.16.5 – 26.3).
 </p>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-demo.gif" alt="Mob Senses — hearing, voice chat, light and blood trails"></p>
 
 <p>Hostile mobs in vanilla notice you only within a fixed range. With <strong>Mob Senses</strong> they use their senses:</p>
 
 <ul>
-  <li><strong>Hearing.</strong> Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to <strong>where the noise came from</strong>, looks around and goes back to its business. Stone walls muffle noise, glass and wood less, an open door lets it through.</li>
-  <li><strong>Voice</strong> (with <a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a>). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal voice, so a quiet microphone gives no free stealth.</li>
-  <li><strong>Light and stealth.</strong> A torch or lantern in your hand makes you visible from afar; darkness and sneaking hide you.</li>
-  <li><strong>Scent.</strong> A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.</li>
+  <li><strong>Hearing &amp; Wall Occlusion.</strong> Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to <strong>where the noise came from</strong>, looks around and goes back to its business. Stone walls, rain, thunderstorms and <em>Feather Falling</em> / <em>Swift Sneak</em> boots muffle noise, glass and wood less, and an open door lets it through.</li>
+  <li><strong>Voice Chat</strong> (with <a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a>). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal speaking voice, so a quiet microphone gives no free stealth.</li>
+  <li><strong>Light &amp; Stealth.</strong> A torch or lantern in your hand makes you visible from afar; darkness, sneaking and invisibility potions hide you.</li>
+  <li><strong>Blood Scent &amp; Horde Alerts.</strong> A badly wounded player (at or below half health) leaves a crimson blood trail that zombies and spiders follow, and alerted mobs can optionally call nearby allies to investigate together.</li>
 </ul>
 
-<p>Players join with a normal vanilla client — nothing to install on their side. Works like Zombie Awareness, for Minecraft <strong>1.16.5 – 26.3</strong> on <strong>Paper, Purpur, Folia and Spigot</strong>, with wall occlusion and voice chat built in.</p>
+<p>Players join with a normal vanilla client — nothing to install on their side. Works like Zombie Awareness for <strong>Minecraft 1.16.5 – 26.3</strong> on <strong>Paper, Purpur, Folia and Spigot</strong>, with wall occlusion and voice chat built in.</p>
 
 <p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-hearing.png" alt="Mobs hear noise and investigate"></p>
 
@@ -33,7 +35,7 @@
 <ol>
   <li>Put <code>mob-senses-bukkit-….jar</code> into <code>plugins/</code>.</li>
   <li>Start the server. Players join with any client, vanilla too: they need nothing.</li>
-  <li>Choose how keen the senses are with <code>/mobsenses preset subtle|default|hardcore</code>, or in <code>plugins/MobSenses/mobsenses-server.properties</code>.</li>
+  <li>Choose how keen the senses are with <code>/mobsenses preset subtle|default|hardcore</code>, tune any of the 45+ options in-game with <code>/mobsenses set</code>, or edit <code>plugins/MobSenses/mobsenses-server.properties</code>.</li>
 </ol>
 
 <p><a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a> is optional: without it everything but the voice works.</p>
@@ -55,7 +57,7 @@
 
 <h2>Commands and permissions</h2>
 
-<p><code>/mobsenses</code> requires the <code>mobsenses.admin</code> permission (granted to operators by default). Replies come in the player's language (English, Russian, Ukrainian, German, Spanish, Portuguese, Chinese).</p>
+<p><code>/mobsenses</code> requires the <code>mobsenses.admin</code> permission (granted to operators by default). Replies come in the player's language (English, Russian, Ukrainian, German, Spanish, Portuguese, Chinese). Full list of settings is documented in the <a href="https://github.com/Shamanalle/mob-senses#settings-file">GitHub README</a>.</p>
 
 <table>
   <thead>
@@ -67,6 +69,9 @@
     <tr><td><code>/mobsenses hearing &lt;0-3&gt;</code></td><td>How far mobs hear, times the preset</td></tr>
     <tr><td><code>/mobsenses sight &lt;0-3&gt;</code></td><td>How far mobs see you, times the preset</td></tr>
     <tr><td><code>/mobsenses voice &lt;on|off&gt;</code></td><td>Whether mobs hear Simple Voice Chat</td></tr>
+    <tr><td><code>/mobsenses set &lt;option&gt; [value|default]</code></td><td>View or change any server setting in-game with Tab-completion</td></tr>
+    <tr><td><code>/mobsenses get &lt;option|category&gt;</code></td><td>Inspect a single setting or an entire category (<code>core</code>, <code>guns</code>, <code>sounds</code>, <code>stealth</code>, <code>voice</code>, <code>sight</code>, <code>scent</code>, <code>mobs</code>, <code>all</code>)</td></tr>
+    <tr><td><code>/mobsenses reset &lt;option|all&gt;</code></td><td>Restore any setting or the entire config back to factory defaults</td></tr>
     <tr><td><code>/mobsenses debug [on|off]</code></td><td>Particle traces for operators showing sound, light and scent paths</td></tr>
     <tr><td><code>/mobsenses world &lt;world|here&gt; &lt;preset|inherit&gt;</code></td><td>A world's own preset (<code>inherit</code>: back to the server's)</td></tr>
     <tr><td><code>/mobsenses reload</code></td><td>Read the settings file again</td></tr>
@@ -96,10 +101,10 @@
 <p>В обычном Minecraft враждебные мобы замечают вас только на фиксированном расстоянии. С <strong>Mob Senses</strong> у них появляются чувства:</p>
 
 <ul>
-  <li><strong>Слух.</strong> Бег громкий, шаг в приседе тихий, шерсть глушит шаги, а гравий выдаёт. Ломание и установка блоков, двери, сундуки, бой, стрелы, взрывы, колокола, нотные блоки и еда тоже шумят. Моб, который это услышал, идёт туда, <strong>откуда шёл звук</strong>, осматривается и возвращается к своим делам. Каменные стены глушат шум сильнее, стекло и дерево — слабее, открытая дверь пропускает.</li>
+  <li><strong>Слух и преграды.</strong> Бег громкий, шаг в приседе тихий, шерсть глушит шаги, а гравий выдаёт. Ломание и установка блоков, двери, сундуки, бой, стрелы, взрывы, колокола, нотные блоки и еда тоже шумят. Моб, который это услышал, идёт туда, <strong>откуда шёл звук</strong>, осматривается и возвращается к своим делам. Каменные стены, дождь, гроза и ботинки с «Невесомостью» или «Проворством» глушат шум, стекло и дерево — слабее, а открытая дверь пропускает.</li>
   <li><strong>Голос</strong> (с <a href="https://www.curseforge.com/minecraft/bukkit-plugins/simple-voice-chat">Simple Voice Chat</a>). Мобы слышат, как вы говорите. Крик разносится далеко, шёпот — только рядом; громкость отсчитывается от обычного голоса самого игрока, поэтому тихий микрофон не даёт бесплатной скрытности.</li>
-  <li><strong>Свет и скрытность.</strong> Факел или фонарь в руке делает вас заметным издалека; темнота и присед прячут.</li>
-  <li><strong>Запах.</strong> Сильно раненый игрок (половина здоровья или меньше) оставляет за собой след, по которому идут зомби и пауки.</li>
+  <li><strong>Свет и скрытность.</strong> Факел или фонарь в руке делает вас заметным издалека; темнота, присед и зелье невидимости прячут.</li>
+  <li><strong>Запах крови и призыв орды.</strong> Сильно раненый игрок (половина здоровья или меньше) оставляет за собой след крови, по которому идут зомби и пауки, а встревоженные мобы при желании могут звать ближайших сородичей.</li>
 </ul>
 
 <p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-status.png" alt="/mobsenses status"></p>
@@ -109,7 +114,7 @@
 <ol>
   <li>Положите <code>mob-senses-bukkit-….jar</code> в <code>plugins/</code>.</li>
   <li>Запустите сервер. Игроки заходят с любым клиентом, в том числе с чистым: им ничего ставить не нужно.</li>
-  <li>Выберите чуткость мобов командой <code>/mobsenses preset subtle|default|hardcore</code> или в <code>plugins/MobSenses/mobsenses-server.properties</code>.</li>
+  <li>Выберите чуткость мобов командой <code>/mobsenses preset subtle|default|hardcore</code>, настройте любой из 45+ параметров через <code>/mobsenses set</code> или в <code>plugins/MobSenses/mobsenses-server.properties</code>.</li>
 </ol>
 
 <h3>Команды и права</h3>

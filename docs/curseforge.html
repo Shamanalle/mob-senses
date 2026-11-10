@@ -1,5 +1,5 @@
 <!--
-  CurseForge project description for the mod (Forge + NeoForge + Fabric).
+  CurseForge project description for the mod (Forge + NeoForge + Fabric + Quilt).
   Paste into the Description editor in source view (<> button).
   For the Bukkit Plugins project use docs/curseforge-plugin.html instead.
   CurseForge allows: p, h1-h6, a, img, strong, em, u, s, code, pre, blockquote,
@@ -13,21 +13,28 @@
 <h1 style="text-align: center;">Mob Senses</h1>
 
 <p style="text-align: center;">
-  <strong>Mobs hear you, see your light, smell blood trails and, with Simple Voice Chat, hear your voice.</strong><br>
-  A server-side survival and stealth mod for Forge, NeoForge, Fabric and Quilt, for Minecraft 1.16.5 – 26.3.
+  <strong>Mobs hear your steps, blocks and gunshots, see your light, smell blood trails and, with Simple Voice Chat, hear your voice.</strong><br>
+  A server-side survival, horror and stealth mod for Forge, NeoForge, Fabric and Quilt (Minecraft 1.16.5 – 26.3).
 </p>
+
+<p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-demo.gif" alt="Mob Senses — hearing, gunshots, voice chat, light and blood trails"></p>
 
 <p>Hostile mobs in vanilla notice you only within a fixed range. With <strong>Mob Senses</strong> they use their senses:</p>
 
 <ul>
-  <li><strong>Hearing.</strong> Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to <strong>where the noise came from</strong>, looks around and goes back to its business. Stone walls muffle noise, glass and wood less, an open door lets it through.</li>
-  <li><strong>Voice</strong> (with <a href="https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat">Simple Voice Chat</a>). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal voice, so a quiet microphone gives no free stealth.</li>
-  <li><strong>Light and stealth.</strong> A torch or lantern in your hand makes you visible from afar; darkness and sneaking hide you.</li>
-  <li><strong>Scent.</strong> A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.</li>
-  <li><strong>Stealth HUD.</strong> Players who install the mod on the client see a compact indicator of their noise, light exposure, voice activity and blood scent.</li>
+  <li><strong>Hearing &amp; Wall Occlusion.</strong> Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to <strong>where the noise came from</strong> (even from far away), looks around and goes back to its business. Stone walls, rain, thunderstorms and <em>Feather Falling</em> / <em>Swift Sneak</em> boots muffle noise, glass and wood less, and an open door lets it through.</li>
+  <li><strong>Gun Mods &amp; Suppressors</strong> (<strong>TaCZ</strong>, <strong>Vic's Point Blank</strong>, <strong>MrCrayfish's Gun Mod</strong>, <strong>Scorched Guns</strong>). Unsuppressed shots carry far across the area (<code>44</code> blocks) and draw nearby mobs, while attaching a suppressor or silencer muffles the shot (<code>16</code> blocks). Firing a silenced weapon at a distant wall creates noise where the bullet lands (<code>20</code> blocks) so you can distract or lure mobs away. Every weapon can also be tuned individually.</li>
+  <li><strong>Voice Chat</strong> (with <a href="https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat">Simple Voice Chat</a>). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal speaking voice, so a quiet microphone gives no free stealth.</li>
+  <li><strong>Light &amp; Stealth.</strong> A torch or lantern in your hand makes you visible from afar; darkness, sneaking and invisibility potions hide you and let distant pursuers lose track of you.</li>
+  <li><strong>Blood Scent &amp; Horde Alerts.</strong> A badly wounded player (at or below half health) leaves a crimson blood trail that zombies and spiders follow. Alerted mobs can optionally call nearby allies to investigate as a horde.</li>
+  <li><strong>Customizable Stealth HUD.</strong> Players who install the mod on the client see a compact indicator of their noise, light exposure, voice activity and blood scent — with adjustable position, opacity, compact mode and auto-hide when quiet.</li>
 </ul>
 
-<p>Works like Zombie Awareness, for Minecraft <strong>1.16.5 – 26.3</strong> across <strong>Forge, NeoForge, Fabric and Quilt</strong> (and Paper / Purpur / Folia / Spigot via the plugin), with wall occlusion and voice chat built in.</p>
+<p>Works like Zombie Awareness for <strong>Minecraft 1.16.5 – 26.3</strong> across <strong>Forge, NeoForge, Fabric and Quilt</strong> (and Paper / Purpur / Folia / Spigot via the plugin) — in a single lightweight file with <strong>no external library mods required</strong>.</p>
+
+<blockquote>
+  <p><strong>Modpacks:</strong> You are free to include <strong>Mob Senses</strong> in any modpack.</p>
+</blockquote>
 
 <p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-hearing.png" alt="Mobs hear noise and investigate"></p>
 
@@ -37,12 +44,12 @@
 <ol>
   <li>Put the mod's <code>.jar</code> into <code>mods/</code> (on Fabric and Quilt also <a href="https://www.curseforge.com/minecraft/mc-mods/fabric-api">Fabric API</a>).</li>
   <li>Start the server. Players join with any client, vanilla too: they need nothing.</li>
-  <li>Choose how keen the senses are with <code>/mobsenses preset subtle|default|hardcore</code>, or in <code>mobsenses-server.properties</code>.</li>
+  <li>Choose how keen the senses are with <code>/mobsenses preset subtle|default|hardcore</code>, tune any of the 45+ options in-game with <code>/mobsenses set</code>, or edit <code>config/mobsenses-server.properties</code>.</li>
 </ol>
 
 <p><strong>Singleplayer:</strong> put the same <code>.jar</code> into <code>.minecraft/mods/</code>.</p>
 
-<p><a href="https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat">Simple Voice Chat</a> is optional: without it everything but the voice works.</p>
+<p><a href="https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat">Simple Voice Chat</a> and gun mods are optional: everything works out of the box and integrates automatically when they are installed.</p>
 
 <h2>What works where</h2>
 
@@ -74,9 +81,9 @@
 
 <p>One file serves every Minecraft version of its loader: it picks the right code when the game starts. Running Paper, Purpur, Folia or Spigot? Get the Bukkit plugin from the Bukkit Plugins page or <a href="https://github.com/Shamanalle/mob-senses/releases">GitHub Releases</a>.</p>
 
-<h2>Commands</h2>
+<h2>Commands &amp; Configuration</h2>
 
-<p><code>/mobsenses</code> is for operators (level 2) and the console. Replies come in the player's language (English, Russian, Ukrainian, German, Spanish, Portuguese, Chinese).</p>
+<p><code>/mobsenses</code> is for operators (level 2) and the console, while <code>/mobsenses hud</code> works for every player. Replies come in the player's language (English, Russian, Ukrainian, German, Spanish, Portuguese, Chinese). Full list of all 45+ settings in <code>config/mobsenses-server.properties</code> is documented in the <a href="https://github.com/Shamanalle/mob-senses#settings-file">GitHub README</a>.</p>
 
 <table>
   <thead>
@@ -88,6 +95,10 @@
     <tr><td><code>/mobsenses hearing &lt;0-3&gt;</code></td><td>How far mobs hear, times the preset</td></tr>
     <tr><td><code>/mobsenses sight &lt;0-3&gt;</code></td><td>How far mobs see you, times the preset</td></tr>
     <tr><td><code>/mobsenses voice &lt;on|off&gt;</code></td><td>Whether mobs hear Simple Voice Chat</td></tr>
+    <tr><td><code>/mobsenses set &lt;option&gt; [value|default]</code></td><td>View or change any server setting in-game with Tab-completion (sound ranges, gunshots, suppressors, sight, scent, horde size, mob lists)</td></tr>
+    <tr><td><code>/mobsenses get &lt;option|category&gt;</code></td><td>Inspect a single setting or an entire category (<code>core</code>, <code>guns</code>, <code>sounds</code>, <code>stealth</code>, <code>voice</code>, <code>sight</code>, <code>scent</code>, <code>mobs</code>, <code>all</code>)</td></tr>
+    <tr><td><code>/mobsenses reset &lt;option|all&gt;</code></td><td>Restore any setting or the entire config back to factory defaults</td></tr>
+    <tr><td><code>/mobsenses hud &lt;on|off|compact|full|auto_hide|position|opacity|offset|bar|reset&gt;</code></td><td>Customize the client Stealth HUD directly from chat</td></tr>
     <tr><td><code>/mobsenses debug [on|off]</code></td><td>Particle traces for operators showing sound, light and scent paths</td></tr>
     <tr><td><code>/mobsenses world &lt;world|here&gt; &lt;preset|inherit&gt;</code></td><td>A world's own preset (<code>inherit</code>: back to the server's)</td></tr>
     <tr><td><code>/mobsenses reload</code></td><td>Read the settings file again</td></tr>
@@ -112,10 +123,11 @@
 <h2>Compatibility</h2>
 
 <ul>
-  <li><strong>Vanilla clients</strong> join a server with the mod; the mod does not change the network protocol.</li>
-  <li><strong>Custom and modded mobs:</strong> the <code>#mobsenses:listeners</code> entity type tag controls which mobs investigate noise.</li>
-  <li><strong>Other AI mods</strong> (In Control!, Enhanced AI, Improved Mobs): Mob Senses adds a low-priority investigation goal that yields immediately when a mob enters combat.</li>
-  <li><strong>Simple Voice Chat:</strong> optional; without it everything but the voice works.</li>
+  <li><strong>Modpacks:</strong> free to include in any modpack; no library dependencies required.</li>
+  <li><strong>Vanilla clients:</strong> can join a server running Mob Senses without installing the mod.</li>
+  <li><strong>Gun mods (TaCZ, Vic's Point Blank, MrCrayfish's Gun Mod, Scorched Guns):</strong> automatic support for unsuppressed shots, suppressors/silencers, distant bullet wall impacts and per-weapon range overrides (e.g. <code>gun.tacz\:ai_awp.range=85</code>).</li>
+  <li><strong>Custom and modded mobs:</strong> configure via <code>extra_listeners</code>, <code>ignored_mobs</code> and <code>scent_mobs</code> (supports exact IDs and <code>namespace:*</code> wildcards) or the <code>#mobsenses:listeners</code> entity type tag.</li>
+  <li><strong>Other AI &amp; sound mods</strong> (In Control!, Enhanced AI, Improved Mobs, Sound Physics Remastered): Mob Senses adds a low-priority investigation goal that yields immediately when a mob enters combat.</li>
 </ul>
 
 <hr>
@@ -126,12 +138,17 @@
 <p>В обычном Minecraft враждебные мобы замечают вас только на фиксированном расстоянии. С <strong>Mob Senses</strong> у них появляются чувства:</p>
 
 <ul>
-  <li><strong>Слух.</strong> Бег громкий, шаг в приседе тихий, шерсть глушит шаги, а гравий выдаёт. Ломание и установка блоков, двери, сундуки, бой, стрелы, взрывы, колокола, нотные блоки и еда тоже шумят. Моб, который это услышал, идёт туда, <strong>откуда шёл звук</strong>, осматривается и возвращается к своим делам. Каменные стены глушат шум сильнее, стекло и дерево — слабее, открытая дверь пропускает.</li>
+  <li><strong>Слух и преграды.</strong> Бег громкий, шаг в приседе тихий, шерсть глушит шаги, а гравий выдаёт. Ломание и установка блоков, двери, сундуки, бой, стрелы, взрывы, колокола, нотные блоки и еда тоже шумят. Моб, который это услышал, идёт туда, <strong>откуда шёл звук</strong>, осматривается и возвращается к своим делам. Каменные стены, дождь, гроза и ботинки с «Невесомостью» или «Проворством» глушат шум, стекло и дерево — слабее, а открытая дверь пропускает.</li>
+  <li><strong>Оружейные моды и глушители</strong> (<strong>TaCZ</strong>, <strong>Vic's Point Blank</strong>, <strong>MrCrayfish's Gun Mod</strong>, <strong>Scorched Guns</strong>). Выстрелы без глушителя разносятся далеко (<code>44</code> блока) и стягивают мобов, а глушитель снижает слышимость (<code>16</code> блоков). Попадание пули в далёкую стену (<code>20</code> блоков) создаёт шум в точке удара — выстрелом с глушителем можно отвлечь и выманить мобов. Каждое оружие также можно настроить отдельно.</li>
   <li><strong>Голос</strong> (с <a href="https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat">Simple Voice Chat</a>). Мобы слышат, как вы говорите. Крик разносится далеко, шёпот — только рядом; громкость отсчитывается от обычного голоса самого игрока, поэтому тихий микрофон не даёт бесплатной скрытности.</li>
-  <li><strong>Свет и скрытность.</strong> Факел или фонарь в руке делает вас заметным издалека; темнота и присед прячут.</li>
-  <li><strong>Запах.</strong> Сильно раненый игрок (половина здоровья или меньше) оставляет за собой след, по которому идут зомби и пауки.</li>
-  <li><strong>Индикатор скрытности.</strong> У игроков с модом на клиенте есть компактный индикатор собственного шума, заметности на свету, голоса и следа крови.</li>
+  <li><strong>Свет и скрытность.</strong> Факел или фонарь в руке делает вас заметным издалека; темнота, присед и зелье невидимости прячут.</li>
+  <li><strong>Запах крови и призыв орды.</strong> Сильно раненый игрок (половина здоровья или меньше) оставляет за собой кровавый след, по которому идут зомби и пауки, а встревоженные мобы при желании могут звать ближайших сородичей.</li>
+  <li><strong>Индикатор скрытности (HUD).</strong> У игроков с модом на клиенте есть настраиваемый индикатор шума, заметности на свету, голоса и следа крови с компактным режимом и автоскрытием в тишине.</li>
 </ul>
+
+<blockquote>
+  <p><strong>Модпаки:</strong> вы можете свободно добавлять <strong>Mob Senses</strong> в любые модпаки — сторонние библиотеки (вроде CoroUtil) не требуются.</p>
+</blockquote>
 
 <p><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-status.png" alt="/mobsenses status"></p>
 
@@ -141,7 +158,7 @@
 <ol>
   <li>Положите <code>.jar</code> мода в <code>mods/</code> (на Fabric и Quilt — ещё <a href="https://www.curseforge.com/minecraft/mc-mods/fabric-api">Fabric API</a>).</li>
   <li>Запустите сервер. Игроки заходят с любым клиентом, в том числе с чистым: им ничего ставить не нужно.</li>
-  <li>Выберите чуткость мобов командой <code>/mobsenses preset subtle|default|hardcore</code> или в <code>mobsenses-server.properties</code>.</li>
+  <li>Выберите чуткость мобов командой <code>/mobsenses preset subtle|default|hardcore</code>, настройте любой из 45+ параметров через <code>/mobsenses set</code> или в <code>config/mobsenses-server.properties</code>.</li>
 </ol>
 
 <p><strong>Одиночная игра:</strong> положите тот же <code>.jar</code> в <code>.minecraft/mods/</code>.</p>
@@ -163,7 +180,7 @@
 
 <h3>Команды</h3>
 
-<p><code>/mobsenses</code> доступна операторам (уровень 2) и консоли. Ответы приходят на языке игрока (русский, украинский, английский, немецкий, испанский, португальский, китайский).</p>
+<p><code>/mobsenses</code> доступна операторам (уровень 2) и консоли, а <code>/mobsenses hud</code> — всем игрокам. Ответы приходят на языке игрока (русский, украинский, английский, немецкий, испанский, португальский, китайский). Полное описание всех настроек есть в <a href="https://github.com/Shamanalle/mob-senses/blob/main/README.ru.md#файл-настроек">README на GitHub</a>.</p>
 
 <table>
   <thead>
@@ -175,6 +192,10 @@
     <tr><td><code>/mobsenses hearing &lt;0-3&gt;</code></td><td>Как далеко мобы слышат, поверх режима</td></tr>
     <tr><td><code>/mobsenses sight &lt;0-3&gt;</code></td><td>Как далеко мобы видят, поверх режима</td></tr>
     <tr><td><code>/mobsenses voice &lt;on|off&gt;</code></td><td>Слышат ли мобы Simple Voice Chat</td></tr>
+    <tr><td><code>/mobsenses set &lt;параметр&gt; [значение|default]</code></td><td>Посмотреть или изменить любую настройку сервера прямо в игре (с автодополнением Tab)</td></tr>
+    <tr><td><code>/mobsenses get &lt;параметр|категория&gt;</code></td><td>Посмотреть одну настройку или целую категорию (<code>core</code>, <code>guns</code>, <code>sounds</code>, <code>stealth</code>, <code>voice</code>, <code>sight</code>, <code>scent</code>, <code>mobs</code>, <code>all</code>)</td></tr>
+    <tr><td><code>/mobsenses reset &lt;параметр|all&gt;</code></td><td>Сбросить параметр или весь конфиг к стандартным значениям</td></tr>
+    <tr><td><code>/mobsenses hud &lt;on|off|compact|full|auto_hide|позиция|opacity|offset|bar|reset&gt;</code></td><td>Настроить положение, прозрачность, полоски или автоскрытие клиентского HUD прямо из чата</td></tr>
     <tr><td><code>/mobsenses debug [on|off]</code></td><td>Частицы отладки для операторов: пути звука, света и запаха</td></tr>
     <tr><td><code>/mobsenses world &lt;мир|here&gt; &lt;режим|inherit&gt;</code></td><td>Свой режим для отдельного мира (<code>inherit</code> — вернуть общий)</td></tr>
     <tr><td><code>/mobsenses reload</code></td><td>Перечитать файл настроек</td></tr>

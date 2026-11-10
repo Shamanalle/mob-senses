@@ -1,9 +1,10 @@
 {
-  "description": "Mobs hear your steps, blocks, doors and fights through walls, see your light and hear your Simple Voice Chat voice. Server-side: Fabric, Forge, NeoForge, Paper. / Мобы слышат шаги, блоки, двери и бой сквозь стены, видят свет и слышат голос в Simple Voice Chat. Серверный мод.",
+  "description": "Mobs hear steps, blocks, TaCZ gunshots (with suppressors!) & Simple Voice Chat through walls, see torchlight and smell blood trails. Server-side: Fabric, Quilt, Forge, NeoForge, Paper 1.16.5–26.3.",
   "topics": [
     "minecraft",
     "minecraft-mod",
     "fabric-mod",
+    "quilt-mod",
     "forge-mod",
     "neoforge",
     "paper-plugin",
@@ -13,6 +14,7 @@
     "stealth",
     "survival",
     "horror",
+    "tacz",
     "simple-voice-chat",
     "voice-chat",
     "zombie-awareness"
