@@ -169,4 +169,20 @@ class ServerSettingsTest {
         assertEquals(500L, loaded.alertCooldownMs());
         assertEquals(15.0, loaded.investigationSeconds(), 1e-6);
     }
+
+    @Test
+    void upgradesLegacyConfigFileKeepingExistingValues() throws Exception {
+        Path file = dir.resolve(ServerSettings.FILE_NAME);
+        Files.writeString(file, "preset=hardcore\nhearing=1.5\nvoice=false\n", StandardCharsets.UTF_8);
+        ServerSettings s = new ServerSettings(file);
+        s.load();
+        assertEquals(Preset.HARDCORE, s.preset());
+        assertEquals(1.5, s.hearing(), 1e-6);
+        assertFalse(s.voice());
+        String upgraded = Files.readString(file, StandardCharsets.UTF_8);
+        assertTrue(upgraded.contains("preset=hardcore"), upgraded);
+        assertTrue(upgraded.contains("gunshot_range=44"), upgraded);
+        assertTrue(upgraded.contains("gunshot_silenced_range=16"), upgraded);
+        assertTrue(upgraded.contains("rain_muffling=0.25"), upgraded);
+    }
 }

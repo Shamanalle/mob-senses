@@ -284,7 +284,11 @@ public final class ClientSettings {
                 return;
             }
             modified = Files.getLastModifiedTime(file).toMillis();
-            read(Jv.readString(file, StandardCharsets.UTF_8));
+            String text = Jv.readString(file, StandardCharsets.UTF_8);
+            read(text);
+            if (!text.contains("auto_hide=") || !text.contains("show_voice=")) {
+                save();
+            }
         } catch (IOException | RuntimeException e) {
             ModLog.failure("Reading " + file, e);
         }

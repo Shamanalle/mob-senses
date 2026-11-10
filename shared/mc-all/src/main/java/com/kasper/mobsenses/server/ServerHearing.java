@@ -40,6 +40,8 @@ public final class ServerHearing {
     private static final int RECENT_BULLET_RING_SIZE = 128;
     private static final int[] RECENT_BULLET_IDS = new int[RECENT_BULLET_RING_SIZE];
     private static int recentBulletCursor;
+    private static final java.util.Map<java.util.UUID, String> LAST_FIREARM_KEY = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<java.util.UUID, Integer> LAST_FIREARM_AMMO = new java.util.concurrent.ConcurrentHashMap<>();
     private static long levelTickCounter;
     private static final java.lang.reflect.Method ITEM_GET_TAG;
     private static final java.lang.reflect.Method ITEM_GET_COMPONENTS;
@@ -462,8 +464,22 @@ public final class ServerHearing {
     private static void detectPlayerGunshots(ServerLevel level, String worldId, Player player) {
         ItemStack firearm = findHeldFirearm(player);
         if (firearm == null) {
+            LAST_FIREARM_KEY.remove(player.getUUID());
+            LAST_FIREARM_AMMO.remove(player.getUUID());
             return;
         }
+        String fId = itemId(firearm);
+        String tag = itemTagSummary(firearm);
+        String gunKey = fId + "|" + extractGunId(tag);
+        int currentAmmo = extractFirearmAmmo(tag);
+        String prevGunKey = LAST_FIREARM_KEY.put(player.getUUID(), gunKey);
+        Integer prevAmmo = LAST_FIREARM_AMMO.put(player.getUUID(), currentAmmo);
+        boolean ammoDecremented = gunKey.equals(prevGunKey)
+                && prevAmmo != null
+                && prevAmmo >= 0
+                && currentAmmo >= 0
+                && currentAmmo < prevAmmo;
+
         double px = player.getX();
         double py = player.getEyeY();
         double pz = player.getZ();
@@ -477,23 +493,73 @@ public final class ServerHearing {
             }
             return NoiseModel.isBulletEntity(Worlds.entityTypeId(e.getType()));
         });
-        if (nearby.isEmpty()) {
-            return;
-        }
         boolean firedNewBullet = false;
         for (Entity bullet : nearby) {
             if (markBulletSeen(bullet.getId())) {
                 firedNewBullet = true;
             }
         }
-        if (firedNewBullet) {
-            String fId = itemId(firearm);
-            String tag = itemTagSummary(firearm);
+        if (firedNewBullet || ammoDecremented) {
             String event = NoiseModel.isSilencedFirearm(fId, tag)
                     ? "mobsenses:gunshot_silenced"
                     : "mobsenses:gunshot";
             double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
             MobSenses.gameEvent(event, worldId, px, py, pz, NoiseModel.Posture.WALKING, null, fId + " " + tag, true, envMult);
+        }
+    }
+
+    private static String extractGunId(String tag) {
+        if (tag == null || tag.isEmpty()) {
+            return "";
+        }
+        int idx = tag.indexOf("GunId");
+        if (idx < 0) {
+            return "";
+        }
+        int end = Math.min(tag.length(), idx + 48);
+        return tag.substring(idx, end);
+    }
+
+    private static int extractFirearmAmmo(String tag) {
+        if (tag == null || tag.isEmpty()) {
+            return -1;
+        }
+        int val = parseTagInt(tag, "GunCurrentAmmoCount");
+        if (val >= 0) {
+            return val;
+        }
+        val = parseTagInt(tag, "AmmoCount");
+        if (val >= 0) {
+            return val;
+        }
+        return parseTagInt(tag, "\"ammo\"");
+    }
+
+    private static int parseTagInt(String tag, String key) {
+        int idx = tag.indexOf(key);
+        if (idx < 0) {
+            return -1;
+        }
+        int i = idx + key.length();
+        while (i < tag.length()) {
+            char c = tag.charAt(i);
+            if (c == ':' || c == '=' || c == ' ' || c == '"') {
+                i++;
+            } else {
+                break;
+            }
+        }
+        int start = i;
+        while (i < tag.length() && Character.isDigit(tag.charAt(i))) {
+            i++;
+        }
+        if (i == start) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(tag.substring(start, i));
+        } catch (NumberFormatException e) {
+            return -1;
         }
     }
 
