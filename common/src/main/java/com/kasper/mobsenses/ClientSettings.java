@@ -92,6 +92,7 @@ public final class ClientSettings {
     private volatile int y = 10;
     private volatile int opacity = 100;
     private volatile boolean compact = false;
+    private volatile boolean autoHide = false;
     private volatile boolean showNoise = true;
     private volatile boolean showLight = true;
     private volatile boolean showScent = true;
@@ -130,6 +131,11 @@ public final class ClientSettings {
     /** Whether only the compact status header is shown without the meter bars. */
     public boolean compact() {
         return compact;
+    }
+
+    /** Whether the HUD hides itself when the player is completely quiet and hidden. */
+    public boolean autoHide() {
+        return autoHide;
     }
 
     public boolean showNoise() {
@@ -172,6 +178,10 @@ public final class ClientSettings {
 
     public void setCompact(boolean compact) {
         this.compact = compact;
+    }
+
+    public void setAutoHide(boolean autoHide) {
+        this.autoHide = autoHide;
     }
 
     public void setShowNoise(boolean showNoise) {
@@ -311,6 +321,7 @@ public final class ClientSettings {
         y = clampOffset(parseInt(p, "y", 10));
         opacity = clampOpacity(parseInt(p, "opacity", 100));
         compact = parseBool(p.getProperty("compact", "false"), false);
+        autoHide = parseBool(p.getProperty("auto_hide", "false"), false);
         showNoise = parseBool(p.getProperty("show_noise", "true"), true);
         showLight = parseBool(p.getProperty("show_light", "true"), true);
         showScent = parseBool(p.getProperty("show_scent", "true"), true);
@@ -361,6 +372,10 @@ public final class ClientSettings {
         lines.add("# Compact mode (true = only the status line without bars, false = full panel with bars).");
         lines.add("# Компактный режим (true = только строка статуса без полосок, false = полная панель с полосками).");
         lines.add("compact=" + compact);
+        lines.add("");
+        lines.add("# Automatically hide the HUD when completely quiet, in the dark, not bleeding and not speaking.");
+        lines.add("# Автоматически скрывать HUD, когда вы стоите тихо, не светитесь, не истекаете кровью и молчите.");
+        lines.add("auto_hide=" + autoHide);
         lines.add("");
         lines.add("# Which bars and indicators to show: true or false.");
         lines.add("# Какие шкалы и индикаторы показывать: true или false.");

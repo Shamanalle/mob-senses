@@ -261,12 +261,12 @@ public final class NoiseModel {
             }
             case GUNSHOT: {
                 if ("gunshot_silenced".equals(id)) {
-                    return settings != null ? settings.gunshotSilencedRange() : 16.0;
+                    return settings != null ? settings.gunRangeFor(blockId, true) : 16.0;
                 }
                 if ("bullet_impact".equals(id)) {
                     return settings != null ? settings.bulletImpactRange() : 20.0;
                 }
-                return settings != null ? settings.gunshotRange() : Kind.GUNSHOT.defaultRange();
+                return settings != null ? settings.gunRangeFor(blockId, false) : Kind.GUNSHOT.defaultRange();
             }
             case EXPLOSION: {
                 double base = settings != null ? settings.explosionRange() : Kind.EXPLOSION.defaultRange();

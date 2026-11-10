@@ -86,6 +86,8 @@ Java: та, что нужна вашей версии Minecraft (8 для 1.16.5
 | `/mobsenses voice <on\|off>` | Слышат ли мобы Simple Voice Chat |
 | `/mobsenses debug [on\|off]` | Линии из частиц для операторов, показывающие пути звука, света и запаха |
 | `/mobsenses world <мир\|here> <пресет\|inherit>` | Свой пресет мира (`inherit` — снова пресет сервера) |
+| `/mobsenses set <параметр> [значение]` | Посмотреть или изменить любую настройку из `mobsenses-server.properties` прямо в игре (с автодополнением Tab) |
+| `/mobsenses hud <on\|off\|compact\|full\|auto_hide\|позиция>` | Быстро переключить режим или позицию клиентского HUD прямо из игры |
 | `/mobsenses reload` | Перечитать файл настроек |
 | `/mobsenses help` | Список команд |
 
@@ -111,12 +113,15 @@ Java: та, что нужна вашей версии Minecraft (8 для 1.16.5
 | `gunshot_range` | `44` | Дальность слышимости выстрела без глушителя в блоках (`0` – `256`, `0` = выключено) |
 | `gunshot_silenced_range` | `16` | Дальность слышимости выстрела с глушителем в блоках (`0` – `256`, `0` = полностью бесшумно) |
 | `bullet_impact_range` | `20` | Дальность слышимости попадания пули / рикошета в блоках (`0` – `256`, `0` = выключено) |
+| `gun.<id>.range`, `gun.<id>.silenced_range` | — | Индивидуальная дальность для конкретного оружия по ID или слову (`gun.tacz\:ai_awp.range=85`, `gun.glock.silenced_range=8`) |
 | `step_range` | `8` | Базовая дальность обычных шагов в блоках (`0` – `256`); умножается на `sneak_step_multiplier` (`0.25`) и `sprint_step_multiplier` (`1.75`) |
 | `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` | `18`, `12`, `14`, `12`, `16`, `15`, `48`, `40`, `28`, `8` | Базовая дальность слышимости в блоках (`0` – `256`, `0` = выключено) для каждой категории звуков |
+| `rain_muffling`, `thunder_muffling`, `feather_falling_muffling` | `0.25`, `0.45`, `0.2` | Маскировка звуков дождём (`25`%), грозой (`45`%) и снижение шума шагов от «Невесомости» / «Проворства» (`20`%) |
 | `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Включение Simple Voice Chat, дальность громкой речи в блоках (`0` – `256`) и множитель шёпота (`0` – `1`) |
 | `sight_range`, `held_light_enabled`, `darkness_stealth_enabled` | `16`, `true`, `true` | Базовая дальность зрения (`0` – `256`), заметность факела/фонаря в руке и скрытность в темноте в приседе |
 | `scent_enabled`, `scent_health_threshold`, `scent_range`, `blood_particles` | `true`, `50`, `14`, `true` | Запах крови, порог здоровья (`5` – `100`%), радиус чутья (`0` – `256` блоков) и частицы капель крови |
-| `investigate_speed`, `urgent_investigate_speed` | `1`, `1.15` | Скорость хода мобов при проверке обычных и громких (`gunshot`, `explosion`, `bell`) звуков |
+| `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds` | `1`, `1.15`, `8` | Скорость хода мобов при проверке обычных и громких (`gunshot`, `explosion`, `bell`) звуков и длительность поиска в секундах |
+| `max_alerted_mobs`, `horde_alert_range`, `alert_cooldown_ms` | `8`, `0`, `900` | Максимум мобов на один звук (`1` – `64`), радиус подтягивания соседних мобов ордой (`0` – `64`, `0` = выкл) и кулдаун в мс |
 | `extra_listeners`, `ignored_mobs` | — | Списки ID мобов или масок `namespace:*` через запятую для добавления или исключения из системы слуха |
 | `language` | `en_us` | Язык ответов консоли и игрокам, чей язык неизвестен |
 | `world.<id>.preset` | — | Свой пресет мира. На загрузчиках модов id — это измерение (`world.minecraft\:the_nether.preset=off`, двоеточие пишется как `\:`), на Paper — папка мира (`world.world_nether.preset=off`) |
@@ -130,6 +135,7 @@ Java: та, что нужна вашей версии Minecraft (8 для 1.16.5
 | `x`, `y` | `10`, `10` | Отступ в пикселях от выбранной позиции |
 | `opacity` | `100` | Непрозрачность HUD в процентах (`10` – `100`) |
 | `compact` | `false` | `true` оставляет только строку статуса без полосок |
+| `auto_hide` | `false` | `true` автоматически скрывает HUD, пока вы ведёте себя тихо, не светитесь, не истекаете кровью и молчите |
 | `show_noise`, `show_light`, `show_scent`, `show_voice` | `true` | Показ отдельных полосок и индикатора микрофона при `compact=false` |
 
 ## Совместимость

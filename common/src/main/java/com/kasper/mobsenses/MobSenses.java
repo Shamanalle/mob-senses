@@ -186,6 +186,16 @@ public final class MobSenses {
     public static void gameEvent(String event, String world, double x, double y, double z,
                                  NoiseModel.Posture posture, AcousticMaterial material,
                                  String blockId, boolean playerInvolved) {
+        gameEvent(event, world, x, y, z, posture, material, blockId, playerInvolved, 1.0);
+    }
+
+    /**
+     * A game event with its context and an optional environmental/gear multiplier (e.g. rain muffling
+     * or Feather Falling boots).
+     */
+    public static void gameEvent(String event, String world, double x, double y, double z,
+                                 NoiseModel.Posture posture, AcousticMaterial material,
+                                 String blockId, boolean playerInvolved, double envMultiplier) {
         try {
             Preset preset = settings.presetOf(world);
             if (preset == Preset.OFF) {
@@ -196,7 +206,7 @@ public final class MobSenses {
             if (kind == null || (kind.requiresPlayerSource() && !playerInvolved)) {
                 return;
             }
-            double base = NoiseModel.baseRange(event, posture, material, blockId);
+            double base = NoiseModel.baseRange(event, posture, material, blockId) * Math.max(0.0, envMultiplier);
             double range = NoiseModel.effectiveRange(base, preset, settings.hearing());
             if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
                 COALESCER.record(world, kind, event, x, y, z, range);

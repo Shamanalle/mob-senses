@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -137,7 +138,18 @@ public final class ServerHearing {
         AcousticMaterial material = BlockAcoustics.material(surface, blockId);
 
         String effectiveEvent = resolveFirearmEvent(eventId, sourceEntity, player);
-        MobSenses.gameEvent(effectiveEvent, worldId, x, y, z, posture, material, blockId, player != null);
+        String contextId = blockId;
+        if (effectiveEvent.startsWith("mobsenses:gunshot")) {
+            ItemStack firearm = findHeldFirearm(player);
+            if (firearm != null) {
+                contextId = itemId(firearm) + " " + itemTagSummary(firearm);
+            }
+        }
+        double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
+        if (kind == NoiseModel.Kind.STEP && hasStealthEnchant(player)) {
+            envMult *= Math.max(0.0, 1.0 - MobSenses.settings().featherFallingMuffling());
+        }
+        MobSenses.gameEvent(effectiveEvent, worldId, x, y, z, posture, material, contextId, player != null, envMult);
     }
 
     /**
@@ -194,6 +206,7 @@ public final class ServerHearing {
 
         double normalSpeed = MobSenses.settings().investigateSpeed();
         double urgentSpeed = MobSenses.settings().urgentInvestigateSpeed();
+        double hordeRadius = MobSenses.settings().hordeAlertRange();
         for (NoiseCoalescer.Alerted<Mob> alerted : alertedList) {
             Mob mob = alerted.mob();
             NoiseCoalescer.CoalescedNoise noise = alerted.noise();
@@ -210,6 +223,22 @@ public final class ServerHearing {
                             level,
                             noise.x(), noise.y(), noise.z(),
                             mob.getX(), mob.getEyeY(), mob.getZ());
+                }
+                if (hordeRadius > 0.0) {
+                    AABB hordeBox = new AABB(
+                            mob.getX() - hordeRadius, mob.getY() - 5.0, mob.getZ() - hordeRadius,
+                            mob.getX() + hordeRadius, mob.getY() + 5.0, mob.getZ() + hordeRadius);
+                    List<Mob> allies = level.getEntitiesOfClass(Mob.class, hordeBox,
+                            ally -> ally != mob && isListener(ally) && ally.getTarget() == null);
+                    int pulled = 0;
+                    for (Mob ally : allies) {
+                        if (InvestigateGoal.alert(ally, noise.x(), noise.y(), noise.z(), speed)) {
+                            MobSenses.alerted().record(now);
+                            if (++pulled >= 4) {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -463,8 +492,21 @@ public final class ServerHearing {
             String event = NoiseModel.isSilencedFirearm(fId, tag)
                     ? "mobsenses:gunshot_silenced"
                     : "mobsenses:gunshot";
-            MobSenses.gameEvent(event, worldId, px, py, pz, NoiseModel.Posture.WALKING, null, null, true);
+            double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
+            MobSenses.gameEvent(event, worldId, px, py, pz, NoiseModel.Posture.WALKING, null, fId + " " + tag, true, envMult);
         }
+    }
+
+    private static boolean hasStealthEnchant(Player player) {
+        if (player == null) {
+            return false;
+        }
+        String feet = itemTagSummary(player.getItemBySlot(EquipmentSlot.FEET)).toLowerCase(java.util.Locale.ROOT);
+        if (feet.contains("feather_falling")) {
+            return true;
+        }
+        String legs = itemTagSummary(player.getItemBySlot(EquipmentSlot.LEGS)).toLowerCase(java.util.Locale.ROOT);
+        return legs.contains("swift_sneak");
     }
 
     private static synchronized boolean markBulletSeen(int entityId) {

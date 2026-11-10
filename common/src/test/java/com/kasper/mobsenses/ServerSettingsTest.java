@@ -134,4 +134,39 @@ class ServerSettingsTest {
         assertEquals(30.0, NoiseModel.baseRange("mobsenses:bullet_impact", NoiseModel.Posture.WALKING, null, null, loaded), 1e-6);
         assertEquals(0.0, NoiseModel.baseRange("minecraft:step", NoiseModel.Posture.SNEAKING, AcousticMaterial.STONE, "minecraft:stone", loaded), 1e-6);
     }
+
+    @Test
+    void perWeaponOverridesWeatherAndHordeSettingsWork() throws Exception {
+        Path file = dir.resolve(ServerSettings.FILE_NAME);
+        ServerSettings s = new ServerSettings(file);
+        s.read("gunshot_range=44\n"
+                + "gunshot_silenced_range=16\n"
+                + "gun.tacz\\:ai_awp.range=85\n"
+                + "gun.glock.silenced_range=6\n"
+                + "rain_muffling=0.3\n"
+                + "thunder_muffling=0.5\n"
+                + "feather_falling_muffling=0.25\n"
+                + "max_alerted_mobs=24\n"
+                + "horde_alert_range=12\n"
+                + "alert_cooldown_ms=500\n"
+                + "investigation_seconds=15\n");
+        s.save();
+
+        ServerSettings loaded = new ServerSettings(file);
+        loaded.load();
+        assertEquals(85.0, loaded.gunRangeFor("tacz:modern_kinetic_gun {GunId:\"tacz:ai_awp\"}", false), 1e-6);
+        assertEquals(44.0, loaded.gunRangeFor("tacz:modern_kinetic_gun {GunId:\"tacz:ak47\"}", false), 1e-6);
+        assertEquals(6.0, loaded.gunRangeFor("pointblank:glock_17", true), 1e-6);
+        assertEquals(16.0, loaded.gunRangeFor("tacz:hk416", true), 1e-6);
+
+        assertEquals(0.7, loaded.weatherMultiplier(true, false), 1e-6);
+        assertEquals(0.5, loaded.weatherMultiplier(true, true), 1e-6);
+        assertEquals(1.0, loaded.weatherMultiplier(false, false), 1e-6);
+        assertEquals(0.25, loaded.featherFallingMuffling(), 1e-6);
+
+        assertEquals(24, loaded.maxAlertedMobs());
+        assertEquals(12.0, loaded.hordeAlertRange(), 1e-6);
+        assertEquals(500L, loaded.alertCooldownMs());
+        assertEquals(15.0, loaded.investigationSeconds(), 1e-6);
+    }
 }

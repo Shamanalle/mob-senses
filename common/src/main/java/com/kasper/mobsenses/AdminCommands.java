@@ -14,7 +14,11 @@ public final class AdminCommands {
 
     public static final String NAME = "mobsenses";
 
-    private static final List<String> SUBCOMMANDS = Jv.listOf("status", "preset", "hearing", "sight", "voice", "world", "debug", "reload", "help");
+    private static final List<String> SUBCOMMANDS = Jv.listOf(
+            "status", "preset", "hearing", "sight", "voice", "world", "set", "hud", "debug", "reload", "help");
+    private static final List<String> HUD_MODES = Jv.listOf(
+            "on", "off", "compact", "full", "auto_hide",
+            "top_left", "top_right", "bottom_left", "bottom_right", "top_center", "hotbar");
     /** What {@code world <id>} takes besides a preset: the world goes back to the server's preset. */
     private static final String INHERIT = "inherit";
 
@@ -53,6 +57,11 @@ public final class AdminCommands {
                     return voice(lang, s, a);
                 case "world":
                     return world(lang, s, ctx, a);
+                case "set":
+                case "get":
+                    return setOrGet(lang, s, a);
+                case "hud":
+                    return hud(lang, a);
                 case "debug":
                     return debug(lang, a);
                 case "reload":
@@ -194,6 +203,82 @@ public final class AdminCommands {
         return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "world.set", world, presetName(lang, p)));
     }
 
+    private static Reply setOrGet(String lang, ServerSettings s, String[] a) {
+        if (a.length < 2) {
+            return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.usage"));
+        }
+        String key = a[1].toLowerCase(Locale.ROOT);
+        if (a.length == 2) {
+            String cur = s.getOption(key);
+            if (cur == null) {
+                return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, "?"));
+            }
+            return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "set.show", key, cur));
+        }
+        StringBuilder valBuilder = new StringBuilder(a[2]);
+        for (int i = 3; i < a.length; i++) {
+            valBuilder.append(' ').append(a[i]);
+        }
+        String val = valBuilder.toString();
+        if (!s.setOption(key, val)) {
+            return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, val));
+        }
+        s.save();
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, s.getOption(key)));
+    }
+
+    private static Reply hud(String lang, String[] a) {
+        ClientSettings cs = MobSenses.clientSettings();
+        if (a.length < 2) {
+            String summary = (cs.enabled() ? "on" : "off")
+                    + ", position=" + cs.position().id()
+                    + (cs.compact() ? ", compact" : "")
+                    + (cs.autoHide() ? ", auto_hide" : "");
+            return new Reply()
+                    .add(Reply.Kind.INFO, ServerText.get(lang, "hud.done", summary))
+                    .add(Reply.Kind.HINT, ServerText.get(lang, "hud.usage"));
+        }
+        String mode = a[1].toLowerCase(Locale.ROOT);
+        switch (mode) {
+            case "on":
+            case "true":
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                break;
+            case "off":
+            case "false":
+                cs.setEnabled(false);
+                MobSenses.hud().setEnabled(false);
+                break;
+            case "compact":
+                cs.setCompact(true);
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                break;
+            case "full":
+                cs.setCompact(false);
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                break;
+            case "auto_hide":
+            case "autohide":
+                cs.setAutoHide(!cs.autoHide());
+                break;
+            default: {
+                ClientSettings.Anchor anchor = ClientSettings.Anchor.byId(mode);
+                if (anchor == null) {
+                    return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                }
+                cs.setPosition(anchor);
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                break;
+            }
+        }
+        cs.save();
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "hud.done", mode));
+    }
+
     private static Reply unknown(String lang, String typed) {
         Reply r = new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "unknown", typed));
         String near = closest(typed.toLowerCase(Locale.ROOT), SUBCOMMANDS);
@@ -234,12 +319,21 @@ public final class AdminCommands {
                         options.add(0, "here");
                     }
                     break;
+                case "set":
+                case "get":
+                    options = ServerSettings.optionKeys();
+                    break;
+                case "hud":
+                    options = HUD_MODES;
+                    break;
                 default:
                     options = Collections.emptyList();
             }
         } else if (words.length == 3 && words[0].equals("world")) {
             options = new ArrayList<>(presetList());
             options.add(INHERIT);
+        } else if (words.length == 3 && words[0].equals("set")) {
+            options = suggestOptionValues(words[1]);
         } else {
             options = Collections.emptyList();
         }
@@ -251,6 +345,44 @@ public final class AdminCommands {
             }
         }
         return out;
+    }
+
+    private static List<String> suggestOptionValues(String key) {
+        if (key == null) {
+            return Collections.emptyList();
+        }
+        switch (key.toLowerCase(Locale.ROOT)) {
+            case "preset":
+                return presetList();
+            case "voice":
+            case "held_light_enabled":
+            case "darkness_stealth_enabled":
+            case "scent_enabled":
+            case "blood_particles":
+                return Jv.listOf("true", "false");
+            case "gunshot_range":
+                return Jv.listOf("32", "44", "64", "96", "128");
+            case "gunshot_silenced_range":
+                return Jv.listOf("0", "8", "12", "16", "24");
+            case "bullet_impact_range":
+                return Jv.listOf("0", "12", "20", "32");
+            case "wall_muffling":
+            case "hearing":
+            case "sight":
+                return Jv.listOf("0", "0.5", "1", "1.5", "2");
+            case "max_alerted_mobs":
+                return Jv.listOf("4", "8", "16", "24", "32");
+            case "horde_alert_range":
+                return Jv.listOf("0", "8", "16", "24");
+            case "rain_muffling":
+            case "thunder_muffling":
+            case "feather_falling_muffling":
+                return Jv.listOf("0", "0.25", "0.45", "0.6");
+            default: {
+                String cur = MobSenses.settings().getOption(key);
+                return cur != null && !cur.isEmpty() ? Jv.listOf(cur) : Collections.emptyList();
+            }
+        }
     }
 
     private static List<String> presetList() {

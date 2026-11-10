@@ -102,6 +102,13 @@ public final class StealthHudOverlay {
     }
 
     public static void drawHud(Canvas canvas, StealthHudState hud, ClientSettings cfg) {
+        if (cfg.autoHide()
+                && hud.noisePercent() < 5
+                && hud.overallExposure() < 30
+                && !hud.scentActive()
+                && !hud.voiceActive()) {
+            return;
+        }
         boolean compact = cfg.compact();
         boolean drawNoise = !compact && cfg.showNoise();
         boolean drawLight = !compact && cfg.showLight();

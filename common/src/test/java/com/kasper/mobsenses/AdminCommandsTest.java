@@ -94,7 +94,7 @@ class AdminCommandsTest {
     @Test
     void helpListsEverySubcommandWithoutBareKeys() {
         String r = AdminCommands.execute("help", as("de_de", null)).toString();
-        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "debug", "reload", "help"}) {
+        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "set", "hud", "debug", "reload", "help"}) {
             assertTrue(r.contains("/mobsenses " + sub), sub + " in " + r);
         }
         assertFalse(r.contains("command.mobsenses."), r);
@@ -123,5 +123,12 @@ class AdminCommandsTest {
         assertTrue(MobSenses.debug());
         assertFalse(AdminCommands.execute("debug off", CONSOLE).refused());
         assertFalse(MobSenses.debug());
+
+        assertFalse(AdminCommands.execute("set gunshot_silenced_range 10", CONSOLE).refused());
+        assertEquals(10.0, MobSenses.settings().gunshotSilencedRange(), 1e-6);
+        assertTrue(AdminCommands.execute("set gunshot_silenced_range", CONSOLE).toString().contains("10"));
+        assertTrue(AdminCommands.suggestions("set gun", CONSOLE).contains("gunshot_range"));
+        assertFalse(AdminCommands.execute("hud hotbar", CONSOLE).refused());
+        assertEquals(ClientSettings.Anchor.HOTBAR, MobSenses.clientSettings().position());
     }
 }

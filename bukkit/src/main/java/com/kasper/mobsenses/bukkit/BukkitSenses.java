@@ -155,8 +155,10 @@ public final class BukkitSenses {
                 ? MobSenses.settings().urgentInvestigateSpeed()
                 : MobSenses.settings().investigateSpeed();
 
+        int maxAlerts = MobSenses.settings().maxAlertedMobs();
+        double hordeRadius = MobSenses.settings().hordeAlertRange();
         for (Mob mob : candidates) {
-            if (alerted >= NoiseCoalescer.DEFAULT_MAX_TRACES_PER_EVENT) {
+            if (alerted >= maxAlerts) {
                 break;
             }
             Location eye = mob.getEyeLocation();
@@ -172,6 +174,21 @@ public final class BukkitSenses {
                 MobSenses.alerted().record(now);
                 if (MobSenses.debug()) {
                     sendDebugTrace(world, center, eye);
+                }
+                if (hordeRadius > 0.0) {
+                    Collection<Entity> allies = world.getNearbyEntities(mob.getLocation(), hordeRadius, 5.0, hordeRadius);
+                    int pulled = 0;
+                    for (Entity allyEnt : allies) {
+                        if (allyEnt instanceof Mob && allyEnt != mob) {
+                            Mob ally = (Mob) allyEnt;
+                            if (isListener(ally) && ally.getTarget() == null && investigate(ally, center, speed)) {
+                                MobSenses.alerted().record(now);
+                                if (++pulled >= 4) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

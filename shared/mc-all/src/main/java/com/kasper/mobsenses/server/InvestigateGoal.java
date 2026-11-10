@@ -1,5 +1,6 @@
 package com.kasper.mobsenses.server;
 
+import com.kasper.mobsenses.MobSenses;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
@@ -36,6 +37,7 @@ public final class InvestigateGoal extends Goal {
     private int ticksRemaining;
     private int lookTicks;
     private int repathCooldown;
+    private long lastAlertMs;
 
     public InvestigateGoal(Mob mob) {
         this.mob = mob;
@@ -98,12 +100,20 @@ public final class InvestigateGoal extends Goal {
     }
 
     public void trigger(double x, double y, double z, double speed) {
+        long now = System.currentTimeMillis();
+        long cooldown = MobSenses.settings().alertCooldownMs();
+        double sameSpotDistSq = (x - this.targetX) * (x - this.targetX) + (z - this.targetZ) * (z - this.targetZ);
+        if (isInvestigating() && now - lastAlertMs < cooldown && sameSpotDistSq < 4.0 && speed <= this.speedModifier) {
+            return;
+        }
+        this.lastAlertMs = now;
         this.targetX = x;
         this.targetY = y;
         this.targetZ = z;
         this.speedModifier = speed;
+        int configuredTicks = (int) Math.round(MobSenses.settings().investigationSeconds() * 20.0);
         double dist = Math.hypot(x - mob.getX(), z - mob.getZ());
-        this.ticksRemaining = Math.max(MAX_INVESTIGATE_TICKS, (int) Math.min(1200, dist * 7.0));
+        this.ticksRemaining = Math.max(configuredTicks, (int) Math.min(1200, dist * 7.0));
         this.lookTicks = 0;
         this.repathCooldown = 0;
         if (mob.getTarget() == null) {
