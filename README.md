@@ -16,11 +16,11 @@
 
 Hostile mobs in vanilla notice you only within a fixed range. With Mob Senses they also use their senses:
 
-- **Hearing.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, gunshots (including suppressors and distant bullet wall impacts in TaCZ, PointBlank, CGM and Scorched Guns), explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls, rain, thunderstorms and Feather Falling / Swift Sneak boots muffle noise, glass and wood less, and an open door lets it through.
+- **Hearing.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, gunshots (including suppressors and distant bullet wall impacts in TaCZ, PointBlank, CGM and Scorched Guns), explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls, rain, thunderstorms, Feather Falling boots and Swift Sneak leggings muffle noise, glass and wood less, and an open door lets it through.
 - **Voice** (with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat)). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal voice, so a quiet microphone gives no free stealth.
 - **Light and stealth.** A torch or lantern in your hand makes you visible from afar; darkness, sneaking and invisibility potions hide you.
 - **Scent.** A badly wounded player (at or below half health) leaves a blood trail that zombies and spiders follow.
-- **Stealth HUD.** Players with the mod on the client see a compact indicator of their current noise, light exposure, voice activity and blood trail.
+- **Stealth HUD.** Players with the mod on the client get a customizable Stealth & Noise HUD (`tactical` card or `minimal` bar strip) showing noise, audible distance (`~Xm`), light exposure, `[Voice]` / `[Whisper]` state and blood scent — configurable anytime via `/mshud` without operator permissions.
 
 **A next-generation alternative to Zombie Awareness** — built with real wall occlusion, **TaCZ** gun and suppressor acoustics, **Simple Voice Chat** detection, darkness stealth, a customizable client Stealth HUD, and **zero library dependencies** (no CoroUtil needed) in one universal file for **Minecraft 1.16.5 – 26.3** on **Forge, NeoForge, Fabric, Quilt and Paper**.
 
@@ -65,8 +65,8 @@ The senses live on the server. The client part draws the stealth and noise HUD.
 | You run | Minecraft | File |
 |---|---|---|
 | **Fabric, Quilt** | 1.16.5 – 1.21.11, 26.1 – 26.3 | `mob-senses-fabric-…+mc1.16.5-26.x.jar` + [Fabric API](https://modrinth.com/mod/fabric-api) |
-| **Forge** | 1.16.5 – 1.21.11, 26.1 – 26.3 | `mob-senses-forge-neoforge-…+mc1.16.5-26.x.jar` |
-| **NeoForge** | 1.20.1 – 1.21.11, 26.1 – 26.3 | the same file |
+| **Forge** | 1.18 – 1.21.11, 26.1 – 26.3 | `mob-senses-forge-neoforge-…+mc1.18-26.x.jar` |
+| **NeoForge** | 1.20.1, 1.20.5 – 1.21.11, 26.1 – 26.3 | the same file |
 | **Paper, Purpur, Folia, Spigot** | 1.16.5 – 26.3 | `mob-senses-bukkit-….jar` |
 
 One file serves every Minecraft version of its loader: it picks the right code when the game starts.
@@ -75,10 +75,11 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 
 ## Commands
 
-`/mobsenses` is for operators (level 2) and the console. On Paper the permission is `mobsenses.admin` (operators by default). Replies come in the player's language.
+`/mobsenses` is for operators (level 2) and the console (on Paper the permission is `mobsenses.admin`, granted to operators by default). `/mshud` (alias `/mobsenseshud`) is a client-side command available to **every player on any server without operator permissions**, and `/mobsenses hud` also works in singleplayer without cheats. Replies come in the player's language.
 
 | Command | What it does |
 |---|---|
+| `/mshud [on\|off\|tactical\|minimal\|compact\|full\|auto_hide\|range\|<position>\|opacity\|offset\|bar\|reset]` | Customize your client Stealth HUD on any server without OP (style, position, opacity, audible range `~Xm`, smooth auto-hide, individual bars) |
 | `/mobsenses` or `/mobsenses status` | Version, preset, multipliers, voice chat, how much noise the server heard and how many mobs reacted in the last minute |
 | `/mobsenses preset <off\|subtle\|default\|hardcore>` | How keen the senses are; `off` makes mobs behave as in vanilla |
 | `/mobsenses hearing <0-3>` | How far mobs hear, times the preset |
@@ -89,7 +90,7 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | `/mobsenses set <option> [value\|default]` | View or change any setting from `mobsenses-server.properties` in-game with Tab-completion |
 | `/mobsenses get <option\|category>` | Inspect a single setting or an entire category (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) |
 | `/mobsenses reset <option\|all>` | Restore a setting or the entire config back to factory defaults |
-| `/mobsenses hud <on\|off\|compact\|full\|auto_hide\|position\|opacity\|offset\|bar\|reset>` | Adjust the client HUD in singleplayer without leaving the game |
+| `/mobsenses hud <…>` | Same HUD controls as `/mshud` when playing in singleplayer |
 | `/mobsenses reload` | Read the settings file again |
 | `/mobsenses help` | The list of commands |
 
@@ -118,7 +119,7 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | `gun.<id>.range`, `gun.<id>.silenced_range` | — | Optional per-weapon overrides by gun ID or keyword (e.g. `gun.tacz\:ai_awp.range=85`, `gun.glock.silenced_range=8`) |
 | `step_range` | `8` | Walking footstep hearing range in blocks (`0` – `256`); scaled by `sneak_step_multiplier` (`0.25`) and `sprint_step_multiplier` (`1.75`) |
 | `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` | `18`, `12`, `14`, `12`, `16`, `15`, `48`, `40`, `28`, `8` | Base hearing distance in blocks (`0` – `256`, `0` = disabled) for each sound category |
-| `rain_muffling`, `thunder_muffling`, `feather_falling_muffling` | `0.25`, `0.45`, `0.2` | Sound reduction during rain (`25`%), thunderstorms (`45`%), and footsteps with Feather Falling / Swift Sneak (`20`%) |
+| `rain_muffling`, `thunder_muffling`, `feather_falling_muffling` | `0.25`, `0.45`, `0.2` | Sound reduction during rain (`25`%), thunderstorms (`45`%), and footsteps with Feather Falling boots or Swift Sneak leggings (`20`%) |
 | `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Simple Voice Chat toggle, loud speaking range in blocks (`0` – `256`) and whisper multiplier (`0` – `1`) |
 | `sight_range`, `held_light_enabled`, `held_light_bonus`, `darkness_stealth_enabled`, `darkness_min_visibility`, `sneak_sight_multiplier`, `sprint_sight_multiplier` | `16`, `true`, `0.5`, `true`, `0.2`, `0.6`, `1.15` | Base sight distance (`0` – `256`), torchlight visibility bonus, darkness stealth floor, and posture sight multipliers |
 | `scent_enabled`, `scent_health_threshold`, `scent_range`, `scent_max_range`, `scent_duration_seconds`, `blood_particles`, `scent_mobs` | `true`, `50`, `14`, `24`, `15`, `true`, — | Blood scent trail toggle, health percentage threshold (`5` – `100`%), base & critical tracking range (`0` – `256` blocks), trail duration in seconds, blood droplets, and extra scent-tracking mob IDs |
@@ -133,12 +134,14 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | Show (`true`) or hide (`false`) the Stealth & Noise HUD |
+| `style` | `tactical` | `tactical` (chamfered card with stealth eye, threshold ticks & peak-hold) or `minimal` (ultra-clean slim bar strip) |
 | `position` | `top_left` | `top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center` or `hotbar` |
 | `x`, `y` | `10`, `10` | Pixel offset from the chosen position |
 | `opacity` | `100` | HUD opacity in percent (`10` – `100`) |
-| `compact` | `false` | `true` shows only the status line without the meter bars |
-| `auto_hide` | `false` | `true` automatically hides the HUD while you are completely quiet, in the dark, not bleeding and not speaking |
-| `show_noise`, `show_light`, `show_scent`, `show_voice` | `true` | Show or hide individual bars and the voice badge when `compact=false` |
+| `compact` | `false` | `true` shows only the status header without the meter bars |
+| `auto_hide` | `false` | `true` smoothly fades the HUD out while you are quiet, in the dark, not bleeding and not speaking |
+| `show_range` | `true` | Show the estimated audible radius in blocks (`~Xm`) when making noise |
+| `show_noise`, `show_light`, `show_scent`, `show_voice` | `true` | Show or hide individual bars and the `[Voice]` / `[Whisper]` badge |
 
 ## Compatibility
 
@@ -158,8 +161,8 @@ Java: what your Minecraft version needs (8 for 1.16.5, 16 for 1.17.1, 17 for 1.1
 | **Simple Voice Chat** | Built-in with per-player microphone auto-calibration (whisper vs. shout) | None |
 | **Darkness stealth & sight** | Held torches expose you from afar; sneaking in the dark or invisibility hides you and drops distant pursuit | Surface light lures only; no darkness stealth |
 | **Blood trails & server TPS** | Zero dummy entities spawned in the world; fast in-memory scent trails with crimson blood droplets | Spawns invisible marker entities in the world |
-| **Client Stealth HUD** | Customizable HUD (Noise, Light, Scent, Voice, compact & auto-hide modes) | None |
-| **Dependencies & platforms** | **Zero dependencies** (no CoroUtil) · **1 universal jar** for `1.16.5 – 26.3` across Forge, NeoForge, Fabric, Quilt & Paper/Folia | Requires **CoroUtil** · Separate jars per version/loader · No Paper/Folia |
+| **Client Stealth HUD** | Customizable `tactical` & `minimal` HUD (`~Xm` audible range, `[Whisper]` badge, peak-hold, smooth auto-hide, `/mshud` without OP) | None |
+| **Dependencies & platforms** | **Zero dependencies** (no CoroUtil) · **1 universal jar** per loader (`1.16.5 – 26.3` Fabric/Paper, `1.18 – 26.3` Forge/NeoForge) | Requires **CoroUtil** · Separate jars per version/loader · No Paper/Folia |
 
 ## Questions and problems
 

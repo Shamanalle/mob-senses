@@ -40,4 +40,19 @@ class ScentModelTest {
         // Crumb expires after CRUMB_LIFETIME_MS
         assertNull(scent.findNearestScent(world, 15.0, 64.0, 10.0, 2000L + ScentModel.CRUMB_LIFETIME_MS + 100L));
     }
+
+    @Test
+    void activePlayerCrumbsIsolatesPerPlayerTrail() {
+        ScentModel scent = new ScentModel();
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        String world = "minecraft:overworld";
+
+        scent.recordPlayer(world, alice, 0.0, 64.0, 0.0, 6.0, 20.0, Preset.DEFAULT, 1000L);
+        scent.recordPlayer(world, bob, 30.0, 64.0, 30.0, 6.0, 20.0, Preset.DEFAULT, 1100L);
+        scent.recordPlayer(world, alice, 5.0, 64.0, 0.0, 6.0, 20.0, Preset.DEFAULT, 1500L);
+
+        assertEquals(2, scent.activePlayerCrumbs(world, alice, 2000L).size());
+        assertEquals(1, scent.activePlayerCrumbs(world, bob, 2000L).size());
+    }
 }

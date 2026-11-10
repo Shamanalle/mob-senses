@@ -32,6 +32,7 @@ public final class MobSenses {
     private static volatile Platform platform = new Platform("unknown", "?");
     private static volatile boolean voiceChat;
     private static volatile boolean debug;
+    private static volatile java.util.UUID localPlayerId;
 
     private MobSenses() {
     }
@@ -145,6 +146,15 @@ public final class MobSenses {
         return clientSettings;
     }
 
+    /** Records the UUID of the local client player so LAN guests do not spike the host's HUD. */
+    public static void setLocalPlayerId(java.util.UUID id) {
+        localPlayerId = id;
+    }
+
+    public static java.util.UUID localPlayerId() {
+        return localPlayerId;
+    }
+
     /**
      * Records a voice noise emitted by a speaking player at {@code (x, y, z)} in {@code world} with
      * adaptive base range {@code baseRange}.
@@ -196,6 +206,17 @@ public final class MobSenses {
     public static void gameEvent(String event, String world, double x, double y, double z,
                                  NoiseModel.Posture posture, AcousticMaterial material,
                                  String blockId, boolean playerInvolved, double envMultiplier) {
+        gameEvent(event, world, x, y, z, posture, material, blockId, playerInvolved, envMultiplier, null);
+    }
+
+    /**
+     * A game event with its context, environmental/gear multiplier, and the UUID of the player who
+     * emitted it (or {@code null} when non-player / legacy caller).
+     */
+    public static void gameEvent(String event, String world, double x, double y, double z,
+                                 NoiseModel.Posture posture, AcousticMaterial material,
+                                 String blockId, boolean playerInvolved, double envMultiplier,
+                                 java.util.UUID sourcePlayerId) {
         try {
             Preset preset = settings.presetOf(world);
             if (preset == Preset.OFF) {
@@ -210,7 +231,8 @@ public final class MobSenses {
             double range = NoiseModel.effectiveRange(base, preset, settings.hearing());
             if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
                 COALESCER.record(world, kind, event, x, y, z, range);
-                if (playerInvolved) {
+                java.util.UUID localId = localPlayerId;
+                if (playerInvolved && (localId == null || (sourcePlayerId != null && localId.equals(sourcePlayerId)))) {
                     HUD.onLocalNoise(range, System.currentTimeMillis());
                 }
             }

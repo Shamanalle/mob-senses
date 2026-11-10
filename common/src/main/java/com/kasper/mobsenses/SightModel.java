@@ -67,8 +67,9 @@ public final class SightModel {
         int s = clampLight(skyLight);
         int h = clampLight(heldLight);
         int effectiveLight = Math.max(Math.max(b, s), h);
-        double ambient = 0.35 + 0.65 * (effectiveLight / 15.0);
         ServerSettings cfg = MobSenses.settings();
+        boolean darknessStealth = cfg == null || cfg.darknessStealthEnabled();
+        double ambient = darknessStealth ? (0.35 + 0.65 * (effectiveLight / 15.0)) : 1.0;
         double bonusWeight = cfg != null ? cfg.heldLightBonus() : 0.50;
         double heldBonus = h > 0 ? (bonusWeight * (h / 15.0)) : 0.0;
         return ambient + heldBonus;
@@ -78,6 +79,9 @@ public final class SightModel {
     public static double postureFactor(boolean sneaking, boolean sprinting) {
         ServerSettings cfg = MobSenses.settings();
         if (sneaking) {
+            if (cfg != null && !cfg.darknessStealthEnabled()) {
+                return 1.00;
+            }
             return cfg != null ? cfg.sneakSightMultiplier() : 0.60;
         }
         if (sprinting) {
@@ -90,7 +94,9 @@ public final class SightModel {
     public static double visibilityFactor(int blockLight, int skyLight, int heldLight,
                                           boolean sneaking, boolean sprinting) {
         ServerSettings cfg = MobSenses.settings();
-        double minVis = cfg != null ? cfg.darknessMinVisibility() : MIN_VISIBILITY_FACTOR;
+        double minVis = (cfg != null && !cfg.darknessStealthEnabled())
+                ? 1.0
+                : (cfg != null ? cfg.darknessMinVisibility() : MIN_VISIBILITY_FACTOR);
         double raw = lightFactor(blockLight, skyLight, heldLight) * postureFactor(sneaking, sprinting);
         return Math.max(minVis, Math.min(MAX_VISIBILITY_FACTOR, raw));
     }
@@ -105,17 +111,31 @@ public final class SightModel {
             return Math.max(0.0, baseRange);
         }
         ServerSettings cfg = MobSenses.settings();
-        double minVis = cfg != null ? cfg.darknessMinVisibility() : MIN_VISIBILITY_FACTOR;
+        double minVis = (cfg != null && !cfg.darknessStealthEnabled())
+                ? 1.0
+                : (cfg != null ? cfg.darknessMinVisibility() : MIN_VISIBILITY_FACTOR);
         double factor = visibilityFactor(blockLight, skyLight, heldLight, sneaking, sprinting);
-        double scaled = 1.0 + (factor - 1.0) * preset.hearing();
+        double scaled = 1.0 + (factor - 1.0) * preset.sight();
         return Math.max(2.0, baseRange * Math.max(minVis, scaled));
+    }
+
+    /**
+     * Light exposure percentage ({@code 0..100}) for the client Stealth HUD, optionally accounting
+     * for potion invisibility when not holding a light source.
+     */
+    public static int lightExposurePercent(int blockLight, int skyLight, int heldLight, boolean sneaking) {
+        return lightExposurePercent(blockLight, skyLight, heldLight, sneaking, false);
     }
 
     /**
      * Light exposure percentage ({@code 0..100}) for the client Stealth HUD.
      */
-    public static int lightExposurePercent(int blockLight, int skyLight, int heldLight, boolean sneaking) {
+    public static int lightExposurePercent(
+            int blockLight, int skyLight, int heldLight, boolean sneaking, boolean invisible) {
         double vis = visibilityFactor(blockLight, skyLight, heldLight, sneaking, false);
+        if (invisible && heldLight <= 0) {
+            vis *= 0.15;
+        }
         double normalized = (vis - MIN_VISIBILITY_FACTOR) / (1.50 - MIN_VISIBILITY_FACTOR);
         return (int) Math.round(Math.max(0.0, Math.min(1.0, normalized)) * 100.0);
     }

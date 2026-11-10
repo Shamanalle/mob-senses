@@ -43,7 +43,7 @@ public final class ServerHearing {
     private static int recentBulletCursor;
     private static final java.util.Map<java.util.UUID, String> LAST_FIREARM_KEY = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.Map<java.util.UUID, Integer> LAST_FIREARM_AMMO = new java.util.concurrent.ConcurrentHashMap<>();
-    private static long levelTickCounter;
+    private static int cleanupCounter;
     private static final java.lang.reflect.Method ITEM_GET_TAG;
     private static final java.lang.reflect.Method ITEM_GET_COMPONENTS;
 
@@ -152,7 +152,11 @@ public final class ServerHearing {
         if (kind == NoiseModel.Kind.STEP && hasStealthEnchant(player)) {
             envMult *= Math.max(0.0, 1.0 - MobSenses.settings().featherFallingMuffling());
         }
-        MobSenses.gameEvent(effectiveEvent, worldId, x, y, z, posture, material, contextId, player != null, envMult);
+        MobSenses.gameEvent(
+                effectiveEvent, worldId, x, y, z,
+                posture, material, contextId,
+                player != null, envMult,
+                player != null ? player.getUUID() : null);
     }
 
     /**
@@ -162,6 +166,14 @@ public final class ServerHearing {
     public static void tickServer(MinecraftServer server) {
         if (server == null) {
             return;
+        }
+        if (++cleanupCounter % 200 == 0 && !LAST_FIREARM_KEY.isEmpty()) {
+            for (java.util.UUID id : new ArrayList<>(LAST_FIREARM_KEY.keySet())) {
+                if (server.getPlayerList().getPlayer(id) == null) {
+                    LAST_FIREARM_KEY.remove(id);
+                    LAST_FIREARM_AMMO.remove(id);
+                }
+            }
         }
         for (ServerLevel level : server.getAllLevels()) {
             tickLevel(level);
@@ -248,7 +260,7 @@ public final class ServerHearing {
         }
 
         // 3. Sight (held light / darkness + sneaking) and Scent (wounded blood trail)
-        if (++levelTickCounter % SENSE_TICK_INTERVAL == 0) {
+        if (level.getGameTime() % SENSE_TICK_INTERVAL == 0) {
             for (ServerPlayer player : level.players()) {
                 if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
                     continue;
@@ -269,29 +281,47 @@ public final class ServerHearing {
         double px = player.getX();
         double py = player.getY();
         double pz = player.getZ();
+        double investigateSpeed = MobSenses.settings().investigateSpeed();
 
         // Scent: badly wounded players leave a trail followed by zombies and spiders
         double scentRange = MobSenses.scent().recordPlayer(
                 worldId, player.getUUID(), px, py, pz,
                 player.getHealth(), player.getMaxHealth(), preset, now);
-        if (scentRange > 0.0) {
-            if (MobSenses.settings().bloodParticles()) {
-                for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldId, now)) {
-                    if (player.getUUID().equals(c.playerId())) {
-                        ParticleSender.sendBloodCrumb(level, c.x(), c.y(), c.z());
-                    }
+        List<ScentModel.Crumb> playerCrumbs = MobSenses.scent().activePlayerCrumbs(worldId, player.getUUID(), now);
+        if (scentRange > 0.0 || !playerCrumbs.isEmpty()) {
+            double boxPad = scentRange > 0.0 ? scentRange : MobSenses.settings().scentMaxRange();
+            double minX = px;
+            double maxX = px;
+            double minY = py;
+            double maxY = py;
+            double minZ = pz;
+            double maxZ = pz;
+            for (ScentModel.Crumb c : playerCrumbs) {
+                minX = Math.min(minX, c.x());
+                maxX = Math.max(maxX, c.x());
+                minY = Math.min(minY, c.y());
+                maxY = Math.max(maxY, c.y());
+                minZ = Math.min(minZ, c.z());
+                maxZ = Math.max(maxZ, c.z());
+                boxPad = Math.max(boxPad, c.range());
+            }
+            if (scentRange > 0.0 && MobSenses.settings().bloodParticles()) {
+                int start = Math.max(0, playerCrumbs.size() - 3);
+                for (int i = start; i < playerCrumbs.size(); i++) {
+                    ScentModel.Crumb c = playerCrumbs.get(i);
+                    ParticleSender.sendBloodCrumb(level, c.x(), c.y(), c.z());
                 }
             }
             AABB scentBox = new AABB(
-                    px - scentRange, py - 6.0, pz - scentRange,
-                    px + scentRange, py + 6.0, pz + scentRange);
+                    minX - boxPad, minY - 6.0, minZ - boxPad,
+                    maxX + boxPad, maxY + 6.0, maxZ + boxPad);
             List<Mob> trackers = level.getEntitiesOfClass(Mob.class, scentBox,
                     m -> m.isAlive() && !m.isNoAi() && m.getTarget() == null && isScentTrackerMob(m));
             int alertedCount = 0;
             for (Mob mob : trackers) {
                 ScentModel.Crumb crumb = MobSenses.scent().findNearestScent(
                         worldId, mob.getX(), mob.getY(), mob.getZ(), now);
-                if (crumb != null && InvestigateGoal.alert(mob, crumb.x(), crumb.y(), crumb.z(), 1.10)) {
+                if (crumb != null && InvestigateGoal.alert(mob, crumb.x(), crumb.y(), crumb.z(), investigateSpeed)) {
                     MobSenses.alerted().record(now);
                     if (MobSenses.debug()) {
                         ParticleSender.sendScentTrace(
@@ -347,7 +377,7 @@ public final class ServerHearing {
                         level,
                         new Vec3(mob.getX(), mob.getEyeY(), mob.getZ()),
                         new Vec3(px, player.getEyeY(), pz)) <= 0.1;
-                if (lineOfSight && InvestigateGoal.alert(mob, px, py, pz, 1.10)) {
+                if (lineOfSight && InvestigateGoal.alert(mob, px, py, pz, investigateSpeed)) {
                     MobSenses.alerted().record(now);
                     if (MobSenses.debug()) {
                         ParticleSender.sendSightTrace(
@@ -359,8 +389,8 @@ public final class ServerHearing {
                     }
                 }
             }
-        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < configuredSightRange * 0.75) {
-            double checkRadius = configuredSightRange + 6.0;
+        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < baseSight * 0.78) {
+            double checkRadius = Math.max(configuredSightRange, baseSight) + 6.0;
             AABB darkBox = new AABB(
                     px - checkRadius, py - 8.0, pz - checkRadius,
                     px + checkRadius, py + 8.0, pz + checkRadius);
@@ -383,7 +413,7 @@ public final class ServerHearing {
         if (MobSenses.settings().isIgnoredMob(key)) {
             return false;
         }
-        return ScentModel.isScentTracker(key) || MobSenses.settings().isExtraListener(key);
+        return ScentModel.isScentTracker(key);
     }
 
     public static String itemId(ItemStack stack) {
@@ -509,7 +539,8 @@ public final class ServerHearing {
                     ? "mobsenses:gunshot_silenced"
                     : "mobsenses:gunshot";
             double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
-            MobSenses.gameEvent(event, worldId, px, py, pz, NoiseModel.Posture.WALKING, null, fId + " " + tag, true, envMult);
+            MobSenses.gameEvent(event, worldId, px, py, pz,
+                    NoiseModel.Posture.WALKING, null, fId + " " + tag, true, envMult, player.getUUID());
 
             if (MobSenses.settings().bulletImpactRange() > 0.0) {
                 Vec3 look = player.getLookAngle();
@@ -525,8 +556,12 @@ public final class ServerHearing {
                     if (dx * dx + dy * dy + dz * dz < 4.0) {
                         return false;
                     }
-                    BlockState st = level.getBlockState(new BlockPos(bx, by, bz));
-                    if (!st.isAir() && st.getFluidState().isEmpty()) {
+                    BlockPos bPos = new BlockPos(bx, by, bz);
+                    BlockState st = level.getBlockState(bPos);
+                    if (!st.isAir()
+                            && st.getFluidState().isEmpty()
+                            && !BlockAcoustics.isOpenableOpen(st)
+                            && !st.getCollisionShape(level, bPos).isEmpty()) {
                         hitBlock[0] = bx;
                         hitBlock[1] = by;
                         hitBlock[2] = bz;
@@ -542,14 +577,14 @@ public final class ServerHearing {
                     double distSq = (hx - px) * (hx - px) + (hy - py) * (hy - py) + (hz - pz) * (hz - pz);
                     if (distSq >= 144.0) {
                         MobSenses.gameEvent("mobsenses:bullet_impact", worldId, hx, hy, hz,
-                                NoiseModel.Posture.WALKING, null, null, true, envMult);
+                                NoiseModel.Posture.WALKING, null, null, true, envMult, player.getUUID());
                     }
                 }
             }
         }
     }
 
-    private static String extractGunId(String tag) {
+    public static String extractGunId(String tag) {
         if (tag == null || tag.isEmpty()) {
             return "";
         }
@@ -561,7 +596,7 @@ public final class ServerHearing {
         return tag.substring(idx, end);
     }
 
-    private static int extractFirearmAmmo(String tag) {
+    public static int extractFirearmAmmo(String tag) {
         if (tag == null || tag.isEmpty()) {
             return -1;
         }
@@ -604,7 +639,7 @@ public final class ServerHearing {
         }
     }
 
-    private static boolean hasStealthEnchant(Player player) {
+    public static boolean hasStealthEnchant(Player player) {
         if (player == null) {
             return false;
         }

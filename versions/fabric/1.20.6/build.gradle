@@ -1,0 +1,92 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+evaluationDependsOn(':common')
+
+// Minecraft 1.20.5 - 1.20.6 (compiled against 1.20.6, Java 21 bytecode)
+def target = "mc1.20.5-1.20.6"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-fabric"
+}
+
+repositories {
+    mavenCentral()
+}
+
+def src116 = file("${rootDir}/versions/fabric/1.16/src/main/java").toPath()
+def src120 = file("${rootDir}/versions/fabric/1.20/src/main/java").toPath()
+def src121 = file("${rootDir}/versions/fabric/1.21/src/main/java").toPath()
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+            srcDir "${rootDir}/versions/fabric/1.16/src/main/java"
+            srcDir "${rootDir}/versions/fabric/1.20/src/main/java"
+            srcDir "${rootDir}/versions/fabric/1.21/src/main/java"
+            exclude { e ->
+                if (e.directory) return false
+                def p = e.file.toPath()
+                if (p.startsWith(src116)) {
+                    def rel = src116.relativize(p).toString().replace('\\', '/')
+                    return rel != 'com/kasper/mobsenses/server/AdminPermission.java'
+                }
+                if (p.startsWith(src120)) {
+                    def rel = src120.relativize(p).toString().replace('\\', '/')
+                    return rel != 'com/kasper/mobsenses/MobSensesClient.java'
+                }
+                if (p.startsWith(src121)) {
+                    def rel = src121.relativize(p).toString().replace('\\', '/')
+                    return rel == 'com/kasper/mobsenses/MobSensesClient.java'
+                            || rel == 'com/kasper/mobsenses/server/AdminPermission.java'
+                }
+                return false
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common')
+
+    minecraft "com.mojang:minecraft:${project.mc1206_minecraft}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.mc1206_fabric_loader}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.mc1206_fabric_api}"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "mobsenses-refmap.json"
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+}
+
+remapJar {
+    archiveClassifier = ''
+}

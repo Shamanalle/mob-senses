@@ -1,6 +1,7 @@
 package com.kasper.mobsenses.server;
 
 import com.kasper.mobsenses.AdminCommands;
+import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.Reply;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -11,15 +12,20 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * {@code /mobsenses} on a Fabric, Forge or NeoForge server. The text after the command goes to
  * {@link AdminCommands} as it is, so every version registers the same small tree; the replies come back
  * as coloured chat lines in the sender's language.
+ * <p>
+ * On integrated singleplayer worlds, the host player may also run {@code /mobsenses hud ...} even when
+ * cheats are turned off.
  */
 public final class MobSensesCommand {
 
@@ -28,11 +34,35 @@ public final class MobSensesCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal(AdminCommands.NAME)
-                .requires(AdminPermission::isAdmin)
-                .executes(ctx -> run(ctx, ""))
+                .requires(s -> AdminPermission.isAdmin(s) || isLocalSingleplayerHost(s))
+                .executes(ctx -> {
+                    if (!AdminPermission.isAdmin(ctx.getSource())) {
+                        return run(ctx, "hud");
+                    }
+                    return run(ctx, "");
+                })
+                .then(Commands.literal("hud")
+                        .executes(ctx -> run(ctx, "hud"))
+                        .then(Commands.argument("hudArgs", StringArgumentType.greedyString())
+                                .suggests((ctx, b) -> suggestPrefixed(ctx, b, "hud "))
+                                .executes(ctx -> run(ctx, "hud " + StringArgumentType.getString(ctx, "hudArgs")))))
                 .then(Commands.argument("args", StringArgumentType.greedyString())
-                        .suggests(MobSensesCommand::suggest)
+                        .requires(AdminPermission::isAdmin)
+                        .suggests((ctx, b) -> suggestPrefixed(ctx, b, ""))
                         .executes(ctx -> run(ctx, StringArgumentType.getString(ctx, "args")))));
+    }
+
+    private static boolean isLocalSingleplayerHost(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        if (server == null || server.isDedicatedServer()) {
+            return false;
+        }
+        if (!(source.getEntity() instanceof ServerPlayer)) {
+            return false;
+        }
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        UUID localId = MobSenses.localPlayerId();
+        return localId == null || localId.equals(player.getUUID());
     }
 
     private static int run(CommandContext<CommandSourceStack> ctx, String args) {
@@ -45,10 +75,11 @@ public final class MobSensesCommand {
         return reply.refused() ? 0 : 1;
     }
 
-    private static CompletableFuture<Suggestions> suggest(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+    private static CompletableFuture<Suggestions> suggestPrefixed(
+            CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder, String prefix) {
         String typed = builder.getRemaining();
         SuggestionsBuilder word = builder.createOffset(builder.getStart() + typed.lastIndexOf(' ') + 1);
-        for (String s : AdminCommands.suggestions(typed, context(ctx.getSource()))) {
+        for (String s : AdminCommands.suggestions(prefix + typed, context(ctx.getSource()))) {
             word.suggest(s);
         }
         return word.buildFuture();
@@ -60,7 +91,9 @@ public final class MobSensesCommand {
                 : null;
         String language = player == null ? "" : PlayerLanguage.of(player);
         String world = player == null ? null : Worlds.id(source.getLevel());
-        List<String> worlds = Worlds.ids(source.getServer());
+        MinecraftServer server = source.getServer();
+        List<String> worlds = Worlds.ids(server);
+        boolean dedicated = server != null && server.isDedicatedServer();
         return new AdminCommands.Context() {
             @Override
             public String language() {
@@ -76,10 +109,15 @@ public final class MobSensesCommand {
             public List<String> worlds() {
                 return worlds;
             }
+
+            @Override
+            public boolean isDedicatedServer() {
+                return dedicated;
+            }
         };
     }
 
-    private static ChatFormatting color(Reply.Kind kind) {
+    public static ChatFormatting color(Reply.Kind kind) {
         switch (kind) {
             case TITLE:
                 return ChatFormatting.GOLD;

@@ -5,6 +5,7 @@ import com.destroystokyo.paper.entity.ai.Goal;
 import com.destroystokyo.paper.entity.ai.GoalKey;
 import com.destroystokyo.paper.entity.ai.GoalType;
 import com.destroystokyo.paper.entity.ai.MobGoals;
+import com.kasper.mobsenses.MobSenses;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -22,9 +23,9 @@ import java.util.EnumSet;
 public final class PaperPathfinder {
 
     public static final int PRIORITY = 6;
-    private static final int MAX_INVESTIGATE_TICKS = 160;
     private static final int LOOK_AROUND_TICKS = 50;
     private static final double ARRIVAL_DIST_SQ = 3.25;
+    private static final double WAYPOINT_STEP_DIST = 14.0;
 
     private PaperPathfinder() {
     }
@@ -57,7 +58,33 @@ public final class PaperPathfinder {
             } catch (Throwable ignored) {
             }
         }
-        return pathfinder.moveTo(target, speed);
+        return stepMoveTo(mob, pathfinder, target, speed);
+    }
+
+    private static boolean stepMoveTo(Mob mob, Pathfinder pf, Location target, double speed) {
+        Location loc = mob.getLocation();
+        if (loc.getWorld() != target.getWorld()) {
+            return false;
+        }
+        double dx = target.getX() - loc.getX();
+        double dy = target.getY() - loc.getY();
+        double dz = target.getZ() - loc.getZ();
+        double horiz = Math.hypot(dx, dz);
+        if (horiz <= WAYPOINT_STEP_DIST && pf.moveTo(target, speed)) {
+            return true;
+        }
+        if (horiz > 1.0e-3) {
+            double step = Math.min(WAYPOINT_STEP_DIST, horiz);
+            Location wp = new Location(
+                    loc.getWorld(),
+                    loc.getX() + (dx / horiz) * step,
+                    loc.getY() + (dy / Math.max(1.0, horiz)) * Math.min(4.0, step),
+                    loc.getZ() + (dz / horiz) * step);
+            if (pf.moveTo(wp, speed)) {
+                return true;
+            }
+        }
+        return pf.moveTo(target, speed);
     }
 
     private static final class InvestigateMobGoal implements Goal<Mob> {
@@ -69,6 +96,7 @@ public final class PaperPathfinder {
         private int ticksRemaining;
         private int lookTicks;
         private int repathCooldown;
+        private long lastAlertMs;
 
         InvestigateMobGoal(GoalKey<Mob> key, Mob mob, Location target, double speed) {
             this.key = key;
@@ -76,23 +104,44 @@ public final class PaperPathfinder {
             trigger(target, speed);
         }
 
-        void trigger(Location target, double speed) {
-            this.target = target.clone();
-            this.speed = speed;
-            this.ticksRemaining = MAX_INVESTIGATE_TICKS;
+        void trigger(Location nextTarget, double nextSpeed) {
+            long now = System.currentTimeMillis();
+            long cooldown = MobSenses.settings().alertCooldownMs();
+            Location mobLoc = mob.getLocation();
+            if (ticksRemaining > 0 && this.target != null && this.target.getWorld() == nextTarget.getWorld()) {
+                double sameSpotSq = this.target.distanceSquared(nextTarget);
+                if ((now - lastAlertMs) < cooldown && sameSpotSq < 4.0 && nextSpeed <= this.speed) {
+                    return;
+                }
+                if (lookTicks == 0 && mobLoc.getWorld() == nextTarget.getWorld() && nextSpeed <= this.speed) {
+                    double curDistSq = mobLoc.distanceSquared(this.target);
+                    double nextDistSq = mobLoc.distanceSquared(nextTarget);
+                    if (curDistSq < nextDistSq * 0.72) {
+                        return;
+                    }
+                }
+            }
+            this.lastAlertMs = now;
+            this.target = nextTarget.clone();
+            this.speed = nextSpeed;
+            int configuredTicks = Math.max(20, (int) Math.round(MobSenses.settings().investigationSeconds() * 20.0));
+            double dist = mobLoc.getWorld() == nextTarget.getWorld()
+                    ? Math.hypot(nextTarget.getX() - mobLoc.getX(), nextTarget.getZ() - mobLoc.getZ())
+                    : 0.0;
+            this.ticksRemaining = Math.max(configuredTicks, (int) Math.min(1200, dist * 7.0));
             this.lookTicks = 0;
             this.repathCooldown = 0;
             if (mob.getTarget() == null) {
                 Pathfinder pf = mob.getPathfinder();
                 if (pf != null) {
-                    pf.moveTo(this.target, speed);
+                    stepMoveTo(mob, pf, this.target, nextSpeed);
                 }
             }
         }
 
         @Override
         public boolean shouldActivate() {
-            return ticksRemaining > 0 && target != null && mob.isValid() && mob.getTarget() == null;
+            return ticksRemaining > 0 && target != null && mob.isValid() && mob.getTarget() == null && !mob.isInsideVehicle();
         }
 
         @Override
@@ -105,7 +154,7 @@ public final class PaperPathfinder {
             repathCooldown = 0;
             Pathfinder pf = mob.getPathfinder();
             if (pf != null && target != null) {
-                pf.moveTo(target, speed);
+                stepMoveTo(mob, pf, target, speed);
             }
         }
 
@@ -150,7 +199,7 @@ public final class PaperPathfinder {
             if (--repathCooldown <= 0 || (pf != null && !pf.hasPath())) {
                 repathCooldown = 15;
                 if (pf != null) {
-                    pf.moveTo(target, speed);
+                    stepMoveTo(mob, pf, target, speed);
                 }
             }
         }

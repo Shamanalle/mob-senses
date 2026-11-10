@@ -15,6 +15,7 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
@@ -31,7 +32,10 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Full server-side parity for the Bukkit / Spigot / Paper / Purpur / Folia plugin:
@@ -39,26 +43,34 @@ import java.util.Set;
  *   <li>Coalesced hearing and Simple Voice Chat events attenuated through walls via {@link BukkitAcoustics}.</li>
  *   <li>Mob investigation pathing via {@link PaperPathfinder} on Paper/Purpur/Folia, with a pure-Spigot
  *       fallback ({@link #spigotFallbackMove}) when Paper's {@code Pathfinder} API is absent.</li>
- *   <li>Light & posture sight adjustments and wounded blood-scent tracking for zombies and spiders.</li>
- *   <li>Admin debug particles when {@code /mobsenses debug on} is active.</li>
+ *   <li>Light & posture sight adjustments (with solar/weather sky darkening) and wounded blood-scent tracking.</li>
+ *   <li>Folia-safe admin debug particles when {@code /mobsenses debug on} is active.</li>
  * </ul>
  */
 public final class BukkitSenses {
 
     private static final boolean HAS_PAPER_PATHFINDER = hasClass("com.destroystokyo.paper.entity.Pathfinder");
     private static final int SENSE_TICK_INTERVAL = 10;
+    private static final int MAX_RAY_CHECKS_PER_NOISE = 24;
 
     private static final Set<String> LISTENER_NAMES = new HashSet<>(Arrays.asList(
             "zombie", "zombie_villager", "husk", "drowned", "zombified_piglin", "pig_zombie",
             "skeleton", "stray", "bogged", "wither_skeleton", "creeper", "spider", "cave_spider",
             "pillager", "vindicator", "evoker", "illusioner", "ravager", "witch",
-            "piglin", "piglin_brute", "enderman", "blaze", "breeze"
+            "piglin", "piglin_brute", "hoglin", "zoglin", "enderman", "blaze", "breeze",
+            "slime", "magma_cube"
     ));
 
+    private static final Map<UUID, Long> LAST_ALERT_MS = new ConcurrentHashMap<>();
     private static int tickCounter;
     private static volatile Plugin activePlugin;
+    private static volatile Scheduling activeScheduling;
 
     private BukkitSenses() {
+    }
+
+    public static void clear() {
+        LAST_ALERT_MS.clear();
     }
 
     public static NoiseModel.Posture posture(Player player) {
@@ -85,6 +97,9 @@ public final class BukkitSenses {
         return mult;
     }
 
+    /**
+     * Checks whether {@code player} wears Feather Falling boots or Swift Sneak leggings.
+     */
     public static boolean hasStealthBoots(Player player) {
         if (player == null) {
             return false;
@@ -94,24 +109,38 @@ public final class BukkitSenses {
             if (eq == null) {
                 return false;
             }
-            ItemStack boots = eq.getBoots();
-            if (boots == null || boots.getType().isAir()) {
-                return false;
+            if (hasEnchantMatching(eq.getBoots(), "feather_falling", "protection_fall", "swift_sneak")) {
+                return true;
             }
-            for (org.bukkit.enchantments.Enchantment ench : boots.getEnchantments().keySet()) {
-                String name = ench.getName().toLowerCase(Locale.ROOT);
-                if (name.contains("feather_falling") || name.contains("protection_fall") || name.contains("swift_sneak")) {
-                    return true;
-                }
-                try {
-                    String key = ench.getKey().getKey().toLowerCase(Locale.ROOT);
-                    if (key.contains("feather_falling") || key.contains("swift_sneak")) {
-                        return true;
-                    }
-                } catch (Throwable ignored) {
-                }
+            if (hasEnchantMatching(eq.getLeggings(), "swift_sneak")) {
+                return true;
             }
         } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean hasEnchantMatching(ItemStack item, String... tokens) {
+        if (item == null || item.getType().isAir()) {
+            return false;
+        }
+        for (Enchantment ench : item.getEnchantments().keySet()) {
+            String name = ench.getName() != null ? ench.getName().toLowerCase(Locale.ROOT) : "";
+            for (String token : tokens) {
+                if (name.contains(token)) {
+                    return true;
+                }
+            }
+            try {
+                String key = ench.getKey().getKey().toLowerCase(Locale.ROOT);
+                for (String token : tokens) {
+                    if (key.contains(token)) {
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
         }
         return false;
     }
@@ -119,8 +148,15 @@ public final class BukkitSenses {
     public static void tick(Plugin plugin, Scheduling scheduling) {
         try {
             activePlugin = plugin;
+            activeScheduling = scheduling;
             long now = System.currentTimeMillis();
-            boolean senseTick = (++tickCounter % SENSE_TICK_INTERVAL) == 0;
+            int currentTick = ++tickCounter;
+            boolean senseTick = (currentTick % SENSE_TICK_INTERVAL) == 0;
+
+            if ((currentTick % 400) == 0 && !LAST_ALERT_MS.isEmpty()) {
+                long cutoff = now - 60_000L;
+                LAST_ALERT_MS.entrySet().removeIf(e -> e.getValue() < cutoff);
+            }
 
             for (World world : Bukkit.getWorlds()) {
                 String worldName = world.getName();
@@ -173,12 +209,20 @@ public final class BukkitSenses {
         double r = noise.range();
         Collection<Entity> nearby = world.getNearbyEntities(center, r, r, r);
         List<Mob> candidates = new ArrayList<>();
+        long cooldownMs = MobSenses.settings().alertCooldownMs();
         for (Entity entity : nearby) {
             if (entity instanceof Mob) {
                 Mob mob = (Mob) entity;
-                if (isListener(mob) && mob.getTarget() == null) {
-                    candidates.add(mob);
+                if (!isListener(mob) || mob.getTarget() != null) {
+                    continue;
                 }
+                if (cooldownMs > 0L) {
+                    Long prev = LAST_ALERT_MS.get(mob.getUniqueId());
+                    if (prev != null && (now - prev) < cooldownMs) {
+                        continue;
+                    }
+                }
+                candidates.add(mob);
             }
         }
         if (candidates.isEmpty()) {
@@ -189,6 +233,7 @@ public final class BukkitSenses {
                 b.getLocation().distanceSquared(center)));
 
         int alerted = 0;
+        int rayChecks = 0;
         double speed = noise.kind() == NoiseModel.Kind.EXPLOSION
                 || noise.kind() == NoiseModel.Kind.GUNSHOT
                 || noise.kind() == NoiseModel.Kind.COMBAT
@@ -200,7 +245,7 @@ public final class BukkitSenses {
         int maxAlerts = MobSenses.settings().maxAlertedMobs();
         double hordeRadius = MobSenses.settings().hordeAlertRange();
         for (Mob mob : candidates) {
-            if (alerted >= maxAlerts) {
+            if (alerted >= maxAlerts || rayChecks >= MAX_RAY_CHECKS_PER_NOISE) {
                 break;
             }
             Location eye = mob.getEyeLocation();
@@ -208,11 +253,13 @@ public final class BukkitSenses {
             if (dist > r) {
                 continue;
             }
+            rayChecks++;
             double thickness = BukkitAcoustics.traceBundle(
                     world, noise.x(), noise.y(), noise.z(), eye.getX(), eye.getY(), eye.getZ());
             double audible = NoiseModel.audibleRange(r, thickness);
             if (dist <= audible && investigate(mob, center, speed)) {
                 alerted++;
+                LAST_ALERT_MS.put(mob.getUniqueId(), now);
                 MobSenses.alerted().record(now);
                 if (MobSenses.debug()) {
                     sendDebugTrace(world, center, eye);
@@ -225,6 +272,7 @@ public final class BukkitSenses {
                         if (allyEnt instanceof Mob && allyEnt != mob) {
                             Mob ally = (Mob) allyEnt;
                             if (isListener(ally) && ally.getTarget() == null && investigate(ally, center, speed)) {
+                                LAST_ALERT_MS.put(ally.getUniqueId(), now);
                                 MobSenses.alerted().record(now);
                                 if (++pulled >= maxAllies) {
                                     break;
@@ -247,20 +295,42 @@ public final class BukkitSenses {
         double py = ploc.getY();
         double pz = ploc.getZ();
         double maxHealth = maxHealth(player);
+        double investigateSpeed = MobSenses.settings().investigateSpeed();
 
         // Scent trail for badly wounded players
         double scentRange = MobSenses.scent().recordPlayer(
                 worldName, player.getUniqueId(), px, py, pz,
                 player.getHealth(), maxHealth, preset, now);
-        if (scentRange > 0.0) {
-            if (MobSenses.settings().bloodParticles()) {
-                for (ScentModel.Crumb c : MobSenses.scent().activeCrumbs(worldName, now)) {
-                    if (player.getUniqueId().equals(c.playerId())) {
-                        sendBloodCrumb(world, c.x(), c.y(), c.z());
-                    }
+        List<ScentModel.Crumb> playerCrumbs = MobSenses.scent().activePlayerCrumbs(worldName, player.getUniqueId(), now);
+        if (scentRange > 0.0 || !playerCrumbs.isEmpty()) {
+            double boxPad = scentRange > 0.0 ? scentRange : MobSenses.settings().scentMaxRange();
+            double minX = px;
+            double maxX = px;
+            double minY = py;
+            double maxY = py;
+            double minZ = pz;
+            double maxZ = pz;
+            for (ScentModel.Crumb c : playerCrumbs) {
+                minX = Math.min(minX, c.x());
+                maxX = Math.max(maxX, c.x());
+                minY = Math.min(minY, c.y());
+                maxY = Math.max(maxY, c.y());
+                minZ = Math.min(minZ, c.z());
+                maxZ = Math.max(maxZ, c.z());
+                boxPad = Math.max(boxPad, c.range());
+            }
+            if (scentRange > 0.0 && MobSenses.settings().bloodParticles()) {
+                int start = Math.max(0, playerCrumbs.size() - 3);
+                for (int i = start; i < playerCrumbs.size(); i++) {
+                    ScentModel.Crumb c = playerCrumbs.get(i);
+                    sendBloodCrumb(world, c.x(), c.y(), c.z());
                 }
             }
-            Collection<Entity> nearby = world.getNearbyEntities(ploc, scentRange, 6.0, scentRange);
+            Location boxCenter = new Location(world, (minX + maxX) * 0.5, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5);
+            double halfX = (maxX - minX) * 0.5 + boxPad;
+            double halfY = (maxY - minY) * 0.5 + 6.0;
+            double halfZ = (maxZ - minZ) * 0.5 + boxPad;
+            Collection<Entity> nearby = world.getNearbyEntities(boxCenter, halfX, halfY, halfZ);
             int count = 0;
             for (Entity entity : nearby) {
                 if (!(entity instanceof Mob)) {
@@ -275,7 +345,7 @@ public final class BukkitSenses {
                         worldName, mloc.getX(), mloc.getY(), mloc.getZ(), now);
                 if (crumb != null) {
                     Location target = new Location(world, crumb.x(), crumb.y(), crumb.z());
-                    if (investigate(mob, target, 1.10)) {
+                    if (investigate(mob, target, investigateSpeed)) {
                         MobSenses.alerted().record(now);
                         if (MobSenses.debug()) {
                             sendScentDebugTrace(world, target, mob.getEyeLocation());
@@ -288,7 +358,7 @@ public final class BukkitSenses {
             }
         }
 
-        // Sight & Light
+        // Sight & Light (accounting for time-of-day & storm sky darkening on Bukkit)
         double sightMult = MobSenses.settings().sight();
         double configuredSightRange = MobSenses.settings().sightRange();
         if (!(sightMult > 0.0) || !(configuredSightRange > 0.0)) {
@@ -296,7 +366,7 @@ public final class BukkitSenses {
         }
         Block block = ploc.getBlock();
         int blockLight = block.getLightFromBlocks();
-        int skyLight = block.getLightFromSky();
+        int skyLight = Math.max(0, block.getLightFromSky() - skyDarkening(world));
         EntityEquipment eq = player.getEquipment();
         int heldLight = 0;
         if (eq != null && MobSenses.settings().heldLightEnabled()) {
@@ -325,7 +395,7 @@ public final class BukkitSenses {
                 }
                 if (mob.getEyeLocation().distanceSquared(player.getEyeLocation()) <= effectiveSight * effectiveSight
                         && mob.hasLineOfSight(player)
-                        && investigate(mob, ploc, 1.10)) {
+                        && investigate(mob, ploc, investigateSpeed)) {
                     MobSenses.alerted().record(now);
                     if (MobSenses.debug()) {
                         sendDebugTrace(world, player.getEyeLocation(), mob.getEyeLocation());
@@ -335,8 +405,8 @@ public final class BukkitSenses {
                     }
                 }
             }
-        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < configuredSightRange * 0.75) {
-            double checkRadius = configuredSightRange + 6.0;
+        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < baseSight * 0.78) {
+            double checkRadius = Math.max(configuredSightRange, baseSight) + 6.0;
             double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
             Collection<Entity> nearby = world.getNearbyEntities(ploc, checkRadius, 8.0, checkRadius);
             for (Entity entity : nearby) {
@@ -350,6 +420,33 @@ public final class BukkitSenses {
                 }
             }
         }
+    }
+
+    /**
+     * Computes vanilla sky-light darkening ({@code 0..11}) from time of day and weather, because
+     * Bukkit's {@link Block#getLightFromSky()} returns baked sky exposure (`15` outdoors at midnight).
+     */
+    static int skyDarkening(World world) {
+        if (world == null || world.getEnvironment() != World.Environment.NORMAL) {
+            return 0;
+        }
+        long t = ((world.getTime() % 24000L) + 24000L) % 24000L;
+        int darken;
+        if (t >= 13800L && t <= 22200L) {
+            darken = 11;
+        } else if (t > 12000L && t < 13800L) {
+            darken = (int) Math.round(((t - 12000L) / 1800.0) * 11.0);
+        } else if (t > 22200L) {
+            darken = (int) Math.round(((24000L - t) / 1800.0) * 11.0);
+        } else {
+            darken = 0;
+        }
+        if (world.isThundering()) {
+            darken = Math.max(darken, 10);
+        } else if (world.hasStorm()) {
+            darken = Math.min(11, darken + 3);
+        }
+        return Math.max(0, Math.min(11, darken));
     }
 
     /**
@@ -416,7 +513,7 @@ public final class BukkitSenses {
         if (MobSenses.settings().isIgnoredMob(type)) {
             return false;
         }
-        return ScentModel.isScentTracker(type) || MobSenses.settings().isExtraListener(type);
+        return ScentModel.isScentTracker(type);
     }
 
     private static String itemId(ItemStack stack) {
@@ -459,49 +556,82 @@ public final class BukkitSenses {
         }
     }
 
-    private static void sendScentDebugTrace(World world, Location from, Location to) {
-        Particle dust = findParticle("DUST", "REDSTONE");
-        Particle angry = findParticle("ANGRY_VILLAGER", "VILLAGER_ANGRY");
-        Particle.DustOptions crimson = new Particle.DustOptions(org.bukkit.Color.fromRGB(184, 8, 8), 1.35f);
+    private static void runForAdminViewers(World world, Location origin, java.util.function.Consumer<Player> action) {
+        Plugin plugin = activePlugin;
+        Scheduling sched = activeScheduling;
         for (Player viewer : world.getPlayers()) {
             if (!viewer.isOp() && !viewer.hasPermission("mobsenses.admin")) {
                 continue;
             }
+            Location vloc = viewer.getLocation();
+            if (vloc.getWorld() != world || vloc.distanceSquared(origin) > 96.0 * 96.0) {
+                continue;
+            }
+            if (plugin != null && sched != null) {
+                sched.atLocation(plugin, vloc, () -> {
+                    if (viewer.isOnline()) {
+                        action.accept(viewer);
+                    }
+                });
+            } else {
+                action.accept(viewer);
+            }
+        }
+    }
+
+    private static void sendScentDebugTrace(World world, Location from, Location to) {
+        Particle dust = findParticle("DUST", "REDSTONE");
+        Particle angry = findParticle("ANGRY_VILLAGER", "VILLAGER_ANGRY");
+        Particle.DustOptions crimson = new Particle.DustOptions(org.bukkit.Color.fromRGB(184, 8, 8), 1.35f);
+        double fx = from.getX(), fy = from.getY(), fz = from.getZ();
+        double tx = to.getX(), ty = to.getY(), tz = to.getZ();
+        runForAdminViewers(world, from, viewer -> {
             try {
                 if (angry != null) {
-                    viewer.spawnParticle(angry, to.getX(), to.getY() + 0.45, to.getZ(), 1, 0.1, 0.1, 0.1, 0.0);
+                    viewer.spawnParticle(angry, tx, ty + 0.45, tz, 1, 0.1, 0.1, 0.1, 0.0);
                 }
                 if (dust != null) {
                     int steps = 7;
                     for (int i = 1; i < steps; i++) {
                         double t = (double) i / steps;
-                        double px = from.getX() + (to.getX() - from.getX()) * t;
-                        double py = from.getY() + 0.18 + (to.getY() - 0.3 - from.getY()) * t;
-                        double pz = from.getZ() + (to.getZ() - from.getZ()) * t;
+                        double px = fx + (tx - fx) * t;
+                        double py = fy + 0.18 + (ty - 0.3 - fy) * t;
+                        double pz = fz + (tz - fz) * t;
                         viewer.spawnParticle(dust, px, py, pz, 1, 0.0, 0.0, 0.0, 0.0, crimson);
                     }
                 }
             } catch (Throwable ignored) {
             }
-        }
+        });
     }
 
     private static void sendDebugTrace(World world, Location from, Location to) {
-        for (Player viewer : world.getPlayers()) {
-            if (!viewer.isOp() && !viewer.hasPermission("mobsenses.admin")) {
-                continue;
+        Particle note = findParticle("NOTE");
+        Particle angry = findParticle("ANGRY_VILLAGER", "VILLAGER_ANGRY");
+        Particle rod = findParticle("END_ROD");
+        double fx = from.getX(), fy = from.getY(), fz = from.getZ();
+        double tx = to.getX(), ty = to.getY(), tz = to.getZ();
+        runForAdminViewers(world, from, viewer -> {
+            try {
+                if (note != null) {
+                    viewer.spawnParticle(note, fx, fy + 0.35, fz, 1, 0.0, 0.0, 0.0, 0.0);
+                }
+                if (angry != null) {
+                    viewer.spawnParticle(angry, tx, ty + 0.45, tz, 1, 0.1, 0.1, 0.1, 0.0);
+                }
+                if (rod != null) {
+                    int steps = 5;
+                    for (int i = 1; i < steps; i++) {
+                        double t = (double) i / steps;
+                        double px = fx + (tx - fx) * t;
+                        double py = fy + (ty - fy) * t;
+                        double pz = fz + (tz - fz) * t;
+                        viewer.spawnParticle(rod, px, py, pz, 1, 0.0, 0.0, 0.0, 0.0);
+                    }
+                }
+            } catch (Throwable ignored) {
             }
-            viewer.spawnParticle(Particle.NOTE, from.getX(), from.getY() + 0.35, from.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
-            viewer.spawnParticle(Particle.VILLAGER_ANGRY, to.getX(), to.getY() + 0.45, to.getZ(), 1, 0.1, 0.1, 0.1, 0.0);
-            int steps = 5;
-            for (int i = 1; i < steps; i++) {
-                double t = (double) i / steps;
-                double px = from.getX() + (to.getX() - from.getX()) * t;
-                double py = from.getY() + (to.getY() - from.getY()) * t;
-                double pz = from.getZ() + (to.getZ() - from.getZ()) * t;
-                viewer.spawnParticle(Particle.END_ROD, px, py, pz, 1, 0.0, 0.0, 0.0, 0.0);
-            }
-        }
+        });
     }
 
     private static boolean hasClass(String name) {

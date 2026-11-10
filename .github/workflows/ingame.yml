@@ -60,14 +60,22 @@ jobs:
         include:
           # One jar for every Fabric version, so each job also checks that it picks the right band
           - { loader: fabric, mc: '1.16.5', jar: 'mob-senses-fabric-*.jar', java: '8' }
+          - { loader: fabric, mc: '1.17.1', jar: 'mob-senses-fabric-*.jar', java: '17' }
+          - { loader: fabric, mc: '1.19.2', jar: 'mob-senses-fabric-*.jar', java: '17' }
+          - { loader: fabric, mc: '1.20.1', jar: 'mob-senses-fabric-*.jar', java: '17' }
+          - { loader: fabric, mc: '1.20.6', jar: 'mob-senses-fabric-*.jar', java: '21' }
           - { loader: fabric, mc: '1.21', jar: 'mob-senses-fabric-*.jar', java: '21' }
           - { loader: fabric, mc: '1.21.1', jar: 'mob-senses-fabric-*.jar', java: '21' }
           - { loader: fabric, mc: '1.21.11', jar: 'mob-senses-fabric-*.jar', java: '21' }
           - { loader: fabric, mc: '26.1', jar: 'mob-senses-fabric-*.jar', java: '25' }
           - { loader: fabric, mc: '26.3', jar: 'mob-senses-fabric-*.jar', java: '25' }
-          # One jar for Forge and NeoForge across 1.16.5 - 26.3
+          # One jar for Forge and NeoForge across 1.18 - 26.3
+          - { loader: forge, mc: '1.18.2', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge118_version' }
+          - { loader: forge, mc: '1.19.2', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge1192_version' }
+          - { loader: forge, mc: '1.19.4', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge1194_version' }
           - { loader: forge, mc: '1.20', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge120_version_oldest', label: 'oldest' }
           - { loader: forge, mc: '1.20.1', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge120_version' }
+          - { loader: forge, mc: '1.21.1', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'forge1211_version' }
           - { loader: forge, mc: '1.21.10', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'forge12110_version' }
           - { loader: forge, mc: '1.21.11', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'forge12111_version' }
           - { loader: forge, mc: '26.3', jar: 'mob-senses-forge-neoforge-*.jar', java: '25', version: 'forge26_version' }

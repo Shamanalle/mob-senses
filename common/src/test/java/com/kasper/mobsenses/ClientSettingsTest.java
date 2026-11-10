@@ -66,4 +66,30 @@ class ClientSettingsTest {
         assertEquals((400 - 118) / 2, cfg.computeX(400, 118));
         assertEquals(240 - 54 - 44 - 6, cfg.computeY(240, 44));
     }
+
+    @Test
+    void supportsStylesShowRangeApplyAlphaAndAutoUpgradesExistingFiles(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve(ClientSettings.FILE_NAME);
+        String legacy = "enabled=true\nposition=top_right\nopacity=50\n";
+        Files.write(file, legacy.getBytes(StandardCharsets.UTF_8));
+
+        ClientSettings cfg = new ClientSettings(file);
+        cfg.load();
+        assertEquals(ClientSettings.Anchor.TOP_RIGHT, cfg.position());
+        assertEquals(ClientSettings.Style.TACTICAL, cfg.style());
+        assertTrue(cfg.showRange());
+
+        String upgradedDisk = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+        assertTrue(upgradedDisk.contains("style=tactical"), "Legacy client config should gain style key");
+        assertTrue(upgradedDisk.contains("show_range=true"), "Legacy client config should gain show_range key");
+
+        // 50% opacity * 0.5 fade -> ~25% of 200 alpha = 50
+        int scaled = cfg.applyAlpha(0xC834D399, 0.5);
+        assertEquals(50, (scaled >>> 24) & 0xFF);
+        assertEquals(0x34D399, scaled & 0x00FFFFFF);
+
+        assertEquals(ClientSettings.Style.MINIMAL, ClientSettings.Style.byId("minimal"));
+        assertEquals(ClientSettings.Style.MINIMAL, ClientSettings.Style.byId("slim"));
+        assertEquals(ClientSettings.Style.TACTICAL, ClientSettings.Style.byId("tactical"));
+    }
 }

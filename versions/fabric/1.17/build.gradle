@@ -5,8 +5,8 @@ plugins {
 
 evaluationDependsOn(':common-j8')
 
-// Minecraft 1.17 - 1.20.4 (compiled against 1.17.1, Java 16 bytecode)
-def target = "mc1.17-1.20.4"
+// Minecraft 1.17 - 1.18.2 (compiled against 1.17.1, Java 16 bytecode)
+def target = "mc1.17-1.18.2"
 version = "${project.mod_version}+${target}"
 
 base {

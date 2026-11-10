@@ -16,6 +16,7 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.lang.reflect.Method;
@@ -23,7 +24,7 @@ import java.lang.reflect.Modifier;
 import java.util.Optional;
 
 /**
- * Forge entrypoint (Minecraft 1.20.5 - 26.x): the server side, also inside the singleplayer client.
+ * Forge entrypoint (Minecraft 1.21.6 - 26.x, EventBus 7): the server side, also inside the singleplayer client.
  */
 @Mod(MobSenses.MOD_ID)
 public final class MobSensesForge {
@@ -40,6 +41,9 @@ public final class MobSensesForge {
             MobSenses.serverTick();
         });
         VanillaGameEvent.BUS.addListener(MobSensesForge::gameEvent);
+        if (FMLEnvironment.dist.isClient()) {
+            ForgeClientHooks.register();
+        }
     }
 
     private static void gameEvent(VanillaGameEvent e) {

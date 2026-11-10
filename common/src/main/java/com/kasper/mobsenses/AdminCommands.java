@@ -13,15 +13,18 @@ import java.util.Locale;
 public final class AdminCommands {
 
     public static final String NAME = "mobsenses";
+    public static final String HUD_COMMAND_NAME = "mshud";
+    public static final String HUD_COMMAND_ALIAS = "mobsenseshud";
 
     private static final List<String> SUBCOMMANDS = Jv.listOf(
             "status", "preset", "hearing", "sight", "voice", "world", "set", "get", "reset", "hud", "debug", "reload", "help");
     private static final List<String> CATEGORIES = Jv.listOf(
             "core", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "all");
     private static final List<String> HUD_MODES = Jv.listOf(
-            "on", "off", "compact", "full", "auto_hide", "opacity", "offset", "bar", "reset",
+            "on", "off", "tactical", "minimal", "compact", "full", "auto_hide", "range", "style",
+            "opacity", "offset", "bar", "reset",
             "top_left", "top_right", "bottom_left", "bottom_right", "top_center", "hotbar");
-    private static final List<String> HUD_BARS = Jv.listOf("noise", "light", "scent", "voice");
+    private static final List<String> HUD_BARS = Jv.listOf("noise", "light", "scent", "voice", "range");
     /** What {@code world <id>} takes besides a preset: the world goes back to the server's preset. */
     private static final String INHERIT = "inherit";
 
@@ -35,7 +38,29 @@ public final class AdminCommands {
 
         /** The ids of the server's worlds, for {@code world} and its suggestions. */
         List<String> worlds();
+
+        /** Whether this command is running on a dedicated server with no local client HUD. */
+        default boolean isDedicatedServer() {
+            return false;
+        }
     }
+
+    private static final Context CLIENT_CTX = new Context() {
+        @Override
+        public String language() {
+            return "";
+        }
+
+        @Override
+        public String world() {
+            return null;
+        }
+
+        @Override
+        public List<String> worlds() {
+            return Collections.emptyList();
+        }
+    };
 
     private AdminCommands() {
     }
@@ -66,6 +91,9 @@ public final class AdminCommands {
                 case "reset":
                     return reset(lang, s, a);
                 case "hud":
+                    if (ctx.isDedicatedServer()) {
+                        return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.client_only"));
+                    }
                     return hud(lang, a);
                 case "debug":
                     return debug(lang, a);
@@ -79,6 +107,33 @@ public final class AdminCommands {
             ModLog.failure("/" + NAME + " " + args, e);
             return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "error"));
         }
+    }
+
+    /**
+     * Executes the client-only {@code /mshud} ({@code /mobsenseshud}) command directly on the player's
+     * client without requiring operator permissions or server round-trips.
+     */
+    public static Reply executeHud(String args, String languageCode) {
+        String lang = Jv.isBlank(languageCode) ? MobSenses.settings().language() : languageCode;
+        try {
+            if (args == null || Jv.isBlank(args)) {
+                return hud(lang, new String[]{"hud"});
+            }
+            String[] extra = args.trim().split("\\s+");
+            String[] tokens = new String[extra.length + 1];
+            tokens[0] = "hud";
+            System.arraycopy(extra, 0, tokens, 1, extra.length);
+            return hud(lang, tokens);
+        } catch (RuntimeException e) {
+            ModLog.failure("/" + HUD_COMMAND_NAME + " " + args, e);
+            return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "error"));
+        }
+    }
+
+    /** Suggestions for the client-only {@code /mshud} command. */
+    public static List<String> hudSuggestions(String typed) {
+        String clean = typed == null ? "" : typed.replaceFirst("^\\s+", "");
+        return suggestions("hud " + clean, CLIENT_CTX);
     }
 
     private static Reply status(String lang, ServerSettings s, Context ctx) {
@@ -105,9 +160,6 @@ public final class AdminCommands {
     private static Reply help(String lang) {
         Reply r = new Reply().add(Reply.Kind.TITLE, ServerText.get(lang, "help.title"));
         for (String sub : SUBCOMMANDS) {
-            if ("get".equals(sub) || "reset".equals(sub)) {
-                continue;
-            }
             r.add(Reply.Kind.INFO, ServerText.get(lang, "help." + sub));
         }
         return r;
@@ -265,12 +317,18 @@ public final class AdminCommands {
 
     private static Reply hud(String lang, String[] a) {
         ClientSettings cs = MobSenses.clientSettings();
+        long now = System.currentTimeMillis();
         if (a.length < 2) {
+            if (cs.enabled()) {
+                MobSenses.hud().triggerPreview(now);
+            }
             String summary = (cs.enabled() ? "on" : "off")
+                    + ", style=" + cs.style().id()
                     + ", position=" + cs.position().id()
                     + ", opacity=" + cs.opacity() + "%"
                     + (cs.compact() ? ", compact" : "")
-                    + (cs.autoHide() ? ", auto_hide" : "");
+                    + (cs.autoHide() ? ", auto_hide" : "")
+                    + (!cs.showRange() ? ", range=off" : "");
             return new Reply()
                     .add(Reply.Kind.INFO, ServerText.get(lang, "hud.done", summary))
                     .add(Reply.Kind.HINT, ServerText.get(lang, "hud.usage"));
@@ -288,13 +346,41 @@ public final class AdminCommands {
                 cs.setEnabled(false);
                 MobSenses.hud().setEnabled(false);
                 break;
+            case "tactical":
+                cs.setStyle(ClientSettings.Style.TACTICAL);
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                appliedLabel = "style=tactical";
+                break;
+            case "minimal":
+                cs.setStyle(ClientSettings.Style.MINIMAL);
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                appliedLabel = "style=minimal";
+                break;
+            case "style": {
+                if (a.length < 3) {
+                    return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "hud.done", "style=" + cs.style().id()));
+                }
+                String st = a[2].toLowerCase(Locale.ROOT);
+                if (!"tactical".equals(st) && !"minimal".equals(st)) {
+                    return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                }
+                cs.setStyle(ClientSettings.Style.byId(st));
+                cs.setEnabled(true);
+                MobSenses.hud().setEnabled(true);
+                appliedLabel = "style=" + cs.style().id();
+                break;
+            }
             case "compact":
                 cs.setCompact(true);
+                cs.setStyle(ClientSettings.Style.TACTICAL);
                 cs.setEnabled(true);
                 MobSenses.hud().setEnabled(true);
                 break;
             case "full":
                 cs.setCompact(false);
+                cs.setStyle(ClientSettings.Style.TACTICAL);
                 cs.setEnabled(true);
                 MobSenses.hud().setEnabled(true);
                 break;
@@ -303,6 +389,19 @@ public final class AdminCommands {
                 cs.setAutoHide(!cs.autoHide());
                 appliedLabel = "auto_hide=" + cs.autoHide();
                 break;
+            case "range": {
+                if (a.length >= 3) {
+                    Boolean forced = parseToggle(a[2]);
+                    if (forced == null) {
+                        return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                    }
+                    cs.setShowRange(forced);
+                } else {
+                    cs.setShowRange(!cs.showRange());
+                }
+                appliedLabel = "show_range=" + cs.showRange();
+                break;
+            }
             case "reset":
                 cs.reset();
                 MobSenses.hud().setEnabled(true);
@@ -341,7 +440,13 @@ public final class AdminCommands {
                     return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
                 }
                 String bar = a[2].toLowerCase(Locale.ROOT);
-                Boolean forced = a.length >= 4 ? ("on".equalsIgnoreCase(a[3]) || "true".equalsIgnoreCase(a[3])) : null;
+                Boolean forced = null;
+                if (a.length >= 4) {
+                    forced = parseToggle(a[3]);
+                    if (forced == null) {
+                        return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
+                    }
+                }
                 switch (bar) {
                     case "noise":
                         cs.setShowNoise(forced != null ? forced : !cs.showNoise());
@@ -358,6 +463,10 @@ public final class AdminCommands {
                     case "voice":
                         cs.setShowVoice(forced != null ? forced : !cs.showVoice());
                         appliedLabel = "show_voice=" + cs.showVoice();
+                        break;
+                    case "range":
+                        cs.setShowRange(forced != null ? forced : !cs.showRange());
+                        appliedLabel = "show_range=" + cs.showRange();
                         break;
                     default:
                         return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "hud.usage"));
@@ -376,7 +485,20 @@ public final class AdminCommands {
             }
         }
         cs.save();
+        if (cs.enabled()) {
+            MobSenses.hud().triggerPreview(now);
+        }
         return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "hud.done", appliedLabel));
+    }
+
+    private static Boolean parseToggle(String s) {
+        if ("on".equalsIgnoreCase(s) || "true".equalsIgnoreCase(s)) {
+            return Boolean.TRUE;
+        }
+        if ("off".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s)) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     private static Reply unknown(String lang, String typed) {
@@ -446,6 +568,12 @@ public final class AdminCommands {
             options = suggestOptionValues(words[1]);
         } else if (words.length == 3 && words[0].equals("hud")) {
             switch (words[1]) {
+                case "style":
+                    options = Jv.listOf("tactical", "minimal");
+                    break;
+                case "range":
+                    options = Jv.listOf("on", "off");
+                    break;
                 case "opacity":
                     options = Jv.listOf("50", "75", "90", "100");
                     break;
@@ -458,6 +586,14 @@ public final class AdminCommands {
                 default:
                     options = Collections.emptyList();
                     break;
+            }
+        } else if (words.length == 4 && words[0].equals("hud")) {
+            if ("bar".equals(words[1])) {
+                options = Jv.listOf("on", "off");
+            } else if ("offset".equals(words[1])) {
+                options = Jv.listOf("6", "10", "16", "24");
+            } else {
+                options = Collections.emptyList();
             }
         } else {
             options = Collections.emptyList();

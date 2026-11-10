@@ -1,16 +1,20 @@
 package com.kasper.mobsenses.neoforge;
 
+import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.client.Canvas;
+import com.kasper.mobsenses.client.ClientHudCommand;
 import com.kasper.mobsenses.client.StealthHudOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 /**
- * Client-only HUD listener for NeoForge 26.x.
+ * Client-only HUD and {@code /mshud} listener for NeoForge 26.x.
  */
 final class NeoForgeClientHooks {
 
@@ -18,6 +22,9 @@ final class NeoForgeClientHooks {
     }
 
     static void register() {
+        MobSenses.initClient(FMLPaths.CONFIGDIR.get());
+        NeoForge.EVENT_BUS.addListener((RegisterClientCommandsEvent e) ->
+                ClientHudCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener((RenderGuiEvent.Post e) -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc != null && mc.font != null) {

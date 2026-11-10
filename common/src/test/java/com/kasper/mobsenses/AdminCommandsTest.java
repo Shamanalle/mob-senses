@@ -94,7 +94,7 @@ class AdminCommandsTest {
     @Test
     void helpListsEverySubcommandWithoutBareKeys() {
         String r = AdminCommands.execute("help", as("de_de", null)).toString();
-        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "set", "hud", "debug", "reload", "help"}) {
+        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "set", "get", "reset", "hud", "debug", "reload", "help"}) {
             assertTrue(r.contains("/mobsenses " + sub), sub + " in " + r);
         }
         assertFalse(r.contains("command.mobsenses."), r);
@@ -144,5 +144,61 @@ class AdminCommandsTest {
         assertEquals(ClientSettings.Anchor.TOP_LEFT, MobSenses.clientSettings().position());
         assertEquals(100, MobSenses.clientSettings().opacity());
         assertTrue(MobSenses.clientSettings().showScent());
+    }
+
+    @Test
+    void clientHudCommandDedicatedRefusalAndLanHudIsolation() {
+        assertFalse(AdminCommands.executeHud("minimal", "en_us").refused());
+        assertEquals(ClientSettings.Style.MINIMAL, MobSenses.clientSettings().style());
+        assertFalse(AdminCommands.executeHud("tactical", "ru_ru").refused());
+        assertEquals(ClientSettings.Style.TACTICAL, MobSenses.clientSettings().style());
+        assertFalse(AdminCommands.executeHud("range off", "en_us").refused());
+        assertFalse(MobSenses.clientSettings().showRange());
+        assertTrue(AdminCommands.hudSuggestions("mi").contains("minimal"));
+        assertTrue(AdminCommands.hudSuggestions("bar ").contains("range"));
+        assertFalse(AdminCommands.executeHud("reset", "en_us").refused());
+        assertTrue(MobSenses.clientSettings().showRange());
+
+        AdminCommands.Context dedicated = new AdminCommands.Context() {
+            @Override
+            public String language() {
+                return "en_us";
+            }
+
+            @Override
+            public String world() {
+                return "minecraft:overworld";
+            }
+
+            @Override
+            public List<String> worlds() {
+                return List.of("minecraft:overworld");
+            }
+
+            @Override
+            public boolean isDedicatedServer() {
+                return true;
+            }
+        };
+        Reply refused = AdminCommands.execute("hud minimal", dedicated);
+        assertTrue(refused.refused());
+        assertTrue(refused.toString().contains("/mshud"), refused.toString());
+
+        java.util.UUID host = java.util.UUID.randomUUID();
+        java.util.UUID guest = java.util.UUID.randomUUID();
+        MobSenses.hud().reset();
+        MobSenses.setLocalPlayerId(host);
+        try {
+            MobSenses.gameEvent("minecraft:explode", "minecraft:overworld", 0, 64, 0,
+                    NoiseModel.Posture.WALKING, null, null, true, 1.0, guest);
+            assertEquals(0, MobSenses.hud().noisePercent(), "LAN guest noise must not spike host HUD");
+
+            MobSenses.gameEvent("minecraft:explode", "minecraft:overworld", 0, 64, 0,
+                    NoiseModel.Posture.WALKING, null, null, true, 1.0, host);
+            assertTrue(MobSenses.hud().noisePercent() >= 80, "Local host noise must update host HUD");
+        } finally {
+            MobSenses.setLocalPlayerId(null);
+            MobSenses.hud().reset();
+        }
     }
 }

@@ -1,16 +1,20 @@
 package com.kasper.mobsenses.forge;
 
+import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.client.Canvas;
+import com.kasper.mobsenses.client.ClientHudCommand;
 import com.kasper.mobsenses.client.StealthHudOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 /**
- * Client-only HUD listener for Forge 1.20 - 1.20.1.
+ * Client-only HUD and {@code /mshud} listener for Forge 1.20 - 1.20.4 (and NeoForge 1.20.1).
  */
 final class ForgeClientHooks {
 
@@ -18,6 +22,9 @@ final class ForgeClientHooks {
     }
 
     static void register() {
+        MobSenses.initClient(FMLPaths.CONFIGDIR.get());
+        MinecraftForge.EVENT_BUS.addListener((RegisterClientCommandsEvent e) ->
+                ClientHudCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener((RenderGuiEvent.Post e) -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc != null && mc.font != null) {

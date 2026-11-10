@@ -97,11 +97,20 @@ public final class ParticleSender {
         }
     }
 
+    private static boolean canSeeDebug(ServerPlayer player, double sx, double sy, double sz) {
+        return player != null
+                && player.distanceToSqr(sx, sy, sz) <= 96.0 * 96.0
+                && AdminPermission.isAdmin(player.createCommandSourceStack());
+    }
+
     public static void sendHearingTrace(
             ServerLevel level,
             double sx, double sy, double sz,
             double ex, double ey, double ez) {
         for (ServerPlayer player : level.players()) {
+            if (!canSeeDebug(player, sx, sy, sz)) {
+                continue;
+            }
             send(level, player, ParticleTypes.NOTE, sx, sy + 0.35, sz, 1, 0.0, 0.0, 0.0, 0.0);
             send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
             sendLine(level, player, ParticleTypes.END_ROD, sx, sy, sz, ex, ey, ez, 5);
@@ -114,6 +123,9 @@ public final class ParticleSender {
             double ex, double ey, double ez) {
         ParticleOptions mist = BLOOD_MIST != null ? BLOOD_MIST : bloodDrop();
         for (ServerPlayer player : level.players()) {
+            if (!canSeeDebug(player, sx, sy, sz)) {
+                continue;
+            }
             send(level, player, mist, sx, sy + 0.10, sz, 2, 0.12, 0.02, 0.12, 0.0);
             send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
             sendLine(level, player, mist, sx, sy + 0.15, sz, ex, ey - 0.3, ez, 5);
@@ -125,6 +137,9 @@ public final class ParticleSender {
             double sx, double sy, double sz,
             double ex, double ey, double ez) {
         for (ServerPlayer player : level.players()) {
+            if (!canSeeDebug(player, sx, sy, sz)) {
+                continue;
+            }
             send(level, player, ParticleTypes.FLAME, sx, sy + 0.35, sz, 1, 0.05, 0.05, 0.05, 0.01);
             send(level, player, ParticleTypes.ANGRY_VILLAGER, ex, ey + 0.45, ez, 1, 0.1, 0.1, 0.1, 0.0);
             sendLine(level, player, ParticleTypes.ENCHANTED_HIT, sx, sy, sz, ex, ey, ez, 5);

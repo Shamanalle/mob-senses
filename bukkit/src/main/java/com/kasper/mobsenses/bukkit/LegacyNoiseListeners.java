@@ -4,11 +4,13 @@ import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.NoiseModel;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Openable;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -36,41 +38,59 @@ public final class LegacyNoiseListeners implements Listener {
         Bukkit.getPluginManager().registerEvents(new LegacyNoiseListeners(), plugin);
     }
 
+    private static boolean isSpectator(Player player) {
+        return player != null && player.getGameMode() == GameMode.SPECTATOR;
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onExplode(EntityExplodeEvent e) {
         Location at = e.getLocation();
         if (at.getWorld() != null) {
-            MobSenses.gameEvent("minecraft:explode", at.getWorld().getName(), at.getX(), at.getY(), at.getZ());
+            double env = BukkitSenses.envMultiplier(at.getWorld(), null, NoiseModel.Kind.EXPLOSION);
+            MobSenses.gameEvent("minecraft:explode", at.getWorld().getName(),
+                    at.getX(), at.getY(), at.getZ(),
+                    NoiseModel.Posture.WALKING, null, null, true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent e) {
+        Player p = e.getPlayer();
+        if (isSpectator(p)) {
+            return;
+        }
         Block block = e.getBlock();
         Location at = block.getLocation();
         if (at.getWorld() != null) {
             AcousticMaterial mat = BukkitAcoustics.material(block);
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.BLOCK_BREAK);
             MobSenses.gameEvent("minecraft:block_destroy", at.getWorld().getName(),
                     at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5,
-                    BukkitSenses.posture(e.getPlayer()), mat, BukkitAcoustics.blockId(block), true);
+                    BukkitSenses.posture(p), mat, BukkitAcoustics.blockId(block), true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent e) {
+        Player p = e.getPlayer();
+        if (isSpectator(p)) {
+            return;
+        }
         Block block = e.getBlockPlaced();
         Location at = block.getLocation();
         if (at.getWorld() != null) {
             AcousticMaterial mat = BukkitAcoustics.material(block);
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.BLOCK_PLACE);
             MobSenses.gameEvent("minecraft:block_place", at.getWorld().getName(),
                     at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5,
-                    BukkitSenses.posture(e.getPlayer()), mat, BukkitAcoustics.blockId(block), true);
+                    BukkitSenses.posture(p), mat, BukkitAcoustics.blockId(block), true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent e) {
-        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null) {
+        Player p = e.getPlayer();
+        if (isSpectator(p) || e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null) {
             return;
         }
         Block block = e.getClickedBlock();
@@ -80,40 +100,60 @@ public final class LegacyNoiseListeners implements Listener {
         }
         Material type = block.getType();
         if (type == Material.BELL) {
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.BELL);
             MobSenses.gameEvent("minecraft:bell_ring", at.getWorld().getName(),
-                    at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5);
+                    at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5,
+                    BukkitSenses.posture(p), null, BukkitAcoustics.blockId(block), true, env);
         } else if (type == Material.NOTE_BLOCK || type == Material.JUKEBOX) {
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.NOTE_BLOCK);
             MobSenses.gameEvent("minecraft:note_block_play", at.getWorld().getName(),
-                    at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5);
+                    at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5,
+                    BukkitSenses.posture(p), null, BukkitAcoustics.blockId(block), true, env);
         } else if (block.getBlockData() instanceof Openable) {
             AcousticMaterial mat = BukkitAcoustics.material(block);
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.DOOR);
             MobSenses.gameEvent("minecraft:block_open", at.getWorld().getName(),
                     at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5,
-                    BukkitSenses.posture(e.getPlayer()), mat, BukkitAcoustics.blockId(block), true);
+                    BukkitSenses.posture(p), mat, BukkitAcoustics.blockId(block), true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onContainerOpen(InventoryOpenEvent e) {
+        HumanEntity human = e.getPlayer();
+        Player p = human instanceof Player ? (Player) human : null;
+        if (isSpectator(p)) {
+            return;
+        }
         Location at = e.getInventory().getLocation();
         if (at != null && at.getWorld() != null) {
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.CONTAINER);
             MobSenses.gameEvent("minecraft:container_open", at.getWorld().getName(),
-                    at.getX(), at.getY(), at.getZ());
+                    at.getX(), at.getY(), at.getZ(),
+                    BukkitSenses.posture(p), null, null, true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCombat(EntityDamageByEntityEvent e) {
         Entity damager = e.getDamager();
-        boolean playerInvolved = damager instanceof Player || e.getEntity() instanceof Player
-                || (damager instanceof Projectile && ((Projectile) damager).getShooter() instanceof Player);
-        if (!playerInvolved) {
+        Player p = null;
+        if (damager instanceof Player) {
+            p = (Player) damager;
+        } else if (damager instanceof Projectile && ((Projectile) damager).getShooter() instanceof Player) {
+            p = (Player) ((Projectile) damager).getShooter();
+        } else if (e.getEntity() instanceof Player) {
+            p = (Player) e.getEntity();
+        }
+        if (p == null || isSpectator(p)) {
             return;
         }
         Location at = e.getEntity().getLocation();
         if (at.getWorld() != null) {
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.COMBAT);
             MobSenses.gameEvent("minecraft:entity_damage", at.getWorld().getName(),
-                    at.getX(), at.getY(), at.getZ());
+                    at.getX(), at.getY(), at.getZ(),
+                    BukkitSenses.posture(p), null, null, true, env);
         }
     }
 
@@ -122,26 +162,40 @@ public final class LegacyNoiseListeners implements Listener {
         if (!(e.getEntity().getShooter() instanceof Player)) {
             return;
         }
+        Player p = (Player) e.getEntity().getShooter();
+        if (isSpectator(p)) {
+            return;
+        }
         Location at = e.getEntity().getLocation();
         if (at.getWorld() != null) {
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.PROJECTILE);
             MobSenses.gameEvent("minecraft:projectile_land", at.getWorld().getName(),
-                    at.getX(), at.getY(), at.getZ());
+                    at.getX(), at.getY(), at.getZ(),
+                    BukkitSenses.posture(p), null, null, true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent e) {
         Player p = e.getPlayer();
+        if (isSpectator(p)) {
+            return;
+        }
         Location at = p.getLocation();
         if (at.getWorld() != null) {
+            double env = BukkitSenses.envMultiplier(at.getWorld(), p, NoiseModel.Kind.EAT);
             MobSenses.gameEvent("minecraft:eat", at.getWorld().getName(),
                     at.getX(), at.getY(), at.getZ(),
-                    BukkitSenses.posture(p), null, null, true);
+                    BukkitSenses.posture(p), null, null, true, env);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
+        Player p = e.getPlayer();
+        if (isSpectator(p)) {
+            return;
+        }
         Location from = e.getFrom();
         Location to = e.getTo();
         if (to == null || to.getWorld() == null) {
@@ -152,7 +206,6 @@ public final class LegacyNoiseListeners implements Listener {
         if (dx * dx + dz * dz < 0.04) {
             return;
         }
-        Player p = e.getPlayer();
         if (!p.isOnGround() || (p.getTicksLived() & 3) != 0) {
             return;
         }

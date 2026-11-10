@@ -1,0 +1,34 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+ext {
+    bandTarget = "mc1.20.5-1.21.5"
+    mcVersion = project.forge1211_minecraft
+    forgeVersion = project.forge1211_version
+    eventbusVersion = '6.2.33'
+}
+
+apply from: "${rootDir}/gradle/forge-band.gradle"
+
+def srcNeo121 = file("${rootDir}/versions/neoforge/1.21/src/main/java").toPath()
+def srcFab121 = file("${rootDir}/versions/fabric/1.21/src/main/java").toPath()
+
+sourceSets.main.java {
+    srcDir "${rootDir}/versions/neoforge/1.21/src/main/java"
+    srcDir "${rootDir}/versions/fabric/1.21/src/main/java"
+    exclude { e ->
+        if (e.directory) return false
+        def p = e.file.toPath()
+        if (p.startsWith(srcNeo121)) {
+            def rel = srcNeo121.relativize(p).toString().replace('\\', '/')
+            return rel.startsWith('com/kasper/mobsenses/neoforge/')
+        }
+        if (p.startsWith(srcFab121)) {
+            def rel = srcFab121.relativize(p).toString().replace('\\', '/')
+            return rel != 'com/kasper/mobsenses/GuiCanvas.java'
+        }
+        return false
+    }
+}

@@ -5,6 +5,28 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-10
+
+### English
+
+#### Added
+- **Redesigned Stealth & Noise HUD and `/mshud` command:** players can now switch between `tactical` (chamfered card with dynamic stealth eye, `30%`/`65%` threshold ticks and transient peak-hold markers) and `minimal` (slim bar strip) styles, see their estimated audible distance (`~Xm`) and `[Whisper]` vs `[Voice]` status, enjoy smooth auto-hide fading, and configure everything on any server without operator permissions via `/mshud` (`/mobsenseshud`).
+- **Expanded loader & version coverage:** dedicated native builds for Fabric `1.19 – 1.20.6` (including `1.20.1`) and Forge `1.18 – 1.19.4` & `1.20.5 – 1.21.5` (including `1.21.1`), plus full client Stealth HUD and `/mshud` support on Forge `1.20.5 – 26.3`.
+
+#### Fixed
+- **Stealth, sight and hearing accuracy:** preset sight multipliers (`subtle`, `hardcore`), `darkness_stealth_enabled`, invisibility potions on the HUD, Swift Sneak on leggings, open fence gates/trapdoors passing sound, bullet wall-impact raycasts through tall grass/open doors, custom `scent_mobs` and `investigate_speed` in sight/scent investigation now all work accurately across Forge, NeoForge, Fabric and Paper/Folia.
+- **Multiplayer & LAN polish:** LAN guests no longer trigger the host's HUD, debug particle traces are sent only to nearby operators, and Folia pathfinding runs safely on each mob's region thread.
+
+### Русский
+
+#### Добавлено
+- **Обновлённый HUD скрытности и команда `/mshud`:** появились стили `tactical` (тактическая карточка с динамической иконкой глаза, рисками порогов `30%`/`65%` и удержанием пиков шума) и `minimal` (тонкая полоска), отображение радиуса слышимости (`~Xм`), раздельные метки `[Шёпот]` и `[Голос]`, плавное автоскрытие и клиентская команда `/mshud` (`/mobsenseshud`), доступная каждому игроку на любом сервере без прав оператора.
+- **Расширенная поддержка версий и загрузчиков:** добавлены нативные сборки для Fabric `1.19 – 1.20.6` (включая `1.20.1`) и Forge `1.18 – 1.19.4` и `1.20.5 – 1.21.5` (включая `1.21.1`), а также полноценная работа клиентского HUD и `/mshud` на Forge `1.20.5 – 26.3`.
+
+#### Исправлено
+- **Точность скрытности, зрения и слуха:** множители зрения пресетов (`subtle`, `hardcore`), настройка `darkness_stealth_enabled`, учёт невидимости на HUD, зачарование «Проворство» на поножах, прохождение звука через открытые калитки и люки, трассировка выстрелов сквозь траву и открытые двери, пользовательский список `scent_mobs` и `investigate_speed` теперь работают точно на Forge, NeoForge, Fabric и Paper/Folia.
+- **Мультиплеер и LAN:** действия гостей в мире по сети (LAN) больше не дёргают HUD хоста, частицы `/mobsenses debug` видят только ближайшие операторы, а поиск пути на Folia выполняется строго в потоке региона моба.
+
 ## [1.3.1] - 2026-11-10
 
 ### English

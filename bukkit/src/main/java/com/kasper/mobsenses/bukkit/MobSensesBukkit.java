@@ -62,6 +62,14 @@ public final class MobSensesBukkit extends JavaPlugin {
     }
 
     @Override
+    public void onDisable() {
+        BukkitSenses.clear();
+        MobSenses.coalescer().clear();
+        MobSenses.scent().clear();
+        MobSenses.voice().clear();
+    }
+
+    @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         Reply reply = AdminCommands.execute(String.join(" ", args), context(sender));
         for (Reply.Line line : reply.lines()) {
@@ -97,6 +105,11 @@ public final class MobSensesBukkit extends JavaPlugin {
             @Override
             public List<String> worlds() {
                 return worlds;
+            }
+
+            @Override
+            public boolean isDedicatedServer() {
+                return true;
             }
         };
     }

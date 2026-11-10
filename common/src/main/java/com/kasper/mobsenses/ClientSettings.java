@@ -80,6 +80,43 @@ public final class ClientSettings {
         }
     }
 
+    /** Visual theme/layout of the Stealth & Noise HUD. */
+    public enum Style {
+        TACTICAL("tactical"),
+        MINIMAL("minimal");
+
+        private final String id;
+
+        Style(String id) {
+            this.id = id;
+        }
+
+        public String id() {
+            return id;
+        }
+
+        public static Style byId(String raw) {
+            if (raw == null) {
+                return null;
+            }
+            String s = raw.trim().toLowerCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+            switch (s) {
+                case "tactical":
+                case "card":
+                case "panel":
+                case "default":
+                    return TACTICAL;
+                case "minimal":
+                case "slim":
+                case "bar_only":
+                case "immersive":
+                    return MINIMAL;
+                default:
+                    return null;
+            }
+        }
+    }
+
     private static final long RELOAD_POLL_INTERVAL_MS = 2_000L;
 
     private final Path file;
@@ -88,11 +125,13 @@ public final class ClientSettings {
 
     private volatile boolean enabled = true;
     private volatile Anchor position = Anchor.TOP_LEFT;
+    private volatile Style style = Style.TACTICAL;
     private volatile int x = 10;
     private volatile int y = 10;
     private volatile int opacity = 100;
     private volatile boolean compact = false;
     private volatile boolean autoHide = false;
+    private volatile boolean showRange = true;
     private volatile boolean showNoise = true;
     private volatile boolean showLight = true;
     private volatile boolean showScent = true;
@@ -113,6 +152,10 @@ public final class ClientSettings {
 
     public Anchor position() {
         return position;
+    }
+
+    public Style style() {
+        return style;
     }
 
     public int x() {
@@ -136,6 +179,11 @@ public final class ClientSettings {
     /** Whether the HUD hides itself when the player is completely quiet and hidden. */
     public boolean autoHide() {
         return autoHide;
+    }
+
+    /** Whether the audible radius in blocks (e.g. {@code 12m}) is displayed in the HUD header. */
+    public boolean showRange() {
+        return showRange;
     }
 
     public boolean showNoise() {
@@ -164,6 +212,12 @@ public final class ClientSettings {
         }
     }
 
+    public void setStyle(Style style) {
+        if (style != null) {
+            this.style = style;
+        }
+    }
+
     public void setX(int x) {
         this.x = clampOffset(x);
     }
@@ -182,6 +236,10 @@ public final class ClientSettings {
 
     public void setAutoHide(boolean autoHide) {
         this.autoHide = autoHide;
+    }
+
+    public void setShowRange(boolean showRange) {
+        this.showRange = showRange;
     }
 
     public void setShowNoise(boolean showNoise) {
@@ -204,11 +262,13 @@ public final class ClientSettings {
     public synchronized void reset() {
         this.enabled = true;
         this.position = Anchor.TOP_LEFT;
+        this.style = Style.TACTICAL;
         this.x = 10;
         this.y = 10;
         this.opacity = 100;
         this.compact = false;
         this.autoHide = false;
+        this.showRange = true;
         this.showNoise = true;
         this.showLight = true;
         this.showScent = true;
@@ -265,12 +325,17 @@ public final class ClientSettings {
 
     /** Scales the alpha channel of an ARGB color by {@link #opacity()}. */
     public int applyOpacity(int argb) {
-        int op = opacity;
-        if (op >= 100) {
+        return applyAlpha(argb, 1.0);
+    }
+
+    /** Scales the alpha channel of an ARGB color by both {@link #opacity()} and a {@code [0..1]} fade multiplier. */
+    public int applyAlpha(int argb, double fade01) {
+        double f = Math.max(0.0, Math.min(1.0, fade01)) * (opacity / 100.0);
+        if (f >= 0.999) {
             return argb;
         }
         int baseAlpha = (argb >>> 24) & 0xFF;
-        int scaledAlpha = Math.max(0, Math.min(255, (baseAlpha * op) / 100));
+        int scaledAlpha = Math.max(0, Math.min(255, (int) Math.round(baseAlpha * f)));
         return (argb & 0x00FFFFFF) | (scaledAlpha << 24);
     }
 
@@ -301,7 +366,8 @@ public final class ClientSettings {
             modified = Files.getLastModifiedTime(file).toMillis();
             String text = Jv.readString(file, StandardCharsets.UTF_8);
             read(text);
-            if (!text.contains("auto_hide=") || !text.contains("show_voice=")) {
+            if (!text.contains("auto_hide=") || !text.contains("show_voice=")
+                    || !text.contains("style=") || !text.contains("show_range=")) {
                 save();
             }
         } catch (IOException | RuntimeException e) {
@@ -336,11 +402,15 @@ public final class ClientSettings {
         Anchor parsedPos = Anchor.byId(posRaw);
         position = parsedPos != null ? parsedPos : Anchor.TOP_LEFT;
 
+        Style parsedStyle = Style.byId(p.getProperty("style", Style.TACTICAL.id()));
+        style = parsedStyle != null ? parsedStyle : Style.TACTICAL;
+
         x = clampOffset(parseInt(p, "x", 10));
         y = clampOffset(parseInt(p, "y", 10));
         opacity = clampOpacity(parseInt(p, "opacity", 100));
         compact = parseBool(p.getProperty("compact", "false"), false);
         autoHide = parseBool(p.getProperty("auto_hide", "false"), false);
+        showRange = parseBool(p.getProperty("show_range", "true"), true);
         showNoise = parseBool(p.getProperty("show_noise", "true"), true);
         showLight = parseBool(p.getProperty("show_light", "true"), true);
         showScent = parseBool(p.getProperty("show_scent", "true"), true);
@@ -372,6 +442,10 @@ public final class ClientSettings {
         lines.add("# Показывать ли HUD скрытности и шума на экране: true или false.");
         lines.add("enabled=" + enabled);
         lines.add("");
+        lines.add("# HUD visual style: tactical (card with meters) or minimal (ultra-clean slim bar).");
+        lines.add("# Стиль HUD: tactical (карточка со шкалами) или minimal (тонкая полоска без текста).");
+        lines.add("style=" + style.id());
+        lines.add("");
         lines.add("# Where to place the HUD: top_left, top_right, bottom_left, bottom_right, top_center, or hotbar.");
         lines.add("# Где располагать HUD: top_left, top_right, bottom_left, bottom_right, top_center или hotbar.");
         lines.add("position=" + position.id());
@@ -388,13 +462,17 @@ public final class ClientSettings {
         lines.add("# Непрозрачность HUD в процентах (от 10 до 100, где 100 — стандартная).");
         lines.add("opacity=" + opacity);
         lines.add("");
-        lines.add("# Compact mode (true = only the status line without bars, false = full panel with bars).");
-        lines.add("# Компактный режим (true = только строка статуса без полосок, false = полная панель с полосками).");
+        lines.add("# Compact mode (true = only the status header without bars, false = full panel with bars).");
+        lines.add("# Компактный режим (true = только заголовок статуса без шкал, false = полная панель со шкалами).");
         lines.add("compact=" + compact);
         lines.add("");
-        lines.add("# Automatically hide the HUD when completely quiet, in the dark, not bleeding and not speaking.");
-        lines.add("# Автоматически скрывать HUD, когда вы стоите тихо, не светитесь, не истекаете кровью и молчите.");
+        lines.add("# Smoothly fade out the HUD when quiet, hidden, not bleeding and not speaking.");
+        lines.add("# Плавно скрывать HUD, когда вы стоите тихо, не светитесь, не истекаете кровью и молчите.");
         lines.add("auto_hide=" + autoHide);
+        lines.add("");
+        lines.add("# Show estimated audible range in blocks (e.g. ~12m) in the HUD header: true or false.");
+        lines.add("# Показывать примерную дальность слышимости в блоках (например, ~12m) в заголовке: true или false.");
+        lines.add("show_range=" + showRange);
         lines.add("");
         lines.add("# Which bars and indicators to show: true or false.");
         lines.add("# Какие шкалы и индикаторы показывать: true или false.");

@@ -23,7 +23,7 @@ public final class Worlds {
 
     public static final TagKey<EntityType<?>> LISTENERS = TagKey.create(
             Registries.ENTITY_TYPE,
-            ResourceLocation.fromNamespaceAndPath(MobSenses.MOD_ID, "listeners"));
+            ResourceLocation.tryBuild(MobSenses.MOD_ID, "listeners"));
 
     private Worlds() {
     }

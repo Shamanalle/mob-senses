@@ -33,4 +33,35 @@ class SightModelTest {
         int torchPct = SightModel.lightExposurePercent(0, 0, torchLight, false);
         assertTrue(torchPct > darkPct + 50);
     }
+
+    @Test
+    void presetSightMultiplierAndInvisibilityAndDarknessToggleBehaveAccurately(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        MobSenses.start(dir, new MobSenses.Platform("Test", "1.21.1"), false);
+        int lanternLight = SightModel.heldItemLight("minecraft:lantern");
+
+        double subtleTorch = SightModel.effectiveSightRange(16.0, 0, 15, lanternLight, false, false, Preset.SUBTLE);
+        double defaultTorch = SightModel.effectiveSightRange(16.0, 0, 15, lanternLight, false, false, Preset.DEFAULT);
+        double hardcoreTorch = SightModel.effectiveSightRange(16.0, 0, 15, lanternLight, false, false, Preset.HARDCORE);
+        assertTrue(subtleTorch < defaultTorch, "Subtle preset must soften torch sight amplification");
+        assertTrue(hardcoreTorch > defaultTorch, "Hardcore preset must sharpen torch sight amplification");
+
+        double subtleDark = SightModel.effectiveSightRange(16.0, 0, 0, 0, false, false, Preset.SUBTLE);
+        double hardcoreDark = SightModel.effectiveSightRange(16.0, 0, 0, 0, false, false, Preset.HARDCORE);
+        assertTrue(subtleDark > hardcoreDark, "Preset sight multiplier scales deviation around baseline 1.0");
+
+        int visibleDayPct = SightModel.lightExposurePercent(0, 15, 0, false, false);
+        int invisibleDayPct = SightModel.lightExposurePercent(0, 15, 0, false, true);
+        int invisibleWithTorchPct = SightModel.lightExposurePercent(0, 0, lanternLight, false, true);
+        assertTrue(invisibleDayPct < visibleDayPct - 40, "Invisibility without held light must drop HUD exposure");
+        assertTrue(invisibleWithTorchPct > 65, "Holding a lantern while invisible still exposes the player");
+
+        MobSenses.settings().setOption("darkness_stealth_enabled", "false");
+        try {
+            double pitchDarkNoStealth = SightModel.effectiveSightRange(16.0, 0, 0, 0, true, false, Preset.DEFAULT);
+            assertEquals(16.0, pitchDarkNoStealth, 1e-6,
+                    "Disabling darkness_stealth_enabled must keep sight at full baseline in darkness");
+        } finally {
+            MobSenses.settings().setOption("darkness_stealth_enabled", "true");
+        }
+    }
 }

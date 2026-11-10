@@ -94,6 +94,8 @@ public final class VoiceTracker {
     private final Map<UUID, PlayerMicState> players = new ConcurrentHashMap<>();
     private final PlayerMicState clientSelf = new PlayerMicState();
     private volatile double clientLevel01;
+    private volatile double clientRangeBlocks;
+    private volatile boolean clientWhispering;
     private volatile long clientLastMs;
 
     /**
@@ -188,6 +190,8 @@ public final class VoiceTracker {
         double range = clientSelf.recordFrame(db, whispering);
         double level = Math.min(1.0, range / (BASE_VOICE_RANGE * 1.6));
         clientLevel01 = Math.max(clientLevel01, level);
+        clientRangeBlocks = Math.max(clientRangeBlocks, range);
+        clientWhispering = whispering;
         clientLastMs = nowMs;
     }
 
@@ -196,10 +200,27 @@ public final class VoiceTracker {
         long elapsed = nowMs - clientLastMs;
         if (elapsed < 0 || elapsed >= CLIENT_VOICE_HOLD_MS) {
             clientLevel01 = 0.0;
+            clientRangeBlocks = 0.0;
+            clientWhispering = false;
             return 0.0;
         }
         double decay = 1.0 - (double) elapsed / (double) CLIENT_VOICE_HOLD_MS;
         return Math.max(0.0, Math.min(1.0, clientLevel01 * decay));
+    }
+
+    /** Estimated audible voice range in blocks on the local client for the HUD readout. */
+    public double clientVoiceRangeBlocks(long nowMs) {
+        long elapsed = nowMs - clientLastMs;
+        if (elapsed < 0 || elapsed >= CLIENT_VOICE_HOLD_MS) {
+            return 0.0;
+        }
+        return clientRangeBlocks;
+    }
+
+    /** Whether the active local voice packet is using Simple Voice Chat's whisper key. */
+    public boolean clientWhispering(long nowMs) {
+        long elapsed = nowMs - clientLastMs;
+        return elapsed >= 0 && elapsed < CLIENT_VOICE_HOLD_MS && clientWhispering;
     }
 
     public void removePlayer(UUID playerId) {
@@ -211,6 +232,8 @@ public final class VoiceTracker {
     public void clear() {
         players.clear();
         clientLevel01 = 0.0;
+        clientRangeBlocks = 0.0;
+        clientWhispering = false;
         clientLastMs = 0L;
     }
 }

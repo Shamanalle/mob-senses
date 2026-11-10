@@ -6,6 +6,7 @@ evaluationDependsOn(':common')
 def targetName = project.ext.bandTarget
 def mcVer = project.ext.mcVersion
 def forgeVer = project.findProperty("loaderOverride.${project.name}") ?: project.ext.forgeVersion
+def eventbusVer = project.ext.has('eventbusVersion') ? project.ext.eventbusVersion : '7.0-beta.12'
 def unobfuscated = project.ext.has('unobfuscated') && project.ext.unobfuscated
 
 version = "${project.mod_version}+${targetName}"
@@ -36,7 +37,8 @@ dependencies {
     }
     compileOnly "net.minecraftforge:forge:${forgeVer}:universal@jar"
     compileOnly "net.minecraftforge:forge:${forgeVer}:userdev@jar"
-    compileOnly "net.minecraftforge:eventbus:7.0-beta.12@jar"
+    compileOnly "net.minecraftforge:mergetool:1.1.7:api@jar"
+    compileOnly "net.minecraftforge:eventbus:${eventbusVer}@jar"
     compileOnly "net.minecraftforge:fmlcore:${forgeVer}@jar"
     compileOnly "net.minecraftforge:fmlloader:${forgeVer}@jar"
     compileOnly "net.minecraftforge:javafmllanguage:${forgeVer}@jar"

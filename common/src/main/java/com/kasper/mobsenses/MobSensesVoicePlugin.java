@@ -106,7 +106,8 @@ public final class MobSensesVoicePlugin implements VoicechatPlugin {
             if (pcm != null && pcm.length > 0) {
                 long now = System.currentTimeMillis();
                 double range = MobSenses.voice().onVoiceFrame(playerUuid, pcm, event.getPacket().isWhispering(), now);
-                if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                UUID localId = MobSenses.localPlayerId();
+                if (range >= NoiseModel.MIN_AUDIBLE_RANGE && localId != null && localId.equals(playerUuid)) {
                     MobSenses.hud().onLocalNoise(range, now);
                 }
             }
@@ -121,6 +122,10 @@ public final class MobSensesVoicePlugin implements VoicechatPlugin {
             if (raw != null && raw.length > 0) {
                 long now = System.currentTimeMillis();
                 MobSenses.voice().onClientSound(raw, event.isWhispering(), now);
+                double range = MobSenses.voice().clientVoiceRangeBlocks(now);
+                if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                    MobSenses.hud().onLocalNoise(range, now);
+                }
             }
         } catch (Throwable ignored) {
         }

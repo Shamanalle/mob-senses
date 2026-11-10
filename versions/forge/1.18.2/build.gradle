@@ -1,0 +1,69 @@
+plugins {
+    id 'net.neoforged.moddev.legacyforge' version '2.0.147'
+    id 'java'
+}
+
+evaluationDependsOn(':common')
+
+def target = "mc1.18-1.18.2"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-forge"
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+legacyForge {
+    version = project.findProperty("loaderOverride.${project.name}") ?: project.forge118_version
+}
+
+def src116 = file("${rootDir}/versions/fabric/1.16/src/main/java").toPath()
+
+sourceSets {
+    main {
+        java {
+            srcDir "${rootDir}/shared/mc-all/src/main/java"
+            srcDir "${rootDir}/versions/fabric/1.16/src/main/java"
+            exclude { e ->
+                if (e.directory) return false
+                def p = e.file.toPath()
+                if (p.startsWith(src116)) {
+                    def rel = src116.relativize(p).toString().replace('\\', '/')
+                    return rel != 'com/kasper/mobsenses/PoseCanvas.java'
+                            && rel != 'com/kasper/mobsenses/server/AdminPermission.java'
+                            && rel != 'com/kasper/mobsenses/server/PlayerLanguage.java'
+                            && rel != 'com/kasper/mobsenses/server/Worlds.java'
+                }
+                return false
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation project(':common')
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+}

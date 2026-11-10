@@ -154,19 +154,19 @@ public final class BlockAcoustics {
         return AcousticMaterial.STONE;
     }
 
+    public static boolean isOpenableOpen(BlockState state) {
+        if (state == null) {
+            return false;
+        }
+        return (state.getBlock() instanceof DoorBlock && Boolean.TRUE.equals(state.getValue(DoorBlock.OPEN)))
+                || (state.getBlock() instanceof TrapDoorBlock && Boolean.TRUE.equals(state.getValue(TrapDoorBlock.OPEN)))
+                || (state.getBlock() instanceof FenceGateBlock && Boolean.TRUE.equals(state.getValue(FenceGateBlock.OPEN)));
+    }
+
     public static boolean isOpenForSound(Level level, int x, int y, int z) {
         BlockPos pos = new BlockPos(x, y, z);
         BlockState state = level.getBlockState(pos);
-        if (state.isAir()) {
-            return true;
-        }
-        if (state.getBlock() instanceof DoorBlock && Boolean.TRUE.equals(state.getValue(DoorBlock.OPEN))) {
-            return true;
-        }
-        if (state.getBlock() instanceof TrapDoorBlock && Boolean.TRUE.equals(state.getValue(TrapDoorBlock.OPEN))) {
-            return true;
-        }
-        if (state.getBlock() instanceof FenceGateBlock && Boolean.TRUE.equals(state.getValue(FenceGateBlock.OPEN))) {
+        if (state.isAir() || isOpenableOpen(state)) {
             return true;
         }
         return state.getCollisionShape(level, pos).isEmpty();
