@@ -9,21 +9,33 @@ import com.kasper.mobsenses.client.SettingsKey;
 import com.kasper.mobsenses.client.StealthHudOverlay;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraftforge.client.ConfigScreenHandler;
-import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.gui.overlay.ForgeLayeredDraw;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLPaths;
 
+import java.lang.reflect.Method;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 /**
- * Shared client hooks for Forge 1.21 - 1.21.5 (EventBus 6, 3-arg {@link AddGuiOverlayLayersEvent}).
+ * Shared client hooks for Forge 1.21 - 1.21.5 (EventBus 6).
+ *
+ * <p>Forge 51 (1.21) lacks both {@code AddGuiOverlayLayersEvent} and
+ * {@code FMLJavaModLoadingContext#registerExtensionPoint}, whereas Forge 52+ (1.21.1 - 1.21.5) provides both.
+ * Resolving them reflectively keeps a single band compatible with both Forge 51 and Forge 52-55.
  */
 final class ForgeClientHooks {
+
+    private static final String LAYERS_EVENT = "net.minecraftforge.client.event.AddGuiOverlayLayersEvent";
+    private static final String MOD_LOADING_CONTEXT = "net.minecraftforge.fml.ModLoadingContext";
 
     private static KeyMapping settingsKey;
 
@@ -36,23 +48,20 @@ final class ForgeClientHooks {
         ClientLink.bindNetworking(ForgeNetworking::sendHelloToServer, ForgeNetworking::sendAdminToServer);
         settingsKey = SettingsKey.create();
         if (context != null) {
-            context.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
-                    () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> new MobSensesScreen(parent)));
-            context.getModEventBus().addListener((RegisterKeyMappingsEvent e) -> {
+            registerConfigScreen(context, () -> new ConfigScreenHandler.ConfigScreenFactory(
+                    (mc, parent) -> new MobSensesScreen(parent)));
+            IEventBus modBus = context.getModEventBus();
+            modBus.addListener((RegisterKeyMappingsEvent e) -> {
                 if (settingsKey != null) {
                     e.register(settingsKey);
                 }
             });
-            context.getModEventBus().addListener((AddGuiOverlayLayersEvent e) ->
-                    e.getLayeredDraw().add(
-                            ForgeLayeredDraw.PRE_SLEEP_STACK,
-                            ResourceLocation.tryBuild(MobSenses.MOD_ID, "stealth_hud"),
-                            (graphics, delta) -> {
-                                Minecraft mc = Minecraft.getInstance();
-                                if (mc != null && mc.font != null && !mc.options.hideGui) {
-                                    StealthHudOverlay.render(new GuiCanvas(graphics, mc.font));
-                                }
-                            }));
+            registerHudLayer(modBus, (graphics, delta) -> {
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null && mc.font != null && !mc.options.hideGui) {
+                    StealthHudOverlay.render(new GuiCanvas(graphics, mc.font));
+                }
+            });
         }
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent e) -> {
             if (e.phase == TickEvent.Phase.END) {
@@ -61,5 +70,49 @@ final class ForgeClientHooks {
         });
         MinecraftForge.EVENT_BUS.addListener((RegisterClientCommandsEvent e) ->
                 ClientHudCommand.register(e.getDispatcher()));
+    }
+
+    private static void registerConfigScreen(
+            FMLJavaModLoadingContext context,
+            Supplier<ConfigScreenHandler.ConfigScreenFactory> supplier) {
+        if (invokeRegisterExtensionPoint(context, supplier)) {
+            return;
+        }
+        try {
+            Object legacy = Class.forName(MOD_LOADING_CONTEXT).getMethod("get").invoke(null);
+            invokeRegisterExtensionPoint(legacy, supplier);
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+        }
+    }
+
+    private static boolean invokeRegisterExtensionPoint(
+            Object target,
+            Supplier<ConfigScreenHandler.ConfigScreenFactory> supplier) {
+        try {
+            Method m = target.getClass().getMethod("registerExtensionPoint", Class.class, Supplier.class);
+            m.invoke(target, ConfigScreenHandler.ConfigScreenFactory.class, supplier);
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerHudLayer(IEventBus modBus, LayeredDraw.Layer layer) {
+        Class<? extends Event> eventType;
+        Method getLayeredDraw;
+        try {
+            eventType = (Class<? extends Event>) Class.forName(LAYERS_EVENT);
+            getLayeredDraw = eventType.getMethod("getLayeredDraw");
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return;
+        }
+        Consumer<Event> listener = event -> {
+            try {
+                ((LayeredDraw) getLayeredDraw.invoke(event)).add(layer);
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+            }
+        };
+        modBus.addListener(EventPriority.NORMAL, false, (Class<Event>) eventType, listener);
     }
 }
