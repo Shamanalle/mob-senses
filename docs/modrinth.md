@@ -1,137 +1,105 @@
-<p align="center"><img src="https://raw.githubusercontent.com/Shamanalle/mob-senses/main/icon.png" width="128" alt="Mob Senses icon"></p>
+Hostile mobs in vanilla notice you only within a fixed radius. With **Mob Senses**, they use their senses: **mobs hear footsteps, blocks, gunshots (with suppressors!) and [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) through walls, spot held torchlight vs darkness, and track bleeding trails — with a Tactical Stealth HUD and sleek 2-tab settings GUI.**
 
-<h1 align="center">Mob Senses</h1>
-
-<p align="center">Mobs hear your steps, blocks and gunshots, see your light, smell blood trails and, with Simple Voice Chat, hear your voice.<br>A server-side survival, horror and stealth mod for Fabric, Quilt, Forge, NeoForge and Paper.</p>
-
-<p align="center">
-<a href="https://github.com/Shamanalle/mob-senses/releases"><img src="https://img.shields.io/github/v/release/Shamanalle/mob-senses?include_prereleases&logo=github&color=brightgreen" alt="Release"></a>
-<img src="https://img.shields.io/badge/Minecraft-1.16.5%20%E2%80%93%2026.3-blue.svg" alt="Minecraft 1.16.5 – 26.3">
-<img src="https://img.shields.io/badge/loaders-Fabric%20%C2%B7%20Quilt%20%C2%B7%20Forge%20%C2%B7%20NeoForge%20%C2%B7%20Paper-6d4aff.svg" alt="Loaders">
-<a href="https://github.com/Shamanalle/mob-senses/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-</p>
+Install it on the server, on your client, or on both. **Vanilla clients can join a server running Mob Senses with nothing installed.**
 
 ![Mob Senses — hearing, gunshots, voice chat, light and blood trails](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-demo.gif)
 
-Hostile mobs in vanilla notice you only within a fixed range. With **Mob Senses** they use their senses:
+## How mobs sense you
 
-- **Hearing & Wall Occlusion.** Running is loud, sneaking is quiet, wool muffles your steps and gravel gives you away. Breaking and placing blocks, doors, chests, fights, arrows, explosions, bells, note blocks and eating make noise too. A mob that hears it walks to **where the noise came from**, looks around and goes back to its business. Stone walls, rain, thunderstorms, *Feather Falling* boots and *Swift Sneak* leggings muffle noise, glass and wood less, and an open door lets it through.
-- **Gun Mods & Suppressors** (**TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns**). Unsuppressed gunshots carry far across the area (`44` blocks) and draw nearby mobs, while attaching a suppressor or silencer muffles the shot (`16` blocks). Firing a silenced weapon at a distant wall creates noise where the bullet lands (`20` blocks) so you can distract or lure mobs away.
-- **Voice Chat** (with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat)). Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is measured against each player's own normal speaking voice, so a quiet microphone gives no free stealth.
-- **Light & Stealth.** A torch or lantern in your hand makes you visible from afar; darkness, sneaking and invisibility potions hide you.
-- **Blood Scent & Horde Alerts.** A badly wounded player (at or below half health) leaves a crimson blood trail that zombies and spiders follow, and alerted mobs can optionally call nearby allies to investigate together.
-- **Customizable Stealth HUD.** Players who install the mod on the client get a redesigned Stealth & Noise HUD (`tactical` card or `minimal` bar strip) showing noise, audible distance (`~Xm`), light exposure, `[Voice]` / `[Whisper]` badges and blood scent — configurable anytime via `/mshud` without OP.
+**👂 Hearing & wall occlusion**
+- Running is loud, sneaking is quiet, wool and carpet muffle footsteps while gravel and metal give you away.
+- Breaking and placing blocks, doors, trapdoors, chests, barrels, combat, arrows, explosions, bells, note blocks and eating make noise too.
+- A mob that hears noise walks to **where the sound came from**, searches the spot and returns to its business.
+- Stone walls (`×0.64`), wool (`×0.53`), rain (`25%`), thunderstorms (`45%`), *Feather Falling* boots and *Swift Sneak* leggings muffle sound; glass and wood block less, and open doors let sound pass.
 
-**A next-generation alternative to Zombie Awareness** — built with real wall occlusion, **TaCZ** gun and suppressor acoustics, **Simple Voice Chat** detection, darkness stealth, a customizable client Stealth HUD, and **zero library dependencies** (no CoroUtil needed) in a single universal file for **Minecraft 1.16.5 – 26.3** across **Fabric, Quilt, Forge, NeoForge, Paper, Purpur, Folia and Spigot**.
+**🔫 Firearms, suppressors & bullet lures**
+- Native support for **TaCZ** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2**, **Superb Warfare** and **Just Enough Guns**.
+- Unsuppressed shots carry across the area (`44` blocks) and draw nearby mobs; attaching a suppressor or silencer cuts the shot to close range (`16` blocks).
+- Firing a silenced weapon into a distant wall creates noise where the bullet lands (`20` blocks) so you can distract or lure hordes away. Every weapon can also be tuned individually (`gun.<id>.range`).
 
-> **Modpacks:** You are free to include **Mob Senses** in any modpack.
+**🗣️ Proximity voice chat** *(with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat))*
+- Mobs hear you speak. A shout carries far, a whisper only next to them.
+- Loudness is calibrated automatically against each player's own normal speaking voice, so a quiet microphone gives no free stealth. Works cleanly alongside [Sound Physics Remastered](https://modrinth.com/mod/sound-physics-remastered).
 
-![Mobs hear noise and investigate](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-hearing.png)
+**🔦 Torchlight, darkness stealth & blood scent**
+- Holding a torch, lantern or glowstone exposes you from 50% farther away; sneaking in darkness or drinking an Invisibility potion (without held light) hides you and drops distant pursuit.
+- Badly wounded players (`≤ 50%` health) leave a fast in-memory scent trail with crimson blood droplets on the ground that zombies and spiders follow, and alerted mobs can optionally call nearby allies as a horde — with **zero dummy marker entities** spawned in the world.
 
-## Quick start
+![Senses & World tab: presets, wall occlusion, firearms and Simple Voice Chat](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/ui-hearing.png)
 
-**Server**
-1. Fabric, Quilt, Forge or NeoForge: put the mod's `.jar` into `mods/` (on Fabric and Quilt also [Fabric API](https://modrinth.com/mod/fabric-api)). Paper, Purpur, Folia or Spigot: put `mob-senses-bukkit-*.jar` into `plugins/`.
-2. Start the server. Players join with any client, vanilla too: they need nothing.
-3. Choose how keen the senses are with `/mobsenses preset subtle|default|hardcore`, tune any of the 45+ options in-game with `/mobsenses set`, or edit `mobsenses-server.properties`.
+## For players
 
-**Singleplayer:** put the same `.jar` into `.minecraft/mods/`.
+- **Tactical & minimal Stealth HUD:** chamfered *Tactical* card (stealth eye, `30%`/`65%` threshold ticks, peak-hold marker) or slim *Minimal* strip showing noise, audible distance (`~Xm`), light exposure, blood scent and `[Voice]` / `[Whisper]` badges, with smooth auto-hide when quiet.
+- **Sleek 2-tab dark-slate Settings GUI:** *Stealth HUD* (with live interactive preview) and *Senses & World*, opened from **Mod Menu** (Fabric/Quilt), **Mods → Config** (Forge/NeoForge), your own keybind (*Mob Senses…*), or `/mshud` on any server without operator permissions.
+- **Lightweight client ↔ server sync:** when both client and server run Mob Senses (including **Paper, Purpur and Folia** servers!), your HUD automatically syncs the active server or dimension preset, multipliers and fair-play HUD rule. Seven languages.
 
-[Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) and gun mods are optional: everything works out of the box and integrates automatically when they are installed.
+![Stealth HUD tab with live interactive preview](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/ui-hud.png)
 
-## What works where
+## For servers
 
-| | Server with the mod | Server without the mod |
-|---|---|---|
-| **Player without the mod** (vanilla client) | Everything: mobs hear, see and smell | Vanilla |
-| **Player with the mod** | Everything, plus the noise and stealth HUD | Vanilla, plus the client noise and light HUD |
-| **Singleplayer** | Everything | — |
+- **Zero client requirement:** server-side AI works for vanilla clients out of the box.
+- **Presets & per-world balance:** switch between **Off**, **Subtle**, **Default** and **Hardcore**, or set per-dimension presets with `/mobsenses world <world|here> <preset|inherit>`.
+- **Fair play & live operator GUI:** hide the client Stealth HUD (`allow_client_hud=false`) for competitive PvP or horror events, while server operators with the client mod tune presets and sliders live in the *Senses & World* tab.
+- **Clickable `/mobsenses`, staff bypass & debug traces:** clickable buttons in `/mobsenses` chat replies, `/mobsenses debug` particle traces showing sound, light and blood paths to alerted mobs, and `mobsenses.bypass` so vanished moderators trigger no extra mob senses.
 
-![Stealth HUD](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-hud.png)
+![Clickable /mobsenses chat controls and live debug particle traces](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/ui-debug.png)
 
-## Versions and files
-
-| You run | Minecraft | File |
-|---|---|---|
-| **Fabric, Quilt** | 1.16.5 – 1.21.11, 26.1 – 26.3 | `mob-senses-fabric-…+mc1.16.5-26.x.jar` + [Fabric API](https://modrinth.com/mod/fabric-api) |
-| **Forge** | 1.18 – 1.21.11, 26.1 – 26.3 | `mob-senses-forge-neoforge-…+mc1.18-26.x.jar` |
-| **NeoForge** | 1.20.1, 1.20.5 – 1.21.11, 26.1 – 26.3 | the same file |
-| **Paper, Purpur, Folia, Spigot** | 1.16.5 – 26.3 | `mob-senses-bukkit-….jar` |
-
-One file serves every Minecraft version of its loader: it picks the right code when the game starts.
-
-## Commands
-
-`/mobsenses` is for operators (level 2) and the console, while `/mshud` (alias `/mobsenseshud`) works for **every player on any server without OP**. On Paper the permission is `mobsenses.admin`. Replies come in the player's language (English, Russian, Ukrainian, German, Spanish, Portuguese, Chinese).
-
-| Command | What it does |
-|---|---|
-| `/mshud [on\|off\|tactical\|minimal\|compact\|full\|auto_hide\|range\|position\|opacity\|offset\|bar\|reset]` | Customize the client Stealth HUD on any server without operator permissions |
-| `/mobsenses` or `/mobsenses status` | Version, preset, multipliers, voice chat, how much noise the server heard and how many mobs reacted in the last minute |
-| `/mobsenses preset <off\|subtle\|default\|hardcore>` | How keen the senses are; `off` makes mobs behave as in vanilla |
-| `/mobsenses hearing <0-3>` | How far mobs hear, times the preset |
-| `/mobsenses sight <0-3>` | How far mobs see you, times the preset |
-| `/mobsenses voice <on\|off>` | Whether mobs hear Simple Voice Chat |
-| `/mobsenses set <option> [value\|default]` | View or change any server setting in-game with Tab-completion |
-| `/mobsenses get <option\|category>` | Inspect a single setting or an entire category (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) |
-| `/mobsenses reset <option\|all>` | Restore any setting or the entire config back to factory defaults |
-| `/mobsenses hud <…>` | Same HUD controls as `/mshud` when playing in singleplayer |
-| `/mobsenses debug [on\|off]` | Particle traces for operators showing sound, light and scent paths |
-| `/mobsenses world <world\|here> <preset\|inherit>` | A world's own preset (`inherit`: back to the server's) |
-| `/mobsenses reload` | Read the settings file again |
-| `/mobsenses help` | The list of commands |
-
-| Preset | Hearing | Sight | For |
-|---|---|---|---|
-| Off | — | — | Vanilla mobs |
-| Subtle | ×0.6 | ×0.8 | Builders' servers: mobs notice only real noise |
-| Default | ×1 | ×1 | Survival |
-| Hardcore | ×1.6 | ×1.3 | Horror and hardcore: every step counts |
-
-![Admin debug traces](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-debug.png)
-
-## Compatibility
-
-- **Modpacks:** free to include in any modpack; no external library mods required.
-- **Vanilla clients** join a server with the mod; the mod does not change the network protocol.
-- **Gun mods (TaCZ, Vic's Point Blank, MrCrayfish's Gun Mod, Scorched Guns):** automatic support for unsuppressed shots, suppressors/silencers, distant bullet wall impacts and per-weapon range overrides.
-- **Custom and modded mobs:** configure via `extra_listeners`, `ignored_mobs` and `scent_mobs` or the `#mobsenses:listeners` entity type tag.
-- **Other AI & sound mods** (In Control!, Enhanced AI, Improved Mobs, Sound Physics Remastered): Mob Senses adds a low-priority investigation goal that yields immediately when a mob enters combat.
-
-### How Mob Senses compares to Zombie Awareness
+## Why Mob Senses vs Zombie Awareness
 
 | Feature | Mob Senses | Zombie Awareness |
 |---|---|---|
-| **Walls & surface materials** | Raycasts through blocks: stone walls muffle heavily, glass/wood less, open doors pass sound, wool/rain/Feather Falling quiet steps | Ignores walls (plain radius check) |
-| **Gun mods & suppressors** | Native **TaCZ, PointBlank, CGM & Scorched Guns** support: suppressors, distant bullet wall impacts & per-weapon ranges | Generic sound hook only (no suppressor or bullet impact logic) |
+| **Walls & surface materials** | Raycasts through blocks: stone (`×0.64`) & wool (`×0.53`) muffle, open doors pass sound, rain & Feather Falling mask steps | Ignores walls (plain radius check) |
+| **Firearm mods & suppressors** | Native **TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare & JEG**: silencers, bullet wall-impact lures & per-gun ranges | Generic sound hook only (no suppressor or bullet impact logic) |
 | **Simple Voice Chat** | Built-in with per-player microphone auto-calibration (whisper vs. shout) | None |
-| **Darkness stealth & sight** | Held torches expose you from afar; sneaking in the dark or invisibility hides you and drops distant pursuit | Surface light lures only; no darkness stealth |
-| **Blood trails & server TPS** | Zero dummy entities spawned in the world; fast in-memory scent trails with crimson blood droplets | Spawns invisible marker entities in the world |
-| **Client Stealth HUD** | `tactical` & `minimal` styles, live `~Xm` audible range, `[Whisper]` badge, peak-hold, smooth auto-hide & `/mshud` without OP | None |
-| **Dependencies & platforms** | **Zero dependencies** (no CoroUtil) · **1 universal jar** per loader (`1.16.5 – 26.3` Fabric/Paper, `1.18 – 26.3` Forge/NeoForge) | Requires **CoroUtil** · Separate jars per version/loader · No Paper/Folia |
+| **Darkness stealth & sight** | Held torches expose you from afar; sneaking in darkness or invisibility drops distant pursuit | Surface light lures only; no darkness stealth |
+| **Blood trails & server TPS** | Zero dummy entities spawned; fast in-memory trails with crimson blood droplets | Spawns invisible marker entities in the world |
+| **Client HUD & settings GUI** | Tactical HUD, sleek 2-tab dark-slate GUI with live preview, client-server sync & clickable `/mobsenses` | Config file / basic options only; no client Stealth HUD |
+| **Dependencies & platforms** | **Zero dependencies** (no CoroUtil) · **1 universal jar** per loader across **1.16.5 – 26.3** + Paper/Folia | Requires **CoroUtil** · Separate jars per version · No Paper/Folia |
+
+## Which file do I need?
+
+| You play on | Minecraft | File |
+|---|---|---|
+| **Fabric, Quilt** | 1.16.5 – 26.3 | `mob-senses-fabric-…+mc1.16.5-26.x.jar`, needs [Fabric API](https://modrinth.com/mod/fabric-api) |
+| **Forge** | 1.16.5 – 26.3 | `mob-senses-forge-neoforge-…+mc1.16.5-26.x.jar` |
+| **NeoForge** | 1.20.1 – 26.3 | `mob-senses-forge-neoforge-…+mc1.16.5-26.x.jar`, the same file |
+| **Paper, Purpur, Folia, Spigot** | 1.16.5 – 26.3 | `mob-senses-bukkit-….jar`, server plugin |
+
+Before 1.20 the mod covers 1.16.5, 1.17.1, 1.18.2, 1.19.2 and 1.19.4 (Forge itself has no 1.20.5 and 1.21.2). Free to include in any modpack.
+
+**[All settings, commands and permissions →](https://github.com/Shamanalle/mob-senses#readme)** · [Changelog](https://github.com/Shamanalle/mob-senses/blob/main/CHANGELOG.md) · [Questions and problems](https://github.com/Shamanalle/mob-senses#questions-and-problems) · [Report a bug](https://github.com/Shamanalle/mob-senses/issues)
 
 ---
 
 <details>
 <summary><b>🇷🇺 Русский</b></summary>
 
-В обычном Minecraft враждебные мобы замечают вас только на фиксированном расстоянии. С **Mob Senses** у них появляются чувства:
+В обычном Minecraft враждебные мобы замечают вас только в фиксированном радиусе. С **Mob Senses** у них появляются чувства: **мобы слышат шаги, блоки, выстрелы (с учётом глушителей!) и [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) сквозь стены, видят свет факела в руке, теряют след в темноте и идут по следу крови — с тактическим Stealth HUD и лаконичным 2-вкладочным меню настроек.**
 
-- **Слух и преграды.** Бег громкий, шаг в приседе тихий, шерсть глушит шаги, а гравий выдаёт. Ломание и установка блоков, двери, сундуки, бой, стрелы, взрывы, колокола, нотные блоки и еда тоже шумят. Моб, который это услышал, идёт туда, **откуда шёл звук**, осматривается и возвращается к своим делам. Каменные стены, дождь, гроза, ботинки с «Невесомостью» и поножи с «Проворством» глушат шум, стекло и дерево — слабее, а открытая дверь пропускает.
-- **Оружейные моды и глушители** (**TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns**). Выстрелы без глушителя разносятся далеко (`44` блока) и стягивают мобов, а глушитель снижает слышимость (`16` блоков). Попадание пули в далёкую стену (`20` блоков) создаёт шум в точке удара — выстрелом с глушителем можно отвлечь и выманить мобов.
-- **Голос** (с [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat)). Мобы слышат, как вы говорите. Крик разносится далеко, шёпот — только рядом; громкость отсчитывается от обычного голоса самого игрока, поэтому тихий микрофон не даёт бесплатной скрытности.
-- **Свет и скрытность.** Факел или фонарь в руке делает вас заметным издалека; темнота, присед и зелье невидимости прячут.
-- **Запах крови и призыв орды.** Сильно раненый игрок (половина здоровья или меньше) оставляет за собой след крови, по которому идут зомби и пауки, а встревоженные мобы при желании могут звать ближайших сородичей.
-- **Индикатор скрытности (HUD).** У игроков с модом на клиенте есть настраиваемый HUD (стили `tactical` и `minimal`) с радиусом слышимости (`~Xм`), метками `[Голос]` / `[Шёпот]`, пиками шума, плавным автоскрытием и клиентской командой `/mshud` без OP.
+Ставится на сервер, на клиент или с обеих сторон. **Ванильные клиенты заходят на сервер без каких-либо модов.**
 
-![/mobsenses status](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/store-status.png)
+## Как мобы вас чувствуют
+
+- **👂 Слух и преграды:** бег громкий, шаг в приседе тихий, шерсть и ковёр глушат шаги, а гравий и металл выдают. Каменные стены (`×0.64`), шерсть (`×0.53`), дождь, гроза, ботинки с «Невесомостью» и поножи с «Проворством» глушат звук, а открытые двери пропускают его.
+- **🔫 Оружейные моды и глушители:** нативная поддержка **TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns 2**, **Superb Warfare** и **Just Enough Guns** — выстрел без глушителя слышен на `44` блока, с глушителем на `16` блоков, а попадание пули в далёкую стену (`20` блоков) выманивает и отвлекает мобов.
+- **🗣️ Голосовой чат** *(с [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat))* — крик разносится далеко, шёпот слышно только вблизи; громкость калибруется относительно обычного голоса каждого игрока.
+- **🔦 Свет, темнота и след крови:** факел или фонарь в руке выдаёт издалека (`+50%`), присед в темноте или невидимость сбрасывают далёкую погоню, а раненые игроки (`≤ 50%` здоровья) оставляют след с каплями крови без спавна лишних сущностей в мире.
+
+## Для игроков и серверов
+
+- **Stealth HUD и экран настроек (2 вкладки):** *Stealth HUD* (с интерактивным предпросмотром) и *Senses & World*, открываются из **Mod Menu**, **Mods → Config**, по клавише в настройках управления или командой `/mshud` на любом сервере без OP.
+- **Лёгкая синхронизация клиента и сервера:** HUD автоматически учитывает пресет и множители сервера или текущего измерения (включая серверы **Paper, Purpur и Folia**!), операторы могут менять пресеты и ползунки прямо в GUI, а для честного PvP или хоррора сервер может скрыть клиентский HUD (`allow_client_hud=false`).
+- **Удобное управление:** пресеты по измерениям (`/mobsenses world`), кликабельные ответы `/mobsenses` в чате, отладочные частицы `/mobsenses debug` и право `mobsenses.bypass` для администрации в ванише.
+
+## Какой файл нужен?
+
+| Вы играете на | Minecraft | Файл |
+|---|---|---|
+| **Fabric, Quilt** | 1.16.5 – 26.3 | `mob-senses-fabric-…+mc1.16.5-26.x.jar`, нужен [Fabric API](https://modrinth.com/mod/fabric-api) |
+| **Forge** | 1.16.5 – 26.3 | `mob-senses-forge-neoforge-…+mc1.16.5-26.x.jar` |
+| **NeoForge** | 1.20.1 – 26.3 | `mob-senses-forge-neoforge-…+mc1.16.5-26.x.jar`, тот же файл |
+| **Paper, Purpur, Folia, Spigot** | 1.16.5 – 26.3 | `mob-senses-bukkit-….jar`, серверный плагин |
+
+**[Все настройки, команды и права →](https://github.com/Shamanalle/mob-senses/blob/main/README.ru.md)** · [Список изменений](https://github.com/Shamanalle/mob-senses/blob/main/CHANGELOG.md) · [Вопросы и проблемы](https://github.com/Shamanalle/mob-senses/blob/main/README.ru.md#вопросы-и-проблемы) · [Сообщить об ошибке](https://github.com/Shamanalle/mob-senses/issues)
 
 </details>
-
----
-
-<p align="center">
-<a href="https://github.com/Shamanalle/mob-senses/issues">Issues</a> ·
-<a href="https://github.com/Shamanalle/mob-senses">Source</a> ·
-<a href="https://github.com/Shamanalle/mob-senses/blob/main/LICENSE">License: MIT</a>
-</p>

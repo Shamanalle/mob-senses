@@ -22,6 +22,9 @@
     "client": [
       "com.kasper.mobsenses.MobSensesClient"
     ],
+    "modmenu": [
+      "com.kasper.mobsenses.ModMenuIntegration"
+    ],
     "voicechat": [
       "com.kasper.mobsenses.MobSensesVoicePlugin"
     ]
@@ -36,6 +39,7 @@
     "java": ">=21"
   },
   "suggests": {
-    "voicechat": "*"
+    "voicechat": "*",
+    "modmenu": "*"
   }
 }

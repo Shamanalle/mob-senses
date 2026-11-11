@@ -126,9 +126,15 @@ public class LangConsistencyTest {
         for (String sense : new String[]{"hearing", "sight"}) {
             used.add(ServerText.PREFIX + "sense." + sense);
         }
-        for (String sub : new String[]{"status", "preset", "hearing", "sight", "voice", "world", "set", "get", "reset", "hud", "debug", "reload", "help"}) {
+        for (String sub : AdminCommands.subcommands()) {
             used.add(ServerText.PREFIX + "help." + sub);
         }
+        for (String ternaryKey : new String[]{"status.voice.on", "status.voice.off",
+                "status.voice.missing", "voice.on", "voice.off", "debug.on", "debug.off"}) {
+            used.add(ServerText.PREFIX + ternaryKey);
+        }
+        used.add("key.categories.mobsenses");
+        used.add("key.mobsenses.settings");
         List<String> missing = new ArrayList<>();
         for (String k : used) {
             if (!english.containsKey(k)) {

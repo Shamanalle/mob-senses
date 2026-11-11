@@ -1,0 +1,73 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
+
+def target = "mc1.18-1.18.2"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-fabric"
+}
+
+repositories {
+    mavenCentral()
+}
+
+useShared([
+        'shared/fabric-1.17',
+        'shared/fabric',
+        'shared/fabric-client-1.16',
+        'shared/fabric-net-1.16',
+        'shared/mc-1.18',
+        'shared/mc-1.19',
+        'shared/mc-pose',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
+
+dependencies {
+    implementation project(':common')
+
+    minecraft "com.mojang:minecraft:${project.mc118_minecraft}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.mc118_fabric_loader}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.mc118_fabric_api}"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "mobsenses-refmap.json"
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+    exclude 'com/terraformersmc/**'
+}
+
+remapJar {
+    archiveClassifier = ''
+}

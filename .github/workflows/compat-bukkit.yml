@@ -1,0 +1,127 @@
+name: Paper plugin compatibility
+
+# Checks the Paper / Purpur / Folia / Spigot plugin on every Minecraft release from 1.16.5 on. The
+# plugin is built with Java 8 bytecode against gradle.properties' bukkit_api_version (1.16.5, with
+# GameEventListener and FoliaScheduling compiled against 1.20.1); LinkCheck.java then checks that every
+# class, method, field and override it uses resolves on each Paper API release the same way. Reviewed,
+# safe differences are listed in .github/scripts/linkcheck-allowed-bukkit.txt.
+
+on:
+  pull_request:
+    paths:
+      - 'bukkit/**'
+      - 'common/src/main/**'
+      - 'gradle.properties'
+      - '.github/scripts/LinkCheck.java'
+      - '.github/scripts/linkcheck-allowed-bukkit.txt'
+      - '.github/workflows/compat-bukkit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    name: List Paper API releases
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - name: Minecraft releases with a Paper API
+        id: list
+        run: |
+          releases=$(curl -fsSL https://piston-meta.mojang.com/mc/game/version_manifest_v2.json \
+            | jq -r '.versions[] | select(.type == "release") | .id')
+          meta=$(curl -fsSL https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml)
+          entries=()
+          for mc in $(printf '%s\n' ${releases} | sort -V); do
+            # Only 1.16.5 and later (1.16.5's Paper API has its own group, com.destroystokyo.paper)
+            [ "$(printf '%s\n%s\n' 1.16.5 "${mc}" | sort -V | head -1)" = "1.16.5" ] || continue
+            if [ "${mc}" = "1.16.5" ]; then
+              echo "Minecraft 1.16.5: Paper API 1.16.5-R0.1-SNAPSHOT (com.destroystokyo.paper)"
+              entries+=("$(jq -cn '{mc: "1.16.5", api: "1.16.5-R0.1-SNAPSHOT", group: "com.destroystokyo.paper"}')")
+              continue
+            fi
+            esc="${mc//./\\.}"
+            api=$(grep -oP "<version>\K${esc}-R0\.1-SNAPSHOT(?=</version>)" <<< "${meta}" | tail -1 || true)
+            if [ -z "${api}" ]; then
+              api=$(grep -oP "<version>\K${esc}\.build\.[0-9]+-[A-Za-z0-9]+(?=</version>)" <<< "${meta}" | sort -V | tail -1 || true)
+            fi
+            if [ -z "${api}" ]; then
+              echo "Minecraft ${mc}: no Paper API"
+              continue
+            fi
+            echo "Minecraft ${mc}: Paper API ${api}"
+            entries+=("$(jq -cn --arg mc "${mc}" --arg api "${api}" '{mc: $mc, api: $api}')")
+          done
+          [ "${#entries[@]}" -gt 0 ] || { echo "::error::No Paper API found"; exit 1; }
+          echo "matrix=$(printf '%s\n' "${entries[@]}" | jq -cs '{include: .}')" >> "$GITHUB_OUTPUT"
+
+  check:
+    name: Paper ${{ matrix.mc }}
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # JDK 17 compiles Java 8 bytecode via Jabel (gradle/jabel.gradle); JDK 25 runs Gradle and LinkCheck
+      - name: Set up JDK 17 and 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: |
+            17
+            25
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Build the plugin and its reference classpath
+        run: |
+          bash .github/scripts/net-retry.sh -- ./gradlew :bukkit:jar :bukkit:writeCompatClasspath --no-daemon
+          version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          cp "bukkit/build/libs/mob-senses-bukkit-${version}.jar" "${RUNNER_TEMP}/plugin.jar"
+          cp bukkit/build/compat-classpath.txt "${RUNNER_TEMP}/reference-classpath.txt"
+
+      # Some old Paper API snapshots can no longer be resolved (1.20.5 names an adventure-bom
+      # snapshot that is gone); such a version is reported as not checkable, not as a failure
+      - name: Classpath of Paper ${{ matrix.mc }}
+        id: target
+        run: |
+          if ./gradlew :bukkit:writeCompatClasspath --no-daemon -PcompatPaperApi=${{ matrix.api }} ${{ matrix.group && format('-PcompatPaperGroup={0}', matrix.group) || '' }}; then
+            cp bukkit/build/compat-classpath.txt "${RUNNER_TEMP}/target-classpath.txt"
+            echo "resolved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Paper API ${{ matrix.api }} cannot be resolved; Paper ${{ matrix.mc }} is not checked"
+            echo "Paper API ${{ matrix.api }} cannot be resolved from PaperMC's maven: not checked" > "${RUNNER_TEMP}/link.txt"
+            echo "resolved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check the plugin links against Paper ${{ matrix.mc }}
+        if: steps.target.outputs.resolved == 'true'
+        run: |
+          set -o pipefail
+          java .github/scripts/LinkCheck.java "${RUNNER_TEMP}/plugin.jar" \
+            "${RUNNER_TEMP}/reference-classpath.txt" "${RUNNER_TEMP}/target-classpath.txt" \
+            .github/scripts/linkcheck-allowed-bukkit.txt | tee "${RUNNER_TEMP}/link.txt"
+
+      - name: Summary
+        if: always()
+        env:
+          MC: ${{ matrix.mc }}
+          API: ${{ matrix.api }}
+        run: |
+          {
+            echo "### Paper ${MC} (paper-api ${API})"
+            echo '```'
+            tail -200 "${RUNNER_TEMP}/link.txt" 2>/dev/null || echo "no LinkCheck output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -19,7 +19,7 @@ Mobs hear your steps, blocks, doors and fights through walls, see your light and
 [[dependencies.mobsenses]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21.9,)"
+versionRange = "[21.9.0-beta,)"
 ordering = "NONE"
 side = "BOTH"
 

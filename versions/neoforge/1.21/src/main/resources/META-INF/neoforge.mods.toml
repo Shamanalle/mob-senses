@@ -19,14 +19,14 @@ Mobs hear your steps, blocks, doors and fights through walls, see your light and
 [[dependencies.mobsenses]]
 modId = "neoforge"
 type = "required"
-versionRange = "[20.5,)"
+versionRange = "[21.0,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.mobsenses]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.20.5,1.21.9)"
+versionRange = "[1.21,1.21.2)"
 ordering = "NONE"
 side = "BOTH"
 

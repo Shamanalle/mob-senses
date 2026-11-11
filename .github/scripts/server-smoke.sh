@@ -128,11 +128,16 @@ case "${loader}" in
     fi
     mkdir -p mods
     cp "${mod}" mods/
-    echo "-Xmx2G" > user_jvm_args.txt
-    case "$(uname -s)" in
-      MINGW* | MSYS*) sed -i 's/unix_args\.txt/win_args.txt/g' run.sh ;;
-    esac
-    run=(bash ./run.sh nogui)
+    if [ -f run.sh ]; then
+      echo "-Xmx2G" > user_jvm_args.txt
+      case "$(uname -s)" in
+        MINGW* | MSYS*) sed -i 's/unix_args\.txt/win_args.txt/g' run.sh ;;
+      esac
+      run=(bash ./run.sh nogui)
+    else
+      # Forge 1.16.5 and older have no run.sh: the installer leaves the launch jar
+      run=(java -Xmx2G -jar "forge-${loader_version}.jar" nogui)
+    fi
     settings="config/mobsenses-server.properties"
     nether="minecraft:the_nether"
     ;;
@@ -233,18 +238,20 @@ send "forceload add 0 0"
 sleep 2
 send "summon minecraft:tnt 0 -59 0 {Fuse:1,fuse:1}"
 sleep 4
-# "preset loud" must be refused, "prest" must get a suggestion, the world preset must be undone by inherit
+# "preset loud" must be refused, "prest" must get a suggestion, and the world preset must be undone by inherit
 for command in "mobsenses status" "mobsenses help" "mobsenses preset hardcore" "mobsenses preset loud" "mobsenses prest" \
                "mobsenses hearing 1.5" "mobsenses sight 9" "mobsenses voice off" "mobsenses debug on" "mobsenses debug off" \
-               "mobsenses world ${nether} off" "mobsenses world ${nether} inherit" "mobsenses world ${nether} subtle" "mobsenses reload"; do
+               "mobsenses world ${nether} off" "mobsenses world ${nether} inherit" "mobsenses world ${nether} subtle" \
+               "mobsenses reload"; do
   send "${command}"
   sleep 1
 done
 stop_server
 trap - EXIT
 
-# Some consoles (Paper 1.20) colour the log with ANSI codes, which split the answers below
-sed -i 's/\x1b\[[0-9;]*m//g' "${log}"
+# Some consoles colour the log with ANSI codes, and Spigot may leave its own colour codes (§x) in it;
+# both would split the answers below
+sed -i 's/\x1b\[[0-9;]*m//g; s/\xc2\xa7.//g' "${log}"
 
 failed=false
 if ! grep -q 'Mob Senses [0-9][^ ]* on ' "${log}"; then

@@ -54,7 +54,8 @@ public final class ServerSettings {
             "scent_duration_seconds", "blood_particles", "scent_mobs",
             "investigate_speed", "urgent_investigate_speed", "investigation_seconds",
             "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
-            "extra_listeners", "ignored_mobs", "language");
+            "extra_listeners", "ignored_mobs",
+            "allow_client_hud", "language");
 
     private final Path file;
     private long modified = Long.MIN_VALUE;
@@ -66,6 +67,7 @@ public final class ServerSettings {
     private volatile double wallMuffling = 1.0;
     private volatile boolean throughWallHearing = true;
     private volatile boolean surfaceSoundScaling = true;
+    private volatile boolean allowClientHud = true;
     private volatile String language = ServerText.DEFAULT_LANGUAGE;
 
     // 2. Firearms & Gun Mods (TaCZ, PointBlank, CGM, Scorched Guns)
@@ -142,6 +144,36 @@ public final class ServerSettings {
         return OPTION_KEYS;
     }
 
+    /** Maps shorthand GUI/state aliases to their canonical {@link #optionKeys()} name. */
+    public static String canonicalOptionKey(String rawKey) {
+        if (rawKey == null) {
+            return "";
+        }
+        String key = rawKey.trim().toLowerCase(Locale.ROOT);
+        switch (key) {
+            case "whisper_multiplier":
+                return "voice_whisper_multiplier";
+            case "darkness_stealth":
+                return "darkness_stealth_enabled";
+            case "torchlight_penalty":
+                return "held_light_bonus";
+            case "min_darkness_visibility":
+                return "darkness_min_visibility";
+            case "blood_scent":
+                return "scent_enabled";
+            case "blood_health_threshold":
+                return "scent_health_threshold";
+            case "blood_scent_range":
+                return "scent_range";
+            case "blood_trail_particles":
+                return "blood_particles";
+            case "investigate_duration_sec":
+                return "investigation_seconds";
+            default:
+                return key;
+        }
+    }
+
     public Path file() {
         return file;
     }
@@ -152,8 +184,31 @@ public final class ServerSettings {
 
     /** The preset of a world: its own, or the server's. */
     public Preset presetOf(String world) {
-        Preset own = world == null ? null : worlds.get(world);
-        return own != null ? own : preset;
+        if (world == null) {
+            return preset;
+        }
+        Preset own = worlds.get(world);
+        if (own != null) {
+            return own;
+        }
+        for (Map.Entry<String, Preset> e : worlds.entrySet()) {
+            if (sameWorld(e.getKey(), world)) {
+                return e.getValue();
+            }
+        }
+        return preset;
+    }
+
+    private static boolean sameWorld(String a, String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        return normalizeWorld(a).equals(normalizeWorld(b));
+    }
+
+    private static String normalizeWorld(String world) {
+        String s = world.trim().toLowerCase(Locale.ROOT);
+        return s.startsWith("minecraft:") ? s.substring("minecraft:".length()) : s;
     }
 
     public double hearing() {
@@ -409,8 +464,32 @@ public final class ServerSettings {
         return language;
     }
 
+    public boolean allowClientHud() {
+        return allowClientHud;
+    }
+
     public Map<String, Preset> worlds() {
         return worlds;
+    }
+
+    public synchronized void clearWorlds() {
+        worlds = Collections.emptyMap();
+    }
+
+    /** Human-readable summary of per-world preset overrides (e.g. {@code "minecraft:the_nether=hardcore"}). */
+    public String worldsSummary() {
+        Map<String, Preset> w = worlds;
+        if (w.isEmpty()) {
+            return "";
+        }
+        StringBuilder b = new StringBuilder();
+        for (Map.Entry<String, Preset> e : w.entrySet()) {
+            if (b.length() > 0) {
+                b.append(", ");
+            }
+            b.append(e.getKey()).append('=').append(e.getValue().id());
+        }
+        return b.toString();
     }
 
     /**
@@ -494,6 +573,10 @@ public final class ServerSettings {
 
     public void setSurfaceSoundScaling(boolean surfaceSoundScaling) {
         this.surfaceSoundScaling = surfaceSoundScaling;
+    }
+
+    public void setAllowClientHud(boolean allowClientHud) {
+        this.allowClientHud = allowClientHud;
     }
 
     private static double clamp(double v, double min, double max) {
@@ -745,7 +828,7 @@ public final class ServerSettings {
         if (rawKey == null || Jv.isBlank(rawKey)) {
             return null;
         }
-        String key = rawKey.trim().toLowerCase(Locale.ROOT);
+        String key = canonicalOptionKey(rawKey);
         if (key.startsWith("gun.") && key.endsWith(".range")) {
             String gun = key.substring("gun.".length(), key.length() - ".range".length());
             Double v = gunRanges.get(gun);
@@ -859,6 +942,8 @@ public final class ServerSettings {
                 return String.join(",", extraListeners);
             case "ignored_mobs":
                 return String.join(",", ignoredMobs);
+            case "allow_client_hud":
+                return String.valueOf(allowClientHud);
             case "language":
                 return language;
             default:
@@ -867,9 +952,9 @@ public final class ServerSettings {
     }
 
     /**
-     * Returns the list of option keys belonging to a named category ({@code core}, {@code guns},
-     * {@code sounds}, {@code stealth}, {@code voice}, {@code sight}, {@code scent}, {@code mobs},
-     * or {@code all}), or an empty list if {@code category} is not a category name.
+     * Returns the list of option keys belonging to a named category ({@code core}, {@code server},
+     * {@code guns}, {@code sounds}, {@code stealth}, {@code voice}, {@code sight}, {@code scent},
+     * {@code mobs}, or {@code all}), or an empty list if {@code category} is not a category name.
      */
     public static List<String> categoryKeys(String category) {
         if (category == null || Jv.isBlank(category)) {
@@ -879,7 +964,10 @@ public final class ServerSettings {
             case "core":
             case "general":
                 return Jv.listOf("preset", "hearing", "sight", "wall_muffling",
-                        "through_wall_hearing", "surface_sound_scaling", "language");
+                        "through_wall_hearing", "surface_sound_scaling",
+                        "allow_client_hud", "language");
+            case "server":
+                return Jv.listOf("allow_client_hud", "language");
             case "guns":
             case "firearms":
             case "tacz":
@@ -938,7 +1026,7 @@ public final class ServerSettings {
         if (rawKey == null || Jv.isBlank(rawKey)) {
             return false;
         }
-        String key = rawKey.trim().toLowerCase(Locale.ROOT);
+        String key = canonicalOptionKey(rawKey);
         if ("all".equals(key)) {
             resetAll();
             return true;
@@ -1113,6 +1201,9 @@ public final class ServerSettings {
             case "ignored_mobs":
                 ignoredMobs = Collections.emptySet();
                 return true;
+            case "allow_client_hud":
+                allowClientHud = true;
+                return true;
             case "language":
                 language = ServerText.DEFAULT_LANGUAGE;
                 return true;
@@ -1129,7 +1220,7 @@ public final class ServerSettings {
         if (rawKey == null || rawVal == null || Jv.isBlank(rawKey) || Jv.isBlank(rawVal)) {
             return false;
         }
-        String key = rawKey.trim().toLowerCase(Locale.ROOT);
+        String key = canonicalOptionKey(rawKey);
         String val = rawVal.trim();
         if (("default".equalsIgnoreCase(val) || "reset".equalsIgnoreCase(val)) && !"preset".equals(key)) {
             return resetOption(key);
@@ -1331,6 +1422,9 @@ public final class ServerSettings {
                             ? Collections.<String>emptySet()
                             : parseCsvSet(val));
                     return true;
+                case "allow_client_hud":
+                    setAllowClientHud(parseStrictBool(val));
+                    return true;
                 case "language":
                     setLanguage(val);
                     return true;
@@ -1401,7 +1495,9 @@ public final class ServerSettings {
             modified = Files.getLastModifiedTime(file).toMillis();
             String text = Jv.readString(file, StandardCharsets.UTF_8);
             read(text);
-            if (!text.contains("gunshot_range=") || !text.contains("rain_muffling=") || !text.contains("through_wall_hearing=") || !text.contains("scent_max_range=")) {
+            if (!text.contains("gunshot_range=") || !text.contains("rain_muffling=")
+                    || !text.contains("through_wall_hearing=") || !text.contains("scent_max_range=")
+                    || !text.contains("allow_client_hud=")) {
                 save();
             }
         } catch (IOException | RuntimeException e) {
@@ -1429,13 +1525,79 @@ public final class ServerSettings {
     synchronized void read(String text) throws IOException {
         Properties p = new Properties();
         p.load(new StringReader(text));
-        Preset parsed = Preset.byId(p.getProperty("preset"));
+        readFromProperties(p, false);
+    }
+
+    /**
+     * Writes effective server settings into {@code out} for {@code mobsenses:state} synchronization.
+     */
+    public synchronized void writeState(Properties out) {
+        writeState(out, null);
+    }
+
+    /**
+     * Writes effective server settings, world overrides, and the player's local world preset into {@code out}
+     * for {@code mobsenses:state} synchronization.
+     */
+    public synchronized void writeState(Properties out, String world) {
+        if (out == null) {
+            return;
+        }
+        Preset effective = presetOf(world);
+        out.setProperty("server_preset", preset.id());
+        out.setProperty("preset", effective.id());
+        out.setProperty("world", world == null ? "" : world);
+        for (String key : OPTION_KEYS) {
+            if ("preset".equals(key)) {
+                continue;
+            }
+            String val = getOption(key);
+            if (val != null) {
+                out.setProperty(key, val);
+            }
+        }
+        // Shorthand aliases so GUI / protocol consumers can read either canonical or shorthand names
+        out.setProperty("whisper_multiplier", format(voiceWhisperMultiplier));
+        out.setProperty("darkness_stealth", String.valueOf(darknessStealthEnabled));
+        out.setProperty("torchlight_penalty", format(heldLightBonus));
+        out.setProperty("min_darkness_visibility", format(darknessMinVisibility));
+        out.setProperty("blood_scent", String.valueOf(scentEnabled));
+        out.setProperty("blood_health_threshold", format(scentHealthThreshold));
+        out.setProperty("blood_scent_range", format(scentRange));
+        out.setProperty("blood_trail_particles", String.valueOf(bloodParticles));
+        out.setProperty("investigate_duration_sec", format(investigationSeconds));
+        out.setProperty("worlds_summary", worldsSummary());
+        for (Map.Entry<String, Preset> e : worlds.entrySet()) {
+            out.setProperty("world." + e.getKey() + ".preset", e.getValue().id());
+        }
+        for (Map.Entry<String, Double> e : gunRanges.entrySet()) {
+            out.setProperty("gun." + e.getKey() + ".range", format(e.getValue()));
+        }
+        for (Map.Entry<String, Double> e : gunSilencedRanges.entrySet()) {
+            out.setProperty("gun." + e.getKey() + ".silenced_range", format(e.getValue()));
+        }
+    }
+
+    /** Reads a {@code mobsenses:state} snapshot into this {@link ServerSettings} instance. */
+    public synchronized void readState(Properties in) {
+        if (in == null) {
+            return;
+        }
+        readFromProperties(in, true);
+    }
+
+    private synchronized void readFromProperties(Properties p, boolean preferServerPreset) {
+        String presetRaw = preferServerPreset
+                ? p.getProperty("server_preset", p.getProperty("preset"))
+                : p.getProperty("preset");
+        Preset parsed = Preset.byId(presetRaw);
         preset = parsed != null ? parsed : Preset.DEFAULT;
         hearing = boundedNumber(p, "hearing", MIN_MULTIPLIER, MAX_MULTIPLIER, 1.0);
         sight = boundedNumber(p, "sight", MIN_MULTIPLIER, MAX_MULTIPLIER, 1.0);
         wallMuffling = boundedNumber(p, "wall_muffling", MIN_MULTIPLIER, MAX_MULTIPLIER, 1.0);
         throughWallHearing = bool(p, "through_wall_hearing", true);
         surfaceSoundScaling = bool(p, "surface_sound_scaling", true);
+        allowClientHud = bool(p, "allow_client_hud", true);
 
         gunshotRange = boundedNumber(p, "gunshot_range", MIN_RANGE, MAX_RANGE, 44.0);
         gunshotSilencedRange = boundedNumber(p, "gunshot_silenced_range", MIN_RANGE, MAX_RANGE, 16.0);
@@ -1461,27 +1623,27 @@ public final class ServerSettings {
 
         voice = bool(p, "voice", true);
         voiceRange = boundedNumber(p, "voice_range", MIN_RANGE, MAX_RANGE, 16.0);
-        voiceWhisperMultiplier = boundedNumber(p, "voice_whisper_multiplier", 0.0, 1.0, 0.30);
+        voiceWhisperMultiplier = boundedNumberWithAlias(p, "voice_whisper_multiplier", "whisper_multiplier", 0.0, 1.0, 0.30);
 
         sightRange = boundedNumber(p, "sight_range", MIN_RANGE, MAX_RANGE, 16.0);
         heldLightEnabled = bool(p, "held_light_enabled", true);
-        heldLightBonus = boundedNumber(p, "held_light_bonus", 0.0, 2.0, 0.50);
-        darknessStealthEnabled = bool(p, "darkness_stealth_enabled", true);
-        darknessMinVisibility = boundedNumber(p, "darkness_min_visibility", 0.05, 1.0, 0.20);
+        heldLightBonus = boundedNumberWithAlias(p, "held_light_bonus", "torchlight_penalty", 0.0, 2.0, 0.50);
+        darknessStealthEnabled = boolWithAlias(p, "darkness_stealth_enabled", "darkness_stealth", true);
+        darknessMinVisibility = boundedNumberWithAlias(p, "darkness_min_visibility", "min_darkness_visibility", 0.05, 1.0, 0.20);
         sneakSightMultiplier = boundedNumber(p, "sneak_sight_multiplier", 0.1, 1.5, 0.60);
         sprintSightMultiplier = boundedNumber(p, "sprint_sight_multiplier", 0.5, 2.5, 1.15);
 
-        scentEnabled = bool(p, "scent_enabled", true);
-        scentHealthThreshold = boundedNumber(p, "scent_health_threshold", 5.0, 100.0, 50.0);
-        scentRange = boundedNumber(p, "scent_range", MIN_RANGE, MAX_RANGE, 14.0);
+        scentEnabled = boolWithAlias(p, "scent_enabled", "blood_scent", true);
+        scentHealthThreshold = boundedNumberWithAlias(p, "scent_health_threshold", "blood_health_threshold", 5.0, 100.0, 50.0);
+        scentRange = boundedNumberWithAlias(p, "scent_range", "blood_scent_range", MIN_RANGE, MAX_RANGE, 14.0);
         scentMaxRange = boundedNumber(p, "scent_max_range", MIN_RANGE, MAX_RANGE, 24.0);
         scentDurationSeconds = boundedNumber(p, "scent_duration_seconds", 2.0, 120.0, 15.0);
-        bloodParticles = bool(p, "blood_particles", true);
+        bloodParticles = boolWithAlias(p, "blood_particles", "blood_trail_particles", true);
         scentMobs = parseCsvSet(p.getProperty("scent_mobs"));
 
         investigateSpeed = boundedNumber(p, "investigate_speed", 0.5, 2.5, 1.0);
         urgentInvestigateSpeed = boundedNumber(p, "urgent_investigate_speed", 0.5, 2.5, 1.15);
-        investigationSeconds = boundedNumber(p, "investigation_seconds", 2.0, 60.0, 8.0);
+        investigationSeconds = boundedNumberWithAlias(p, "investigation_seconds", "investigate_duration_sec", 2.0, 60.0, 8.0);
         maxAlertedMobs = (int) Math.round(boundedNumber(p, "max_alerted_mobs", 1.0, 64.0, 8.0));
         hordeAlertRange = boundedNumber(p, "horde_alert_range", 0.0, 64.0, 0.0);
         hordeMaxAllies = (int) Math.round(boundedNumber(p, "horde_max_allies", 0.0, 32.0, 4.0));
@@ -1524,6 +1686,27 @@ public final class ServerSettings {
         worlds = Collections.unmodifiableMap(w);
         gunRanges = Collections.unmodifiableMap(gr);
         gunSilencedRanges = Collections.unmodifiableMap(gsr);
+    }
+
+    private static double boundedNumberWithAlias(Properties p, String primary, String alias,
+                                                 double min, double max, double fallback) {
+        if (p.getProperty(primary) != null) {
+            return boundedNumber(p, primary, min, max, fallback);
+        }
+        if (p.getProperty(alias) != null) {
+            return boundedNumber(p, alias, min, max, fallback);
+        }
+        return fallback;
+    }
+
+    private static boolean boolWithAlias(Properties p, String primary, String alias, boolean fallback) {
+        if (p.getProperty(primary) != null) {
+            return bool(p, primary, fallback);
+        }
+        if (p.getProperty(alias) != null) {
+            return bool(p, alias, fallback);
+        }
+        return fallback;
     }
 
     private static double boundedNumber(Properties p, String key, double min, double max, double fallback) {
@@ -1633,7 +1816,7 @@ public final class ServerSettings {
         lines.add("surface_sound_scaling=" + surfaceSoundScaling);
         lines.add("");
         lines.add("# ============================================================================");
-        lines.add("# 2. FIREARMS & GUN MODS (TaCZ, PointBlank, CGM, Scorched Guns) / ОГНЕСТРЕЛЬНОЕ ОРУЖИЕ");
+        lines.add("# 2. FIREARMS & GUN MODS (TaCZ, PointBlank, Superb Warfare, JEG, CGM, Scorched Guns) / ОГНЕСТРЕЛЬНОЕ ОРУЖИЕ");
         lines.add("# ============================================================================");
         lines.add("# Base audible distance in blocks for an unsuppressed gunshot (0 - 256, 0 = disabled).");
         lines.add("# Базовая дальность слышимости выстрела без глушителя в блоках (0 - 256, 0 = выкл).");
@@ -1765,6 +1948,13 @@ public final class ServerSettings {
         for (Map.Entry<String, Preset> e : worlds.entrySet()) {
             lines.add("world." + e.getKey().replace(":", "\\:") + ".preset=" + e.getValue().id());
         }
+        lines.add("");
+        lines.add("# ============================================================================");
+        lines.add("# 10. MULTIPLAYER FAIR-PLAY HUD LOCK / МУЛЬТИПЛЕЕР И БЛОКИРОВКА HUD");
+        lines.add("# ============================================================================");
+        lines.add("# Whether connected modded players may use the client-side Stealth & Noise HUD (false = hardcore fair-play lock).");
+        lines.add("# Разрешить ли игрокам с модом использовать клиентский HUD скрытности (false = блокировка для честного PvP/хардкора).");
+        lines.add("allow_client_hud=" + allowClientHud);
         return String.join(System.lineSeparator(), lines) + System.lineSeparator();
     }
 

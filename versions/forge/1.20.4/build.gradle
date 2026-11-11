@@ -1,0 +1,87 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+}
+
+// Forge 1.20.2 - 1.20.4: compiled against Mojang's names and remapped to SRG by ForgeGradle 6.
+def repoRoot = file('../../..')
+def props = new Properties()
+new File(repoRoot, 'gradle.properties').withInputStream { props.load(it) }
+
+def forge = project.findProperty('loaderOverride') ?: props.getProperty('forge1204_version')
+def minecraftVersion = forge.substring(0, forge.indexOf('-'))
+def modVersion = props.getProperty('mod_version')
+
+version = "${modVersion}+mc1.20.2-1.20.4"
+group = props.getProperty('maven_group')
+
+base {
+    archivesName = 'mob-senses-forge'
+}
+
+minecraft {
+    mappings channel: 'official', version: minecraftVersion
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.maxhenkel.de/repository/public' }
+}
+
+def ownRoot = file('src/main/java')
+def sharedRoots = [
+        "${repoRoot}/shared/forge-1.19.4/src/main/java",
+        "${repoRoot}/shared/forge-client-1.20/src/main/java",
+        "${repoRoot}/shared/forge-net-1.20.4/src/main/java",
+        "${repoRoot}/shared/mc-gui/src/main/java",
+        "${repoRoot}/shared/mc-1.21.8/src/main/java",
+        "${repoRoot}/shared/mc-1.21.10/src/main/java",
+        "${repoRoot}/shared/mc-all/src/main/java",
+        "${repoRoot}/common/src/main/java",
+].collect { new File(it) }
+
+sourceSets {
+    main {
+        java {
+            sharedRoots.each { srcDir it }
+            exclude { FileTreeElement e ->
+                if (e.directory) {
+                    return false
+                }
+                def path = e.relativePath.pathString
+                def index = sharedRoots.findIndexOf { e.file.path.startsWith(it.path + File.separator) }
+                if (index < 0) {
+                    return false
+                }
+                def before = [ownRoot] + sharedRoots.take(index)
+                before.any { new File(it, path).exists() }
+            }
+        }
+        resources {
+            srcDir "${repoRoot}/common/src/main/resources"
+        }
+    }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${forge}"
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:${props.getProperty('voicechat_api_version')}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property 'version', version
+    filesMatching('META-INF/mods.toml') {
+        expand 'version': version
+    }
+    filesMatching('mobsenses-build.properties') {
+        expand 'version': modVersion
+    }
+}
+
+jar {
+    finalizedBy 'reobfJar'
+}

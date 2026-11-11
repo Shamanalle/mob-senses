@@ -68,9 +68,15 @@ public final class MobSensesCommand {
     private static int run(CommandContext<CommandSourceStack> ctx, String args) {
         CommandSourceStack source = ctx.getSource();
         Reply reply = AdminCommands.execute(args, context(source));
+        boolean isPlayer = source.getEntity() instanceof ServerPlayer;
         for (Reply.Line line : reply.lines()) {
-            Component text = Worlds.literal(line.text()).withStyle(color(line.kind()));
+            Component text = isPlayer
+                    ? ReplyComponents.render(line)
+                    : Worlds.literal(line.text()).withStyle(color(line.kind()));
             Worlds.sendSuccess(source, text);
+        }
+        if (!reply.refused()) {
+            ServerBridge.markDirty();
         }
         return reply.refused() ? 0 : 1;
     }

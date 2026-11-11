@@ -174,6 +174,9 @@ public final class StealthHudOverlay {
         if (!hud.enabled() || !cfg.enabled()) {
             return;
         }
+        if (MobSenses.serverLink().connected() && !MobSenses.serverLink().allowClientHud()) {
+            return;
+        }
         LocalPlayer player = mc.player;
         Level level = mc.level;
         if (player == null || level == null) {
@@ -294,6 +297,8 @@ public final class StealthHudOverlay {
         return null;
     }
 
+    private static boolean previewClamp;
+
     public static void drawHud(Canvas canvas, StealthHudState hud) {
         drawHud(canvas, hud, MobSenses.clientSettings());
     }
@@ -309,6 +314,119 @@ public final class StealthHudOverlay {
         } else {
             drawTacticalHud(canvas, hud, cfg, fade);
         }
+    }
+
+    /**
+     * Renders a live, interactive preview of the Stealth HUD inside the Settings GUI viewport box
+     * {@code [boxX, boxY, boxX + boxW, boxY + boxH]}, responding immediately to Style, Density,
+     * Screen Anchor, Opacity, Offset X/Y, Audible Range, and individual sense bar toggles.
+     */
+    public static void renderPreview(
+            Canvas parent,
+            int boxX,
+            int boxY,
+            int boxW,
+            int boxH,
+            StealthHudState hud,
+            ClientSettings cfg) {
+        if (parent == null || hud == null || cfg == null || boxW <= 20 || boxH <= 16) {
+            return;
+        }
+        Canvas sub = new Canvas() {
+            @Override
+            public int width() {
+                return boxW;
+            }
+
+            @Override
+            public int height() {
+                return boxH;
+            }
+
+            @Override
+            public int textWidth(Component text) {
+                return parent.textWidth(text);
+            }
+
+            @Override
+            public void fill(int x1, int y1, int x2, int y2, int argb) {
+                int cx1 = Math.max(1, x1);
+                int cy1 = Math.max(1, y1);
+                int cx2 = Math.min(boxW - 1, x2);
+                int cy2 = Math.min(boxH - 1, y2);
+                if (cx2 > cx1 && cy2 > cy1) {
+                    parent.fill(boxX + cx1, boxY + cy1, boxX + cx2, boxY + cy2, argb);
+                }
+            }
+
+            @Override
+            public void text(Component text, int x, int y, int argb) {
+                if (x >= 1 && y >= 1 && y + 8 <= boxH - 1) {
+                    parent.text(text, boxX + x, boxY + y, argb);
+                }
+            }
+        };
+        double fade = cfg.enabled() ? 1.0 : 0.30;
+        previewClamp = true;
+        try {
+            if (cfg.style() == ClientSettings.Style.MINIMAL) {
+                drawMinimalHud(sub, hud, cfg, fade);
+            } else {
+                drawTacticalHud(sub, hud, cfg, fade);
+            }
+        } finally {
+            previewClamp = false;
+        }
+    }
+
+    private static int resolveX(Canvas canvas, ClientSettings cfg, int panelWidth) {
+        if (!previewClamp) {
+            return cfg.computeX(canvas.width(), panelWidth);
+        }
+        int screenW = canvas.width();
+        int ox = cfg.x() / 5;
+        int base;
+        switch (cfg.position()) {
+            case TOP_RIGHT:
+            case BOTTOM_RIGHT:
+                base = screenW - panelWidth - 6;
+                break;
+            case TOP_CENTER:
+            case HOTBAR:
+                base = (screenW - panelWidth) / 2;
+                break;
+            case TOP_LEFT:
+            case BOTTOM_LEFT:
+            default:
+                base = 6;
+                break;
+        }
+        return Math.max(4, Math.min(Math.max(4, screenW - panelWidth - 4), base + ox));
+    }
+
+    private static int resolveY(Canvas canvas, ClientSettings cfg, int panelHeight) {
+        if (!previewClamp) {
+            return cfg.computeY(canvas.height(), panelHeight);
+        }
+        int screenH = canvas.height();
+        int oy = cfg.y() / 5;
+        int base;
+        switch (cfg.position()) {
+            case BOTTOM_LEFT:
+            case BOTTOM_RIGHT:
+                base = screenH - panelHeight - 5;
+                break;
+            case HOTBAR:
+                base = screenH - panelHeight - 9;
+                break;
+            case TOP_CENTER:
+            case TOP_LEFT:
+            case TOP_RIGHT:
+            default:
+                base = 5;
+                break;
+        }
+        return Math.max(3, Math.min(Math.max(3, screenH - panelHeight - 3), base + oy));
     }
 
     private static void drawTacticalHud(Canvas canvas, StealthHudState hud, ClientSettings cfg, double fade) {
@@ -359,8 +477,8 @@ public final class StealthHudOverlay {
         int panelWidth = Math.max(compact ? 102 : 126, Math.max(headerWidth, minBodyWidth));
         int panelHeight = rows == 0 ? 17 : (19 + rows * 11 + 2);
 
-        int x = cfg.computeX(canvas.width(), panelWidth);
-        int y = cfg.computeY(canvas.height(), panelHeight);
+        int x = resolveX(canvas, cfg, panelWidth);
+        int y = resolveY(canvas, cfg, panelHeight);
 
         drawChamferedPanel(canvas, cfg, fade, x, y, panelWidth, panelHeight, statePrimary);
 
@@ -427,8 +545,8 @@ public final class StealthHudOverlay {
         int panelWidth = 18 + barW + extraPipsW + 5;
         int panelHeight = 13;
 
-        int x = cfg.computeX(canvas.width(), panelWidth);
-        int y = cfg.computeY(canvas.height(), panelHeight);
+        int x = resolveX(canvas, cfg, panelWidth);
+        int y = resolveY(canvas, cfg, panelHeight);
 
         drawChamferedPanel(canvas, cfg, fade, x, y, panelWidth, panelHeight, primary);
         drawStealthEye(canvas, cfg, fade, x + 5, y + 3, exposure);

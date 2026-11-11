@@ -1,27 +1,53 @@
 package com.kasper.mobsenses.bukkit;
 
 import com.kasper.mobsenses.AdminCommands;
+import com.kasper.mobsenses.Jv;
+import com.kasper.mobsenses.LinkProtocol;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.Reply;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
  * The Bukkit / Spigot / Paper / Purpur / Folia plugin: full server-side parity with the mod through
- * the Bukkit and Paper APIs. Game events come from {@code GenericGameEvent} on 1.17+ (see
- * {@link GameEventListener}) and from standard Bukkit events on 1.16.5 (see {@link LegacyNoiseListeners}).
+ * the Bukkit and Paper APIs, including {@link LinkProtocol} custom payload channels ({@code mobsenses:hello},
+ * {@code mobsenses:state}, {@code mobsenses:admin}, {@code mobsenses:admin_reply}), rich Adventure chat
+ * replies, Simple Voice Chat integration, {@code mobsenses.bypass} staff silence, and Folia region-safe
+ * scheduling.
  */
-public final class MobSensesBukkit extends JavaPlugin {
+public final class MobSensesBukkit extends JavaPlugin implements Listener {
+
+    private static final int STATE_CHECK_TICKS = 20;
+    private static final int TELEMETRY_PUSH_TICKS = 100;
+
+    /** Online modded players who completed the {@code mobsenses:hello} handshake (UUID -> client language). */
+    private final Map<UUID, String> moddedPlayers = new ConcurrentHashMap<>();
+    /** Last synced state fingerprint per modded player so world/permission/HUD changes push immediately. */
+    private final Map<UUID, String> lastStateFingerprints = new ConcurrentHashMap<>();
+
+    private volatile Scheduling scheduling;
+    private int tickCounter;
 
     @Override
     public void onEnable() {
@@ -51,43 +77,237 @@ public final class MobSensesBukkit extends JavaPlugin {
         } else {
             LegacyNoiseListeners.register(this);
         }
-        Scheduling scheduling = hasClass("io.papermc.paper.threadedregions.RegionizedServer")
+
+        Bukkit.getMessenger().registerOutgoingPluginChannel(this, LinkProtocol.STATE_CHANNEL);
+        Bukkit.getMessenger().registerOutgoingPluginChannel(this, LinkProtocol.ADMIN_REPLY_CHANNEL);
+        Bukkit.getMessenger().registerIncomingPluginChannel(this, LinkProtocol.HELLO_CHANNEL,
+                (channel, player, message) -> onHello(player, message));
+        Bukkit.getMessenger().registerIncomingPluginChannel(this, LinkProtocol.ADMIN_CHANNEL,
+                (channel, player, message) -> onAdmin(player, message));
+        Bukkit.getPluginManager().registerEvents(this, this);
+
+        MobSenses.setSettingsListener(this::onSettingsChanged);
+
+        Scheduling sched = hasClass("io.papermc.paper.threadedregions.RegionizedServer")
                 ? (Scheduling) modern("FoliaScheduling", "create", null) : new BukkitScheduling();
-        if (scheduling != null) {
-            scheduling.everyTick(this, () -> {
-                BukkitSenses.tick(this, scheduling);
+        this.scheduling = sched;
+        if (sched != null) {
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                sched.onPlayer(this, online, () -> refreshPlayerState(online, true));
+            }
+            sched.everyTick(this, () -> {
+                BukkitSenses.tick(this, sched);
                 MobSenses.serverTick();
+                int t = ++tickCounter;
+                if ((t % STATE_CHECK_TICKS) == 0 && !moddedPlayers.isEmpty()) {
+                    boolean forceTelemetry = (t % TELEMETRY_PUSH_TICKS) == 0;
+                    for (Player online : Bukkit.getOnlinePlayers()) {
+                        if (moddedPlayers.containsKey(online.getUniqueId())) {
+                            sched.onPlayer(this, online, () -> refreshPlayerState(online, forceTelemetry));
+                        }
+                    }
+                }
             });
         }
     }
 
     @Override
     public void onDisable() {
+        MobSenses.setSettingsListener(null);
+        Scheduling sched = this.scheduling;
+        if (sched != null) {
+            sched.cancelAll(this);
+        }
+        Bukkit.getMessenger().unregisterIncomingPluginChannel(this);
+        Bukkit.getMessenger().unregisterOutgoingPluginChannel(this);
+        moddedPlayers.clear();
+        lastStateFingerprints.clear();
         BukkitSenses.clear();
         MobSenses.coalescer().clear();
         MobSenses.scent().clear();
         MobSenses.voice().clear();
     }
 
+    private void onSettingsChanged() {
+        broadcastStateToModdedPlayers();
+    }
+
+    private void broadcastStateToModdedPlayers() {
+        Scheduling sched = this.scheduling;
+        if (sched == null || moddedPlayers.isEmpty()) {
+            return;
+        }
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (moddedPlayers.containsKey(online.getUniqueId())) {
+                sched.onPlayer(this, online, () -> refreshPlayerState(online, true));
+            }
+        }
+    }
+
+    private void onHello(Player player, byte[] message) {
+        if (player == null) {
+            return;
+        }
+        LinkProtocol.Hello hello = LinkProtocol.decodeHello(message);
+        if (hello == null) {
+            return;
+        }
+        moddedPlayers.put(player.getUniqueId(), hello.language());
+        Scheduling sched = this.scheduling;
+        if (sched != null) {
+            sched.onPlayer(this, player, () -> refreshPlayerState(player, true));
+        }
+    }
+
+    private void onAdmin(Player player, byte[] message) {
+        if (player == null) {
+            return;
+        }
+        Properties reqProps = LinkProtocol.decodePacket(message);
+        if (reqProps == null) {
+            return;
+        }
+        Scheduling sched = this.scheduling;
+        if (sched == null) {
+            return;
+        }
+        sched.onPlayer(this, player, () -> {
+            AdminCommands.Context ctx = context(player);
+            Properties replyProps = LinkProtocol.executeAdmin(reqProps, ctx);
+            byte[] replyBytes = LinkProtocol.encodePacket(replyProps);
+            player.sendPluginMessage(this, LinkProtocol.ADMIN_REPLY_CHANNEL, replyBytes);
+            broadcastStateToModdedPlayers();
+        });
+    }
+
+    private void refreshPlayerState(Player player, boolean forceState) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        if (!moddedPlayers.containsKey(id)) {
+            return;
+        }
+        World w = player.getWorld();
+        if (w == null) {
+            return;
+        }
+        String worldName = w.getName();
+        boolean admin = isAdmin(player);
+        String fp = worldName + '|' + admin + '|' + MobSenses.debug()
+                + '|' + MobSenses.settings().allowClientHud()
+                + '|' + MobSenses.settings().presetOf(worldName).id();
+        String prevFp = lastStateFingerprints.put(id, fp);
+        if (forceState || !fp.equals(prevFp)) {
+            sendState(player, worldName, admin);
+        }
+    }
+
+    private void sendState(Player player, String worldName, boolean admin) {
+        long now = System.currentTimeMillis();
+        byte[] bytes = LinkProtocol.encodeState(
+                MobSenses.settings(),
+                worldName,
+                admin,
+                MobSenses.debug(),
+                MobSenses.voiceChatInstalled(),
+                MobSenses.noise().lastMinute(now),
+                MobSenses.alerted().lastMinute(now),
+                MobSenses.platform().toString());
+        player.sendPluginMessage(this, LinkProtocol.STATE_CHANNEL, bytes);
+    }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Scheduling sched = this.scheduling;
+        Player p = event.getPlayer();
+        if (sched != null) {
+            sched.onPlayer(this, p, () -> refreshPlayerState(p, false));
+        }
+    }
+
+    @EventHandler
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
+        Scheduling sched = this.scheduling;
+        Player p = event.getPlayer();
+        if (sched != null) {
+            sched.onPlayer(this, p, () -> refreshPlayerState(p, true));
+        }
+    }
+
+    @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        Scheduling sched = this.scheduling;
+        Player p = event.getPlayer();
+        if (sched != null) {
+            sched.onPlayer(this, p, () -> refreshPlayerState(p, true));
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        moddedPlayers.remove(id);
+        lastStateFingerprints.remove(id);
+        BukkitSenses.forgetPlayer(id);
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!isAdmin(sender)) {
+            ReplyAdventure.send(sender, new Reply.Line(Reply.Kind.ERROR, "You do not have permission to use this command."));
+            return true;
+        }
         Reply reply = AdminCommands.execute(String.join(" ", args), context(sender));
         for (Reply.Line line : reply.lines()) {
-            sender.sendMessage(color(line.kind()) + line.text());
+            ReplyAdventure.send(sender, line);
+        }
+        if (args.length > 0 && ("debug".equalsIgnoreCase(args[0]) || "reload".equalsIgnoreCase(args[0]))) {
+            broadcastStateToModdedPlayers();
         }
         return true;
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!isAdmin(sender)) {
+            return Collections.emptyList();
+        }
         return AdminCommands.suggestions(String.join(" ", args), context(sender));
     }
 
-    private static AdminCommands.Context context(CommandSender sender) {
-        Player player = sender instanceof Player ? (Player) sender : null;
-        String language = player == null ? "" : locale(player);
-        String world = player == null ? null : player.getWorld().getName();
-        List<String> worlds = new ArrayList<>();
+    String resolveLanguage(Player player) {
+        if (player == null) {
+            return MobSenses.settings().language();
+        }
+        String loc = locale(player);
+        if (Jv.isBlank(loc)) {
+            loc = moddedPlayers.get(player.getUniqueId());
+        }
+        return Jv.isBlank(loc) ? MobSenses.settings().language() : loc;
+    }
+
+    static boolean isAdmin(CommandSender sender) {
+        if (sender == null) {
+            return false;
+        }
+        if (!(sender instanceof Player)) {
+            return true;
+        }
+        return sender.isOp() || sender.hasPermission(AdminCommands.PERM_ADMIN);
+    }
+
+    private AdminCommands.Context context(final CommandSender sender) {
+        final Player player = sender instanceof Player ? (Player) sender : null;
+        final String language = player != null ? resolveLanguage(player) : "";
+        final String world;
+        if (player != null) {
+            Location loc = player.getLocation();
+            world = loc.getWorld() != null ? loc.getWorld().getName() : player.getWorld().getName();
+        } else {
+            world = null;
+        }
+        final List<String> worlds = new ArrayList<>();
         for (World w : Bukkit.getWorlds()) {
             worlds.add(w.getName());
         }
@@ -111,6 +331,11 @@ public final class MobSensesBukkit extends JavaPlugin {
             public boolean isDedicatedServer() {
                 return true;
             }
+
+            @Override
+            public boolean hasPermission(String node) {
+                return isAdmin(sender);
+            }
         };
     }
 
@@ -120,21 +345,6 @@ public final class MobSensesBukkit extends JavaPlugin {
             return player.getLocale();
         } catch (Throwable t) {
             return "";
-        }
-    }
-
-    private static String color(Reply.Kind kind) {
-        switch (kind) {
-            case TITLE:
-                return ChatColor.GOLD.toString();
-            case DONE:
-                return ChatColor.GREEN.toString();
-            case ERROR:
-                return ChatColor.RED.toString();
-            case HINT:
-                return ChatColor.GRAY.toString();
-            default:
-                return ChatColor.WHITE.toString();
         }
     }
 

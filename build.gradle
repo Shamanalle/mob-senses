@@ -4,13 +4,15 @@ plugins {
 
 // The Fabric bands, each built against its own Minecraft (fabric-*): they go into one universal jar
 // (MergeJars, see mergeFabric below), which picks the band of the running Minecraft at startup. "java" is
-// the class file version the band may use (52 = Java 8, 61 = 17, 65 = 21, 69 = 25).
+// the class file version the band may use (52 = Java 8, 60 = 16, 61 = 17, 65 = 21, 69 = 25).
 def fabricBands = [
         [id: 'mc1_16', project: ':fabric-1.16', target: 'mc1.16.5', java: 52],
-        [id: 'mc1_17', project: ':fabric-1.17', target: 'mc1.17-1.18.2', java: 60],
+        [id: 'mc1_17', project: ':fabric-1.17', target: 'mc1.17-1.17.1', java: 60],
+        [id: 'mc1_18', project: ':fabric-1.18', target: 'mc1.18-1.18.2', java: 61],
         [id: 'mc1_19', project: ':fabric-1.19', target: 'mc1.19-1.19.2', java: 61],
         [id: 'mc1_19_4', project: ':fabric-1.19.4', target: 'mc1.19.3-1.19.4', java: 61],
-        [id: 'mc1_20', project: ':fabric-1.20', target: 'mc1.20-1.20.4', java: 61],
+        [id: 'mc1_20', project: ':fabric-1.20', target: 'mc1.20-1.20.1', java: 61],
+        [id: 'mc1_20_4', project: ':fabric-1.20.4', target: 'mc1.20.2-1.20.4', java: 61],
         [id: 'mc1_20_6', project: ':fabric-1.20.6', target: 'mc1.20.5-1.20.6', java: 65],
         [id: 'mc1_21', project: ':fabric-1.21', target: 'mc1.21.x', java: 65],
         [id: 'mc26', project: ':fabric-26', target: 'mc26.x', java: 69],
@@ -20,26 +22,78 @@ def fabricUniversalName = "mob-senses-fabric-${project.mod_version}+mc1.16.5-26.
 // The Forge and NeoForge bands, each a full build against its own Minecraft: they go into one universal jar
 // (mergeForge below). Forge and NeoForge read every class of a jar at startup and skip the ones their ASM cannot
 // read, so the jar holds nothing newer than Java 21; a band's classes are only loaded on its own Minecraft,
-// which runs on a Java that reads them. "java" as in fabricBands. A band is built by its project's jar task
-// or by another task of it (reobfJar: Forge up to 1.20.1 runs with Forge's names). "toml" is the metadata
-// the band's loader reads.
+// which runs on a Java that reads them. "java" as in fabricBands. A band is built by its project's jar task,
+// by another task of it (reobfJar: Forge 1.17.1 - 1.20.1 run with Forge's names) or by its own Gradle
+// (legacy: see legacyTargets). "toml" is the metadata the band's loader reads.
 def forgeBands = [
+        [id: 'forge_1_16_5', legacy: 'versions/forge/1.16.5', loader: 'forge', java: 52],
+        [id: 'forge_1_17', project: ':forge-1.17', task: 'reobfJar', loader: 'forge', java: 60],
         [id: 'forge_1_18_2', project: ':forge-1.18.2', task: 'reobfJar', loader: 'forge', java: 61],
         [id: 'forge_1_19_2', project: ':forge-1.19.2', task: 'reobfJar', loader: 'forge', java: 61],
         [id: 'forge_1_19_4', project: ':forge-1.19.4', task: 'reobfJar', loader: 'forge', java: 61],
         [id: 'forge_1_20_1', project: ':forge-1.20.1', task: 'reobfJar', loader: 'forge', java: 61],
+        [id: 'forge_1_20_4', legacy: 'versions/forge/1.20.4', loader: 'forge', java: 61],
+        [id: 'forge_1_20_6', project: ':forge-1.20.6', loader: 'forge', java: 65],
         [id: 'forge_1_21_1', project: ':forge-1.21.1', loader: 'forge', java: 65],
+        [id: 'forge_1_21_5', project: ':forge-1.21.5', loader: 'forge', java: 65],
+        [id: 'forge_1_21_8', project: ':forge-1.21.8', loader: 'forge', java: 65],
         [id: 'forge_1_21_10', project: ':forge-1.21.10', loader: 'forge', java: 65],
         [id: 'forge_1_21_11', project: ':forge-1.21.11', loader: 'forge', java: 65],
         [id: 'forge_26', project: ':forge-26', loader: 'forge', java: 65],
+        [id: 'neoforge_1_20_2', legacy: 'versions/neoforge/1.20.2', loader: 'neoforge', toml: 'META-INF/mods.toml', java: 61],
+        [id: 'neoforge_1_20_4', legacy: 'versions/neoforge/1.20.4', loader: 'neoforge', toml: 'META-INF/mods.toml', java: 61],
+        [id: 'neoforge_1_20_6', project: ':neoforge-1.20.6', loader: 'neoforge', java: 65],
         [id: 'neoforge_1_21', project: ':neoforge-1.21', loader: 'neoforge', java: 65],
+        [id: 'neoforge_1_21_5', project: ':neoforge-1.21.5', loader: 'neoforge', java: 65],
+        [id: 'neoforge_1_21_8', project: ':neoforge-1.21.8', loader: 'neoforge', java: 65],
         [id: 'neoforge_1_21_10', project: ':neoforge-1.21.10', loader: 'neoforge', java: 65],
         [id: 'neoforge_1_21_11', project: ':neoforge-1.21.11', loader: 'neoforge', java: 65],
         [id: 'neoforge_26', project: ':neoforge-26', loader: 'neoforge', java: 65],
 ].each { band ->
     band.toml = band.toml ?: (band.loader == 'forge' ? 'META-INF/mods.toml' : 'META-INF/neoforge.mods.toml')
 }
-def forgeUniversalName = "mob-senses-forge-neoforge-${project.mod_version}+mc1.18-26.x.jar"
+def forgeUniversalName = "mob-senses-forge-neoforge-${project.mod_version}+mc1.16.5-26.x.jar"
+
+// Standalone Gradle 8 builds (Forge 1.16.5, Forge 1.20.2 - 1.20.4, NeoForge 1.20.2 - 1.20.4)
+// run with JDK 17 or 21 via LEGACY_JAVA_HOME / JAVA_HOME_21_X64 / JAVA_HOME_17_X64.
+def legacyTargets = [
+        [dir: 'versions/forge/1.16.5', file: 'mob-senses-forge-%s+mc1.16.5.jar', jdk: '17'],
+        [dir: 'versions/forge/1.20.4', file: 'mob-senses-forge-%s+mc1.20.2-1.20.4.jar', jdk: '17'],
+        [dir: 'versions/neoforge/1.20.2', file: 'mob-senses-neoforge-%s+mc1.20.2-1.20.3.jar'],
+        [dir: 'versions/neoforge/1.20.4', file: 'mob-senses-neoforge-%s+mc1.20.4.jar'],
+]
+
+def legacyJavaHome = { String jdk = null ->
+    def names = jdk == '17' ? ['JAVA_HOME_17_X64', 'LEGACY_JAVA_HOME'] : ['LEGACY_JAVA_HOME', 'JAVA_HOME_21_X64', 'JAVA_HOME_17_X64']
+    def home = names.collect { System.getenv(it) }.find { it }
+    if (home == null) {
+        throw new GradleException('The legacy builds need Gradle 8 on Java 17 or 21: set LEGACY_JAVA_HOME to such a JDK')
+    }
+    home
+}
+
+legacyTargets.each { t ->
+    def name = 'buildLegacy_' + t.dir.replaceAll('[^A-Za-z0-9]', '_')
+    tasks.register(name, Exec) {
+        group = 'build'
+        description = "Builds ${t.dir} with its own Gradle"
+        workingDir = file(t.dir)
+        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+            commandLine 'cmd', '/c', 'gradlew.bat', 'build', '--no-daemon', '--stacktrace'
+        } else {
+            commandLine 'sh', 'gradlew', 'build', '--no-daemon', '--stacktrace'
+        }
+        doFirst {
+            environment 'JAVA_HOME', legacyJavaHome(t.jdk)
+        }
+    }
+}
+
+tasks.register('buildLegacy') {
+    group = 'build'
+    description = 'Builds the Forge / NeoForge versions that have a Gradle build of their own'
+    dependsOn legacyTargets.collect { 'buildLegacy_' + it.dir.replaceAll('[^A-Za-z0-9]', '_') }
+}
 
 // The table the dispatchers read, the band Mixin configs (see MergeJars) and their plugin
 def bandTable = 'mobsenses-bands.properties'
@@ -151,7 +205,12 @@ tasks.register('mergeFabric', JavaExec) {
     }
 }
 
+def legacyTarget = { Map band -> legacyTargets.find { it.dir == band.legacy } }
+
 def forgeBandJar = { Map band ->
+    if (band.legacy) {
+        return file("${band.legacy}/build/libs/${String.format(legacyTarget(band).file, project.mod_version)}")
+    }
     def built = project(band.project).tasks.named(band.task ?: 'jar').get().outputs.files.files.find { it.name.endsWith('.jar') }
     if (built == null) {
         throw new GradleException("${band.project}: ${band.task ?: 'jar'} makes no jar")
@@ -160,7 +219,9 @@ def forgeBandJar = { Map band ->
 }
 
 /** The task that builds a band's jar. */
-def forgeBandTask = { Map band -> "${band.project}:${band.task ?: 'build'}" }
+def forgeBandTask = { Map band ->
+    band.legacy ? 'buildLegacy_' + band.legacy.replaceAll('[^A-Za-z0-9]', '_') : "${band.project}:${band.task ?: 'build'}"
+}
 
 /** The [[dependencies.mobsenses]] of a mods.toml / neoforge.mods.toml that are required: modId -> versionRange. */
 def tomlDepends = { String text ->
@@ -200,7 +261,7 @@ def joinRanges = { List<String> ranges ->
 }
 
 // mods.toml, neoforge.mods.toml and pack.mcmeta of the universal jar and the table its dispatchers read, from the
-// bands' own files. META-INF/mods.toml is read by every Forge (and by NeoForge 1.20.1, a fork of Forge),
+// bands' own files. META-INF/mods.toml is read by every Forge (and by NeoForge 1.20.1 - 1.20.4),
 // META-INF/neoforge.mods.toml by NeoForge 1.20.5 and later.
 tasks.register('forgeUniversalMetadata') {
     description = 'Writes the metadata of the universal Forge / NeoForge jar'
@@ -244,14 +305,19 @@ side = "BOTH"
             "[${m.group(1)},)"
         }
 
-        // mods.toml: what every band that reads it needs. The loader is optional, as NeoForge 1.20.1 reads the
-        // file too; the band's own loader version is checked by BandTable.
+        // mods.toml: what every band that reads it needs. Minecraft is any Forge band's (the NeoForge 1.20.2 - 1.20.4
+        // bands lie within the Forge 1.20.2 - 1.20.4 one); the loaders are optional, as the file is read by both;
+        // the band's own loader version is checked by BandTable.
         def old = tomls.findAll { it.band.toml == 'META-INF/mods.toml' }
         def forgeOnes = old.findAll { it.band.loader == 'forge' }
+        def neoOnes = old.findAll { it.band.loader == 'neoforge' }
         def modsToml = withoutDepends(forgeOnes.last().text)
                 .replaceFirst(/(?m)^loaderVersion\s*=\s*"[^"]*"/, 'loaderVersion = "[1,)"')
                 .replaceFirst(/(?m)^version\s*=\s*"[^"]*"/, "version = \"${project.mod_version}\"")
         modsToml += dependency('forge', lowest(forgeOnes.first().depends.forge), false)
+        if (neoOnes) {
+            modsToml += dependency('neoforge', lowest(neoOnes.first().depends.neoforge), false)
+        }
         modsToml += dependency('minecraft', joinRanges(forgeOnes.collect { it.depends.minecraft }), true)
         new File(dir, 'META-INF/mods.toml').setText(modsToml, 'UTF-8')
 
@@ -271,9 +337,9 @@ side = "BOTH"
         }.join('')
         new File(dir, 'META-INF/neoforge.mods.toml').setText(neoToml, 'UTF-8')
 
-        // Forge refuses a mod without it. pack_format for the oldest, supported_formats for 1.20.2 and later,
-        // min_format / max_format for 1.21.9 and later (which requires multi-version min_format >= 15);
-        // the loader puts every mod's resources into one pack anyway.
+        // Forge 1.16.5 - 1.20.4 and NeoForge 1.20.2 - 1.20.4 refuse a mod without it. pack_format for the oldest,
+        // supported_formats for 1.20.2 and later, min_format / max_format for 1.21.9 and later (which requires
+        // multi-version min_format >= 15); the loader puts every mod's resources into one pack anyway.
         new File(dir, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([pack: [
                 description      : 'Mob Senses',
                 pack_format      : 15,
@@ -299,7 +365,7 @@ side = "BOTH"
 
 tasks.register('mergeForge', JavaExec) {
     group = 'build'
-    description = 'Builds the universal Forge / NeoForge jar (Minecraft 1.18 - 26.x)'
+    description = 'Builds the universal Forge / NeoForge jar (Minecraft 1.16.5 - 26.x)'
     dependsOn 'forgeUniversalMetadata', ':universal:forgeClasses', ':common-j8:classes', ':packaging:classes'
     def common = project(':common-j8').sourceSets.main.output
     def dispatchers = project(':universal').sourceSets.forge.output

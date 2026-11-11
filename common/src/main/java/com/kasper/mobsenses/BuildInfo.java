@@ -6,7 +6,7 @@ import java.util.Properties;
 /** The mod's version, written into {@code mobsenses-build.properties} by the build. */
 public final class BuildInfo {
 
-    private static final String VERSION = read();
+    public static final String VERSION = read();
 
     private BuildInfo() {
     }

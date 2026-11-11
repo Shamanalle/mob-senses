@@ -5,7 +5,7 @@ import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.NoiseModel;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
+import org.bukkit.Keyed;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -34,7 +34,7 @@ public final class GameEventListener implements Listener {
             if (at.getWorld() == null) {
                 return;
             }
-            String eventId = e.getEvent().getKey().toString();
+            String eventId = ((Keyed) e.getEvent()).getKey().toString();
             NoiseModel.Kind kind = NoiseModel.classifyEvent(eventId);
             if (kind == null) {
                 return;
@@ -43,15 +43,16 @@ public final class GameEventListener implements Listener {
             Player player = null;
             if (source instanceof Player) {
                 Player p = (Player) source;
-                if (p.getGameMode() == GameMode.SPECTATOR) {
+                if (BukkitSenses.isBypassed(p)) {
                     return;
                 }
                 player = p;
             } else if (source instanceof Projectile && ((Projectile) source).getShooter() instanceof Player) {
                 Player p = (Player) ((Projectile) source).getShooter();
-                if (p.getGameMode() != GameMode.SPECTATOR) {
-                    player = p;
+                if (BukkitSenses.isBypassed(p)) {
+                    return;
                 }
+                player = p;
             }
             boolean playerInvolved = player != null || !kind.requiresPlayerSource();
             if (!playerInvolved) {
@@ -67,7 +68,8 @@ public final class GameEventListener implements Listener {
             double envMult = BukkitSenses.envMultiplier(at.getWorld(), player, kind);
             MobSenses.gameEvent(eventId, at.getWorld().getName(),
                     at.getX(), at.getY(), at.getZ(),
-                    posture, mat, blockId, player != null, envMult);
+                    posture, mat, blockId, player != null, envMult,
+                    player != null ? player.getUniqueId() : null);
         } catch (Throwable t) {
             ModLog.failure("Reading a game event", t);
         }

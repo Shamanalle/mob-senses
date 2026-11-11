@@ -1,5 +1,6 @@
-// Shared build setup for NeoForge bands (1.21.x and 26.x).
+// Shared build setup for NeoForge bands (1.20.5 - 26.x).
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
 def targetName = project.ext.bandTarget
 def nfVer = project.findProperty("loaderOverride.${project.name}") ?: project.ext.neoforgeVersion
@@ -16,14 +17,6 @@ repositories {
 
 neoForge {
     version = nfVer
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-        }
-    }
 }
 
 dependencies {

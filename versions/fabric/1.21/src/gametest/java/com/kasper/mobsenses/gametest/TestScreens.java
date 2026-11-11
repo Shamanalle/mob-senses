@@ -5,6 +5,7 @@ import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.server.ServerHearing;
 import com.kasper.mobsenses.server.Worlds;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -27,6 +28,18 @@ final class TestScreens {
     private static final List<Mob> SCENE_MOBS = new ArrayList<>();
 
     private TestScreens() {
+    }
+
+    static void open(Minecraft client, Screen screen) {
+        client.setScreen(screen);
+    }
+
+    static Screen current(Minecraft client) {
+        return client.screen;
+    }
+
+    static void hideHud(Minecraft client, boolean hide) {
+        client.options.hideGui = hide;
     }
 
     /** Switches the game's language; the resources reload after it. */

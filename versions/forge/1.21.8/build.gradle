@@ -1,0 +1,21 @@
+plugins {
+    id 'fabric-loom' version '1.18.2'
+    id 'java'
+}
+
+ext {
+    bandTarget = "mc1.21.6-1.21.8"
+    mcVersion = project.forge1218_minecraft
+    forgeVersion = project.forge1218_version
+}
+
+apply from: "${rootDir}/gradle/forge-band.gradle"
+
+useShared([
+        'shared/forge-bus7',
+        'shared/forge-net-1.20.4',
+        'shared/mc-gui',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])

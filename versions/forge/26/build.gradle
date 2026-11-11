@@ -12,25 +12,9 @@ ext {
 
 apply from: "${rootDir}/gradle/forge-band.gradle"
 
-def srcForge12110 = file("${rootDir}/versions/forge/1.21.10/src/main/java").toPath()
-def srcFab26 = file("${rootDir}/versions/fabric/26/src/main/java").toPath()
-
-sourceSets.main.java {
-    srcDir "${rootDir}/versions/forge/1.21.10/src/main/java"
-    srcDir "${rootDir}/versions/fabric/26/src/main/java"
-    exclude { e ->
-        if (e.directory) return false
-        def p = e.file.toPath()
-        if (p.startsWith(srcForge12110)) {
-            def rel = srcForge12110.relativize(p).toString().replace('\\', '/')
-            return rel != 'com/kasper/mobsenses/forge/MobSensesForge.java'
-        }
-        if (p.startsWith(srcFab26)) {
-            def rel = srcFab26.relativize(p).toString().replace('\\', '/')
-            return rel.startsWith('com/kasper/mobsenses/MobSenses')
-                    || rel.startsWith('com/kasper/mobsenses/mixin/')
-                    || rel == 'com/kasper/mobsenses/server/GameEventHook.java'
-        }
-        return false
-    }
-}
+useShared([
+        'shared/forge-bus7',
+        'shared/forge-net-1.21.11',
+        'shared/mc-26',
+        'shared/mc-all',
+])

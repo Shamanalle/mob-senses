@@ -1,0 +1,56 @@
+plugins {
+    id 'net.neoforged.moddev.legacyforge' version '2.0.147'
+    id 'java'
+}
+
+evaluationDependsOn(':common-j8')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
+
+def target = "mc1.17.1"
+version = "${project.mod_version}+${target}"
+
+base {
+    archivesName = "mob-senses-forge"
+}
+
+repositories {
+    mavenCentral()
+}
+
+legacyForge {
+    version = project.findProperty("loaderOverride.${project.name}") ?: project.forge117_version
+}
+
+useShared([
+        'shared/mc-1.18',
+        'shared/mc-1.19',
+        'shared/mc-pose',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
+
+dependencies {
+    implementation project(':common-j8')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 16
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_16
+    targetCompatibility = JavaVersion.VERSION_16
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from project(':common-j8').sourceSets.main.output
+}

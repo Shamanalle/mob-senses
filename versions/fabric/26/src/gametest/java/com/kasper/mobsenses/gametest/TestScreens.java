@@ -2,9 +2,11 @@ package com.kasper.mobsenses.gametest;
 
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.Preset;
+import com.kasper.mobsenses.compat.Mc;
 import com.kasper.mobsenses.server.ServerHearing;
 import com.kasper.mobsenses.server.Worlds;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -27,6 +29,29 @@ final class TestScreens {
     private static final List<Mob> SCENE_MOBS = new ArrayList<>();
 
     private TestScreens() {
+    }
+
+    static void open(Minecraft client, Screen screen) {
+        Mc.openScreen(client, screen);
+    }
+
+    static Screen current(Minecraft client) {
+        return Mc.currentScreen(client);
+    }
+
+    /**
+     * Hides the game's own HUD (hotbar, hearts, chat) the way F1 does; open screens still draw.
+     * F1's flag moved from Options to a private field of the HUD in 26.x.
+     */
+    static void hideHud(Minecraft client, boolean hide) {
+        try {
+            Object hud = client.gui.getClass().getField("hud").get(client.gui);
+            java.lang.reflect.Field hidden = hud.getClass().getDeclaredField("isHidden");
+            hidden.setAccessible(true);
+            hidden.setBoolean(hud, hide);
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            // Another layout; keep HUD as-is
+        }
     }
 
     /** Switches the game's language; the resources reload after it. */

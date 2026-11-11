@@ -10,7 +10,6 @@ displayName = "Mob Senses"
 displayURL = "https://github.com/Shamanalle/mob-senses"
 logoFile = "assets/mobsenses/icon.png"
 authors = "Shamanalle"
-# Server side: players join with or without the mod
 displayTest = "IGNORE_ALL_VERSION"
 description = '''
 Mobs hear your steps, blocks, doors and fights through walls, see your light and, with Simple Voice Chat, hear your voice. Works on the server alone; vanilla clients can join.
@@ -27,7 +26,7 @@ side = "BOTH"
 [[dependencies.mobsenses]]
 modId = "minecraft"
 mandatory = true
-versionRange = "[1.20,1.20.5)"
+versionRange = "[1.20,1.20.2)"
 ordering = "NONE"
 side = "BOTH"
 

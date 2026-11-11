@@ -6,6 +6,7 @@
   "environment": "client",
   "entrypoints": {
     "fabric-client-gametest": [
+      "com.kasper.mobsenses.gametest.SettingsScreenGameTest",
       "com.kasper.mobsenses.gametest.CommandsGameTest"
     ]
   },

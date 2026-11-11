@@ -220,6 +220,7 @@ public final class NoiseModel {
         }
         String id = normalizeEvent(eventId);
         Posture pos = posture != null ? posture : Posture.WALKING;
+        AcousticMaterial effectiveMat = material;
         switch (kind) {
             case STEP: {
                 double stepCfg = settings != null ? settings.stepRange() : Kind.STEP.defaultRange();
@@ -246,26 +247,26 @@ public final class NoiseModel {
                     posFactor = Posture.WALKING.factor();
                 }
                 double surfaceMult = (settings == null || settings.surfaceSoundScaling())
-                        ? surfaceStepFactor(material, blockId) : 1.0;
+                        ? surfaceStepFactor(effectiveMat, blockId) : 1.0;
                 return base * posFactor * surfaceMult;
             }
             case BLOCK_BREAK: {
                 double base = settings != null ? settings.blockBreakRange() : Kind.BLOCK_BREAK.defaultRange();
-                double factor = (settings == null || settings.surfaceSoundScaling()) && material != null
-                        ? material.blockFactor() : 1.0;
+                double factor = (settings == null || settings.surfaceSoundScaling()) && effectiveMat != null
+                        ? effectiveMat.blockFactor() : 1.0;
                 return base * factor;
             }
             case BLOCK_PLACE: {
                 double placeCfg = settings != null ? settings.blockPlaceRange() : Kind.BLOCK_PLACE.defaultRange();
                 double base = ("block_activate".equals(id) || "block_deactivate".equals(id) || "block_change".equals(id))
                         ? placeCfg * (10.0 / 12.0) : placeCfg;
-                double factor = (settings == null || settings.surfaceSoundScaling()) && material != null
-                        ? material.blockFactor() : 1.0;
+                double factor = (settings == null || settings.surfaceSoundScaling()) && effectiveMat != null
+                        ? effectiveMat.blockFactor() : 1.0;
                 return base * factor;
             }
             case DOOR: {
                 double base = settings != null ? settings.doorRange() : Kind.DOOR.defaultRange();
-                double factor = (settings == null || settings.surfaceSoundScaling()) && material == AcousticMaterial.METAL
+                double factor = (settings == null || settings.surfaceSoundScaling()) && effectiveMat == AcousticMaterial.METAL
                         ? 1.25 : 1.0;
                 return base * factor;
             }
@@ -367,7 +368,8 @@ public final class NoiseModel {
 
     /**
      * Whether {@code itemId} (e.g. {@code "tacz:modern_kinetic_gun"}, {@code "pointblank:glock17"},
-     * {@code "cgm:rifle"}, {@code "scguns:iron_musket"}) is a firearm from a gun mod.
+     * {@code "cgm:rifle"}, {@code "scguns:iron_musket"}, {@code "superbwarfare:m4a1"},
+     * {@code "jeg:assault_rifle"}) is a firearm from a gun mod.
      */
     public static boolean isFirearmItem(String itemId) {
         if (itemId == null || itemId.isEmpty()) {
@@ -381,11 +383,20 @@ public final class NoiseModel {
                 || name.contains("muzzle") || name.contains("workbench") || name.contains("table")
                 || name.contains("casing") || name.contains("blueprint") || name.contains("ingot")
                 || name.contains("nugget") || name.contains("ore") || name.contains("block")
-                || name.contains("water_gun") || name.contains("potato_cannon")) {
+                || name.contains("water_gun") || name.contains("potato_cannon")
+                || name.contains("armor") || name.contains("helmet") || name.contains("chestplate")
+                || name.contains("leggings") || name.contains("boots") || name.contains("parachute")
+                || name.contains("wrench") || name.contains("medkit") || name.contains("bandage")
+                || name.contains("drone") || name.contains("vehicle") || name.contains("crate")
+                || hasWordToken(name, "vest") || hasWordToken(name, "hammer")
+                || hasWordToken(name, "part") || hasWordToken(name, "parts")
+                || hasWordToken(name, "scrap")) {
             return false;
         }
         if (full.startsWith("tacz:") || full.startsWith("pointblank:")
                 || full.startsWith("cgm:") || full.startsWith("scguns:")
+                || full.startsWith("superbwarfare:") || full.startsWith("sbw:")
+                || full.startsWith("jeg:")
                 || full.startsWith("musketmod:") || full.startsWith("flansmod:")
                 || full.startsWith("ava:") || full.startsWith("techguns:")) {
             return true;
@@ -409,6 +420,16 @@ public final class NoiseModel {
                 || name.equals("gun")
                 || name.endsWith("_gun")
                 || name.startsWith("gun_");
+    }
+
+    private static boolean hasWordToken(String snakeName, String token) {
+        if (snakeName.equals(token)) {
+            return true;
+        }
+        if (snakeName.startsWith(token + "_") || snakeName.endsWith("_" + token)) {
+            return true;
+        }
+        return snakeName.contains("_" + token + "_");
     }
 
     /**
@@ -435,7 +456,8 @@ public final class NoiseModel {
 
     /**
      * Whether {@code entityTypeId} (e.g. {@code "tacz:bullet"}, {@code "cgm:projectile"},
-     * {@code "scguns:bullet"}) is a firearm projectile or explosive ordnance from a gun mod.
+     * {@code "scguns:bullet"}, {@code "superbwarfare:projectile"}, {@code "jeg:projectile"}) is a firearm
+     * projectile or explosive ordnance from a gun mod.
      */
     public static boolean isBulletEntity(String entityTypeId) {
         if (entityTypeId == null || entityTypeId.isEmpty()) {
@@ -445,11 +467,15 @@ public final class NoiseModel {
         String name = normalizeEvent(full);
         if (full.startsWith("tacz:") || full.startsWith("pointblank:")
                 || full.startsWith("cgm:") || full.startsWith("scguns:")
+                || full.startsWith("superbwarfare:") || full.startsWith("sbw:")
+                || full.startsWith("jeg:")
                 || full.startsWith("musketmod:")) {
             return name.contains("bullet") || name.contains("projectile")
                     || name.contains("pellet") || name.contains("shell")
                     || name.contains("rocket") || name.contains("missile")
-                    || name.contains("grenade") || name.contains("ammo");
+                    || name.contains("grenade") || name.contains("ammo")
+                    || name.contains("slug") || name.contains("mortar")
+                    || name.contains("rpg") || name.contains("flechette");
         }
         return name.equals("bullet")
                 || name.endsWith("_bullet")

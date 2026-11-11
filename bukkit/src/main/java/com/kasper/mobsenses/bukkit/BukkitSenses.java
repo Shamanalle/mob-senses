@@ -1,5 +1,6 @@
 package com.kasper.mobsenses.bukkit;
 
+import com.kasper.mobsenses.AdminCommands;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.NoiseCoalescer;
@@ -9,11 +10,10 @@ import com.kasper.mobsenses.ScentModel;
 import com.kasper.mobsenses.SightModel;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Keyed;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
@@ -43,11 +43,16 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Coalesced hearing and Simple Voice Chat events attenuated through walls via {@link BukkitAcoustics}.</li>
  *   <li>Mob investigation pathing via {@link PaperPathfinder} on Paper/Purpur/Folia, with a pure-Spigot
  *       fallback ({@link #spigotFallbackMove}) when Paper's {@code Pathfinder} API is absent.</li>
- *   <li>Light & posture sight adjustments (with solar/weather sky darkening) and wounded blood-scent tracking.</li>
+ *   <li>Light &amp; posture sight adjustments (with solar/weather sky darkening) and wounded blood-scent tracking.</li>
+ *   <li>Per-world presets ({@code /mobsenses world}).</li>
+ *   <li>{@code mobsenses.bypass} silence permission for vanished moderators and staff.</li>
  *   <li>Folia-safe admin debug particles when {@code /mobsenses debug on} is active.</li>
  * </ul>
  */
 public final class BukkitSenses {
+
+    /** Permission node silencing all noise, voice, sight, and blood-scent emission (`default: false` in plugin.yml). */
+    public static final String PERM_BYPASS = "mobsenses.bypass";
 
     private static final boolean HAS_PAPER_PATHFINDER = hasClass("com.destroystokyo.paper.entity.Pathfinder");
     private static final int SENSE_TICK_INTERVAL = 10;
@@ -71,6 +76,19 @@ public final class BukkitSenses {
 
     public static void clear() {
         LAST_ALERT_MS.clear();
+    }
+
+    public static void forgetPlayer(UUID playerId) {
+        if (playerId != null) {
+            MobSenses.voice().removePlayer(playerId);
+        }
+    }
+
+    /**
+     * Returns {@code true} when {@code player} is in Spectator mode or holds {@code mobsenses.bypass}.
+     */
+    public static boolean isBypassed(Player player) {
+        return player != null && (player.getGameMode() == GameMode.SPECTATOR || player.hasPermission(PERM_BYPASS));
     }
 
     public static NoiseModel.Posture posture(Player player) {
@@ -120,20 +138,13 @@ public final class BukkitSenses {
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     private static boolean hasEnchantMatching(ItemStack item, String... tokens) {
         if (item == null || item.getType().isAir()) {
             return false;
         }
         for (Enchantment ench : item.getEnchantments().keySet()) {
-            String name = ench.getName() != null ? ench.getName().toLowerCase(Locale.ROOT) : "";
-            for (String token : tokens) {
-                if (name.contains(token)) {
-                    return true;
-                }
-            }
             try {
-                String key = ench.getKey().getKey().toLowerCase(Locale.ROOT);
+                String key = ((Keyed) ench).getKey().getKey().toLowerCase(Locale.ROOT);
                 for (String token : tokens) {
                     if (key.contains(token)) {
                         return true;
@@ -160,23 +171,25 @@ public final class BukkitSenses {
 
             for (World world : Bukkit.getWorlds()) {
                 String worldName = world.getName();
-                Preset preset = MobSenses.settings().presetOf(worldName);
-                if (preset == Preset.OFF) {
+                Preset worldPreset = MobSenses.settings().presetOf(worldName);
+                if (worldPreset == Preset.OFF) {
                     MobSenses.coalescer().drainWorld(worldName);
                     continue;
                 }
 
-                // 1. Drain pending Simple Voice Chat frames for players in this world
+                // 1. Drain pending Simple Voice Chat frames for players in this world (Folia-safe)
                 if (MobSenses.settings().voice()) {
                     for (Player player : world.getPlayers()) {
-                        if (player.getGameMode() == GameMode.SPECTATOR) {
-                            continue;
-                        }
-                        double voiceRange = MobSenses.voice().pollPendingRange(player.getUniqueId(), now);
-                        if (voiceRange > 0.0) {
-                            Location loc = player.getEyeLocation();
-                            MobSenses.voiceEvent(worldName, loc.getX(), loc.getY(), loc.getZ(), voiceRange);
-                        }
+                        scheduling.onPlayer(plugin, player, () -> {
+                            double voiceRange = MobSenses.voice().pollPendingRange(player.getUniqueId(), now);
+                            if (voiceRange > 0.0 && BukkitVoiceHook.shouldEmitVoice(player)) {
+                                Location loc = player.getEyeLocation();
+                                if (loc.getWorld() != null) {
+                                    MobSenses.voiceEvent(loc.getWorld().getName(),
+                                            loc.getX(), loc.getY(), loc.getZ(), voiceRange);
+                                }
+                            }
+                        });
                     }
                 }
 
@@ -190,12 +203,12 @@ public final class BukkitSenses {
                 // 3. Sight & Scent checks per player on the player's owning region/main thread
                 if (senseTick) {
                     for (Player player : world.getPlayers()) {
-                        if (player.getGameMode() == GameMode.SPECTATOR
-                                || (player.getGameMode() == GameMode.CREATIVE && !MobSenses.debug())) {
-                            continue;
-                        }
-                        Location loc = player.getLocation();
-                        scheduling.atLocation(plugin, loc, () -> tickPlayerSightAndScent(world, worldName, player, preset, now));
+                        scheduling.onPlayer(plugin, player, () -> {
+                            World pw = player.getWorld();
+                            if (pw != null) {
+                                tickPlayerSightAndScent(pw, pw.getName(), player, now);
+                            }
+                        });
                     }
                 }
             }
@@ -286,8 +299,15 @@ public final class BukkitSenses {
     }
 
     private static void tickPlayerSightAndScent(
-            World world, String worldName, Player player, Preset preset, long now) {
+            World world, String worldName, Player player, long now) {
         if (!player.isOnline() || !player.isValid()) {
+            return;
+        }
+        if (isBypassed(player) || (player.getGameMode() == GameMode.CREATIVE && !MobSenses.debug())) {
+            return;
+        }
+        Preset preset = MobSenses.settings().presetOf(worldName);
+        if (preset == Preset.OFF) {
             return;
         }
         Location ploc = player.getLocation();
@@ -525,13 +545,6 @@ public final class BukkitSenses {
 
     @SuppressWarnings("deprecation")
     private static double maxHealth(Player player) {
-        try {
-            AttributeInstance attr = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-            if (attr != null) {
-                return attr.getValue();
-            }
-        } catch (Throwable ignored) {
-        }
         return player.getMaxHealth();
     }
 
@@ -560,7 +573,7 @@ public final class BukkitSenses {
         Plugin plugin = activePlugin;
         Scheduling sched = activeScheduling;
         for (Player viewer : world.getPlayers()) {
-            if (!viewer.isOp() && !viewer.hasPermission("mobsenses.admin")) {
+            if (!viewer.isOp() && !viewer.hasPermission(AdminCommands.PERM_ADMIN)) {
                 continue;
             }
             Location vloc = viewer.getLocation();
@@ -568,11 +581,7 @@ public final class BukkitSenses {
                 continue;
             }
             if (plugin != null && sched != null) {
-                sched.atLocation(plugin, vloc, () -> {
-                    if (viewer.isOnline()) {
-                        action.accept(viewer);
-                    }
-                });
+                sched.onPlayer(plugin, viewer, () -> action.accept(viewer));
             } else {
                 action.accept(viewer);
             }

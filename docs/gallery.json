@@ -1,23 +1,101 @@
 [
   {
-    "file": "docs/images/store-hearing.png",
-    "title": "Mobs hear noise and investigate",
-    "description": "Hostile mobs hear footsteps, blocks, doors, fights and explosions through walls and walk to where the sound came from.",
+    "file": "docs/images/gallery/banner.png",
+    "title": "Mob Senses banner",
+    "description": "Mobs hear footsteps, blocks, gunshots and voice through walls, spot torchlight vs darkness, and track bleeding trails.",
     "featured": true
   },
   {
-    "file": "docs/images/store-hud.png",
-    "title": "Noise, light and scent stealth HUD",
-    "description": "Optional client HUD showing your current noise, light exposure, voice activity and wounded blood trail."
+    "file": "docs/images/gallery/cover.png",
+    "title": "Mob Senses",
+    "description": "Survival, horror and stealth mob AI with wall occlusion, firearm suppressors, Simple Voice Chat, darkness stealth, blood trails, Stealth HUD and 2-tab GUI.",
+    "featured": false,
+    "cover": {
+      "for": "Survival, Horror & Tactical Stealth",
+      "heading": "Mob Senses",
+      "text": "Mobs hear footsteps, blocks, gunshots & voice through walls, spot torchlight vs darkness, and track bleeding trails — with a Stealth HUD & GUI.",
+      "chips": [
+        "Noise",
+        "Light",
+        "Scent",
+        "Voice",
+        "Guns",
+        "Wall occlusion",
+        "TaCZ & silencers",
+        "Client-server sync",
+        "2-tab GUI"
+      ],
+      "shot": "docs/images/ui-hud.png",
+      "loaders": "<b>Fabric · Quilt · Forge · NeoForge · Paper · Folia</b> &nbsp; Minecraft 1.16.5 – 26.3"
+    }
   },
   {
-    "file": "docs/images/store-debug.png",
-    "title": "Admin debug sound traces (/mobsenses debug)",
-    "description": "Operators can turn on particle traces showing how sounds, light and scent reach nearby mobs."
+    "file": "docs/images/gallery/hud.png",
+    "title": "Stealth HUD and 2-tab settings GUI",
+    "description": "Tactical and minimal HUD styles with live interactive preview, ~Xm audible range, [Whisper] badge and a sleek 2-tab settings screen.",
+    "featured": false,
+    "heading": "Stealth HUD & 2-tab settings GUI",
+    "text": "Live interactive HUD preview, ~Xm audible range, [Whisper] badge, keybind and /mshud without OP.",
+    "shot": "docs/images/ui-hud.png"
   },
   {
-    "file": "docs/images/store-status.png",
-    "title": "Per-world presets and /mobsenses status",
-    "description": "Configure presets (Off, Subtle, Default, Hardcore), multipliers and per-world settings live in-game."
+    "file": "docs/images/gallery/guns.png",
+    "title": "Gunshots, silencers and wall muffling",
+    "description": "Unsuppressed shots carry 44 blocks, suppressors drop to 16, distant bullet wall impacts lure mobs away, and stone/wool muffle sound.",
+    "featured": false,
+    "heading": "Gunshots, silencers & wall muffling",
+    "text": "TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare & JEG: silencers & bullet wall lures.",
+    "shot": "docs/images/ui-hearing.png"
+  },
+  {
+    "file": "docs/images/gallery/senses.png",
+    "title": "Torchlight, darkness stealth and blood scent",
+    "description": "Held torches expose you from afar, sneaking in darkness hides you, and wounded players leave crimson blood trails.",
+    "featured": false,
+    "heading": "Torchlight, darkness stealth & blood scent",
+    "text": "Held torches expose you from afar, darkness drops distant pursuit, and wounded players bleed trails.",
+    "shot": "docs/images/ui-sight.png"
+  },
+  {
+    "file": "docs/images/gallery/server.png",
+    "title": "Live client-server sync and Paper/Folia support",
+    "description": "Presets, per-world balance, fair-play HUD lock, clickable /mobsenses controls and live OP GUI sync — vanilla clients need nothing.",
+    "featured": false,
+    "heading": "Live server sync & Paper/Folia support",
+    "text": "Syncs presets to client ~Xm HUD, lets OPs tune sliders live, and supports fair-play HUD hiding.",
+    "shot": "docs/images/ui-server.png"
+  },
+  {
+    "file": "docs/images/gallery/debug.png",
+    "title": "Clickable /mobsenses and live debug traces",
+    "description": "Operators use clickable /mobsenses chat controls and inspect real-time sound, light and blood scent paths to alerted mobs.",
+    "featured": false,
+    "heading": "Clickable /mobsenses & live debug traces",
+    "text": "Click to switch presets in chat and inspect live sound, torchlight and blood paths to mobs.",
+    "shot": "docs/images/ui-debug.png"
+  },
+  {
+    "file": "docs/images/gallery/cover-plugin.png",
+    "title": "Paper, Purpur and Folia server plugin",
+    "description": "Server-side mob hearing, Simple Voice Chat, darkness stealth and blood trails — vanilla clients join with nothing installed.",
+    "featured": false,
+    "cover": {
+      "for": "Server Plugin · Vanilla Clients Need Nothing",
+      "heading": "Mob Senses",
+      "text": "Mobs hear steps, blocks & Simple Voice Chat through walls, spot torchlight vs darkness, and track blood trails on Paper, Purpur & Folia.",
+      "chips": [
+        "No client mods needed",
+        "Wall occlusion",
+        "Simple Voice Chat",
+        "Torchlight & darkness",
+        "Blood trails",
+        "Per-world presets",
+        "Clickable /mobsenses",
+        "Fair-play HUD lock",
+        "Folia ready"
+      ],
+      "shot": "docs/images/ui-server.png",
+      "loaders": "<b>Paper · Purpur · Folia · Spigot</b> &nbsp; Minecraft 1.16.5 – 26.3 &nbsp; Players need nothing"
+    }
   }
 ]

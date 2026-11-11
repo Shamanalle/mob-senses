@@ -220,4 +220,33 @@ class ServerSettingsTest {
         assertEquals(0.5, s.heldLightBonus(), 1e-6);
         assertEquals(24.0, s.scentMaxRange(), 1e-6);
     }
+
+    @Test
+    void writeStateAndReadStateRoundTripIncludingWorldNormalization() {
+        ServerSettings src = new ServerSettings(null);
+        src.setPreset(Preset.SUBTLE);
+        src.setWorldPreset("minecraft:the_nether", Preset.HARDCORE);
+        src.setHearing(1.75);
+        src.setSight(0.8);
+        src.setAllowClientHud(false);
+        assertTrue(src.setOption("gunshot_range", "64"));
+
+        assertEquals(Preset.HARDCORE, src.presetOf("the_nether"));
+        assertEquals(Preset.HARDCORE, src.presetOf("minecraft:the_nether"));
+
+        java.util.Properties wire = new java.util.Properties();
+        src.writeState(wire, "the_nether");
+        assertEquals("hardcore", wire.getProperty("preset"));
+        assertEquals("subtle", wire.getProperty("server_preset"));
+        assertEquals("false", wire.getProperty("allow_client_hud"));
+
+        ServerSettings dst = new ServerSettings(null);
+        dst.readState(wire);
+        assertEquals(Preset.SUBTLE, dst.preset());
+        assertEquals(Preset.HARDCORE, dst.presetOf("the_nether"));
+        assertEquals(1.75, dst.hearing(), 1e-6);
+        assertEquals(0.8, dst.sight(), 1e-6);
+        assertFalse(dst.allowClientHud());
+        assertEquals(64.0, dst.gunshotRange(), 1e-6);
+    }
 }

@@ -4,6 +4,7 @@ plugins {
 }
 
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
 def target = "mc1.19.3-1.19.4"
 version = "${project.mod_version}+${target}"
@@ -30,39 +31,15 @@ legacyForge {
     version = project.findProperty("loaderOverride.${project.name}") ?: project.forge1194_version
 }
 
-def src116 = file("${rootDir}/versions/fabric/1.16/src/main/java").toPath()
-def src1194 = file("${rootDir}/versions/fabric/1.19.4/src/main/java").toPath()
-def srcForge1192 = file("${rootDir}/versions/forge/1.19.2/src/main/java").toPath()
-
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.16/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.19.4/src/main/java"
-            srcDir "${rootDir}/versions/forge/1.19.2/src/main/java"
-            exclude { e ->
-                if (e.directory) return false
-                def p = e.file.toPath()
-                if (p.startsWith(src116)) {
-                    def rel = src116.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/PoseCanvas.java'
-                            && rel != 'com/kasper/mobsenses/server/AdminPermission.java'
-                            && rel != 'com/kasper/mobsenses/server/PlayerLanguage.java'
-                }
-                if (p.startsWith(src1194)) {
-                    def rel = src1194.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/server/Worlds.java'
-                }
-                if (p.startsWith(srcForge1192)) {
-                    def rel = srcForge1192.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/forge/ForgeClientHooks.java'
-                }
-                return false
-            }
-        }
-    }
-}
+useShared([
+        'shared/forge-1.19.4',
+        'shared/forge-client-1.19',
+        'shared/forge-net-1.18',
+        'shared/mc-pose',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common')

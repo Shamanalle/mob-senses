@@ -113,6 +113,14 @@ public final class ServerHearing {
             return;
         }
         Player player = responsiblePlayer(level, sourceEntity, kind, x, y, z);
+        if (player != null && BypassPermission.hasBypass(player)) {
+            if (kind.requiresPlayerSource()
+                    || player == sourceEntity
+                    || (sourceEntity instanceof Projectile proj && proj.getOwner() == player)) {
+                return;
+            }
+            player = null;
+        }
         boolean playerInvolved = player != null || !kind.requiresPlayerSource();
         if (!playerInvolved) {
             return;
@@ -201,7 +209,8 @@ public final class ServerHearing {
         // 1. Drain pending Simple Voice Chat frames for players in this dimension
         if (MobSenses.settings().voice()) {
             for (ServerPlayer player : level.players()) {
-                if (player.isSpectator()) {
+                if (player.isSpectator() || BypassPermission.hasBypass(player)) {
+                    MobSenses.voice().pollPendingRange(player.getUUID(), now);
                     continue;
                 }
                 double voiceRange = MobSenses.voice().pollPendingRange(player.getUUID(), now);
@@ -213,7 +222,7 @@ public final class ServerHearing {
 
         // 1b. Detect newly spawned gun bullets (e.g. TaCZ EntityKineticBullet, PointBlank, CGM, Scorched Guns)
         for (ServerPlayer player : level.players()) {
-            if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
+            if (player.isSpectator() || (player.isCreative() && !MobSenses.debug()) || BypassPermission.hasBypass(player)) {
                 continue;
             }
             detectPlayerGunshots(level, worldId, player);
@@ -281,7 +290,8 @@ public final class ServerHearing {
      */
     public static void tickPlayerSightAndScent(
             ServerLevel level, String worldId, Player player, Preset preset, long now) {
-        if (level == null || player == null || preset == null || preset == Preset.OFF) {
+        if (level == null || player == null || preset == null || preset == Preset.OFF
+                || BypassPermission.hasBypass(player)) {
             return;
         }
         double px = player.getX();

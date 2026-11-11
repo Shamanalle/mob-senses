@@ -12,8 +12,8 @@ import org.bukkit.block.data.Openable;
 import java.util.Locale;
 
 /**
- * Maps Bukkit {@link Block}s and {@link Material}s to {@link AcousticMaterial}s and traces 5-ray
- * occlusion bundles through a Bukkit {@link World}.
+ * Maps Bukkit {@link Block}s and {@link Material}s to {@link AcousticMaterial}s and traces
+ * 5-ray occlusion bundles through a Bukkit {@link World}.
  */
 public final class BukkitAcoustics {
 

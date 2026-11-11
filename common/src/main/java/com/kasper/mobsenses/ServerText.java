@@ -69,6 +69,23 @@ public final class ServerText {
         }
     }
 
+    /** Full translation key (e.g. {@code gui.mobsenses.*} or {@code command.mobsenses.*}) in {@code language}. */
+    public static String raw(String language, String fullKey, Object... args) {
+        String text = table(language(language)).get(fullKey);
+        if (text == null) {
+            text = table(DEFAULT_LANGUAGE).get(fullKey);
+        }
+        if (text == null) {
+            ModLog.warn("No text for " + fullKey);
+            return fullKey;
+        }
+        try {
+            return args.length == 0 ? text : String.format(Locale.ROOT, text, args);
+        } catch (RuntimeException e) {
+            return text;
+        }
+    }
+
     private static Map<String, String> table(String language) {
         return CACHE.computeIfAbsent(language, ServerText::load);
     }

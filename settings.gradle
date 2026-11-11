@@ -19,11 +19,12 @@ include "common"
 include "common-j8"
 
 // The Minecraft modules live in versions/<loader>/<band> and keep the project name <loader>-<band>
-// (:fabric-1.21 is versions/fabric/1.21).
+// (:fabric-1.21 is versions/fabric/1.21). Forge 1.16.5, Forge 1.20.4, NeoForge 1.20.2, and NeoForge 1.20.4
+// have standalone Gradle 8 builds invoked by buildLegacy in the root build.gradle.
 def bands = [
-        fabric  : ['1.16', '1.17', '1.19', '1.19.4', '1.20', '1.20.6', '1.21', '26'],
-        forge   : ['1.18.2', '1.19.2', '1.19.4', '1.20.1', '1.21.1', '1.21.10', '1.21.11', '26'],
-        neoforge: ['1.21', '1.21.10', '1.21.11', '26'],
+        fabric  : ['1.16', '1.17', '1.18', '1.19', '1.19.4', '1.20', '1.20.4', '1.20.6', '1.21', '26'],
+        forge   : ['1.17', '1.18.2', '1.19.2', '1.19.4', '1.20.1', '1.20.6', '1.21.1', '1.21.5', '1.21.8', '1.21.10', '1.21.11', '26'],
+        neoforge: ['1.20.6', '1.21', '1.21.5', '1.21.8', '1.21.10', '1.21.11', '26'],
 ]
 bands.each { loader, list ->
     list.each { band ->

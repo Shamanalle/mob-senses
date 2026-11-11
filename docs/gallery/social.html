@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mob Senses social preview</title>
+<style>
+  /* The 1280x640 social preview of the GitHub repository: title & tactical Stealth HUD chips on the left,
+     custom acoustic wall-occlusion SVG diagram (Stone x0.64 / Wool x0.53 -> alerted hostile mob) on the right.
+     ?h=720 gives the 16:9 version (rendered at 1.5x -> 1920x1080) for store galleries. */
+  @font-face {
+    font-family: "Inter";
+    src: url("fonts/Inter-latin.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+  :root {
+    --bg: #131926;
+    --bg-deep: #0d111a;
+    --amber: #f5b841;
+    --cyan: #3fd0e6;
+    --green: #58d68d;
+    --red: #eb5250;
+    --text: #f0f4f8;
+    --dim: #a3b1c2;
+    --line: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    font-family: "Inter", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(680px 480px at 78% 46%, rgba(245, 184, 65, 0.15), transparent 72%),
+      radial-gradient(560px 420px at 12% 105%, rgba(63, 208, 230, 0.10), transparent 70%),
+      linear-gradient(160deg, var(--bg) 0%, var(--bg-deep) 100%);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+  .left {
+    position: absolute; left: 56px; top: 0; bottom: 0; width: 575px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .head { display: flex; align-items: center; gap: 20px; }
+  .head img { width: 82px; height: 82px; image-rendering: pixelated; flex: none; }
+  .for { font-size: 20px; font-weight: 700; color: var(--amber); letter-spacing: 0.015em; line-height: 1.3; }
+  .for span { display: block; font-size: 16.5px; font-weight: 600; color: var(--dim); margin-top: 3px; }
+  h1 { font-size: 86px; font-weight: 800; letter-spacing: -0.04em; line-height: 0.98; margin-top: 24px; }
+  .line {
+    font-size: 23.5px; font-weight: 500; color: #d5dfe9; line-height: 1.34; margin-top: 18px;
+  }
+  .line b { color: #ffffff; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+  .chip {
+    font-size: 17.5px; font-weight: 700; padding: 7px 15px; border-radius: 999px;
+    background: rgba(245, 184, 65, 0.12); border: 1px solid rgba(245, 184, 65, 0.38); color: #ffe3a3;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip i {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .loaders { margin-top: 24px; font-size: 17px; color: var(--dim); line-height: 1.35; white-space: nowrap; }
+  .loaders b { color: var(--text); font-weight: 700; }
+
+  .right {
+    position: absolute; left: 652px; right: 44px; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 16px;
+  }
+  .diagram-card {
+    background: linear-gradient(170deg, rgba(22, 29, 44, 0.88), rgba(11, 15, 24, 0.94));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  }
+  .hud-strip {
+    background: linear-gradient(165deg, rgba(19, 25, 38, 0.94), rgba(11, 15, 24, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 4px solid var(--amber);
+    border-radius: 12px;
+    padding: 12px 15px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
+  }
+  .hud-status {
+    display: flex; align-items: center; gap: 7px; white-space: nowrap;
+    font-size: 14.5px; font-weight: 800; color: #ffffff;
+  }
+  .hud-status .dot {
+    width: 9px; height: 9px; border-radius: 50%; flex: none;
+    background: var(--amber); box-shadow: 0 0 10px var(--amber);
+  }
+  .hud-status small { font-weight: 600; color: var(--dim); font-size: 13.5px; }
+  .hud-meters { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .mini-m { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: #b7c4d4; }
+  .mini-bar { width: 38px; height: 7px; border-radius: 4px; background: rgba(255,255,255,0.09); overflow: hidden; }
+  .mini-bar > div { height: 100%; border-radius: 4px; }
+  .hud-tag {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+    padding: 4px 8px; border-radius: 5px;
+    background: rgba(63, 208, 230, 0.15); border: 1px solid rgba(63, 208, 230, 0.42); color: #8be9f7;
+  }
+</style>
+</head>
+<body>
+<div class="left">
+  <div class="head">
+    <img src="../../icon.png" alt="">
+    <div class="for">Survival, Horror &amp; Tactical Stealth<span>Server &amp; Client · Vanilla Players Need Nothing</span></div>
+  </div>
+  <h1>Mob Senses</h1>
+  <div class="line">Mobs hear <b>footsteps, blocks, gunshots</b> (TaCZ, Point Blank, CGM, Scorched Guns) &amp; <b>voice</b> through walls, spot <b>torchlight vs darkness</b>, and track <b>bleeding trails</b> — with a Stealth HUD &amp; GUI.</div>
+  <div class="chips">
+    <span class="chip"><i style="background:#f5b841"></i>Noise</span>
+    <span class="chip"><i style="background:#ffe082"></i>Light</span>
+    <span class="chip"><i style="background:#eb5250"></i>Scent</span>
+    <span class="chip"><i style="background:#3fd0e6"></i>Voice</span>
+    <span class="chip"><i style="background:#ff8a5b"></i>Guns</span>
+  </div>
+  <div class="loaders"><b>Fabric · Quilt · Forge · NeoForge · Paper · Folia</b> &nbsp; 1.16.5 – 26.3</div>
+</div>
+
+<div class="right">
+  <div class="diagram-card">
+    <svg viewBox="0 0 544 340" width="100%" height="auto" style="display:block" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="rayBefore" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ffd479" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#f5b841" stop-opacity="0.95"/>
+        </linearGradient>
+        <linearGradient id="rayAfterStone" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#f5b841" stop-opacity="0.68"/>
+          <stop offset="100%" stop-color="#f5b841" stop-opacity="0.18"/>
+        </linearGradient>
+        <linearGradient id="rayAfterWool" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#3fd0e6" stop-opacity="0.52"/>
+          <stop offset="100%" stop-color="#3fd0e6" stop-opacity="0.10"/>
+        </linearGradient>
+        <filter id="amberGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Top caption strip inside SVG -->
+      <text x="12" y="20" fill="#f5b841" font-size="12" font-weight="800" letter-spacing="1.1">SOUND &amp; GUNSHOT WAVE</text>
+      <text x="266" y="20" fill="#cbd6e4" font-size="12" font-weight="800" letter-spacing="1.1" text-anchor="middle">WALL OCCLUSION</text>
+      <text x="532" y="20" fill="#58d68d" font-size="12" font-weight="800" letter-spacing="1.1" text-anchor="end">HOSTILE MOB AI</text>
+
+      <!-- Source Emitter Badge (left) -->
+      <rect x="12" y="124" width="66" height="66" rx="14" fill="#1b2436" stroke="#f5b841" stroke-opacity="0.6" stroke-width="1.5"/>
+      <!-- Speaker / muzzle pulse icon -->
+      <path d="M30 150 H38 L48 140 V174 L38 164 H30 Z" fill="#ffd479"/>
+      <path d="M54 147 C58 151, 58 163, 54 167" fill="none" stroke="#ffd479" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M60 141 C67 148, 67 166, 60 173" fill="none" stroke="#f5b841" stroke-width="2.6" stroke-linecap="round"/>
+      <text x="45" y="210" fill="#f0f4f8" font-size="12.5" font-weight="700" text-anchor="middle">Shot · Step</text>
+      <text x="45" y="226" fill="#90a0b4" font-size="11.5" font-weight="600" text-anchor="middle">44 bl. / 16 bl.</text>
+
+      <!-- Energetic unoccluded sound wave bars before the wall (x=92..212) -->
+      <g filter="url(#amberGlow)" fill="#f5b841">
+        <rect x="92"  y="128" width="5" height="58" rx="2.5" opacity="0.70"/>
+        <rect x="103" y="106" width="5" height="102" rx="2.5" opacity="0.85"/>
+        <rect x="114" y="88"  width="5" height="138" rx="2.5" opacity="0.95"/>
+        <rect x="125" y="114" width="5" height="86" rx="2.5" opacity="0.88"/>
+        <rect x="136" y="76"  width="5" height="162" rx="2.5"/>
+        <rect x="147" y="98"  width="5" height="118" rx="2.5" opacity="0.92"/>
+        <rect x="158" y="68"  width="5" height="178" rx="2.5"/>
+        <rect x="169" y="92"  width="5" height="130" rx="2.5" opacity="0.94"/>
+        <rect x="180" y="82"  width="5" height="150" rx="2.5" opacity="0.96"/>
+        <rect x="191" y="104" width="5" height="106" rx="2.5" opacity="0.90"/>
+        <rect x="202" y="94"  width="5" height="126" rx="2.5" opacity="0.92"/>
+      </g>
+
+      <!-- Minecraft Wall Column (x=224..308, w=84) -->
+      <!-- Top half: Stone Bricks (y=36..172) -->
+      <g>
+        <rect x="224" y="36" width="84" height="136" rx="4" fill="#565b64"/>
+        <!-- Brick courses -->
+        <rect x="226" y="38"  width="39" height="24" fill="#7d838e"/><rect x="267" y="38"  width="39" height="24" fill="#717782"/>
+        <rect x="226" y="64"  width="19" height="24" fill="#6c727d"/><rect x="247" y="64"  width="39" height="24" fill="#838995"/><rect x="288" y="64" width="18" height="24" fill="#757b86"/>
+        <rect x="226" y="90"  width="39" height="24" fill="#767c87"/><rect x="267" y="90"  width="39" height="24" fill="#858b97"/>
+        <rect x="226" y="116" width="19" height="24" fill="#808692"/><rect x="247" y="116" width="39" height="24" fill="#6f7580"/><rect x="288" y="116" width="18" height="24" fill="#7c828d"/>
+        <rect x="226" y="142" width="39" height="28" fill="#737984"/><rect x="267" y="142" width="39" height="28" fill="#7d838e"/>
+        <!-- Highlights -->
+        <line x1="226" y1="39" x2="306" y2="39" stroke="#9ca3af" stroke-opacity="0.45" stroke-width="1.5"/>
+        <line x1="226" y1="91" x2="306" y2="91" stroke="#9ca3af" stroke-opacity="0.4" stroke-width="1.5"/>
+      </g>
+
+      <!-- Bottom half: White/Slate Wool Blocks (y=176..308) -->
+      <g>
+        <rect x="224" y="176" width="84" height="132" rx="4" fill="#2d3848"/>
+        <rect x="226" y="178" width="39" height="41" rx="2" fill="#46566e"/>
+        <rect x="267" y="178" width="39" height="41" rx="2" fill="#3e4d63"/>
+        <rect x="226" y="221" width="39" height="41" rx="2" fill="#3c4b61"/>
+        <rect x="267" y="221" width="39" height="41" rx="2" fill="#495a73"/>
+        <rect x="226" y="264" width="39" height="42" rx="2" fill="#45556d"/>
+        <rect x="267" y="264" width="39" height="42" rx="2" fill="#3b495e"/>
+        <!-- Soft wool crosshatch tufts -->
+        <path d="M234 190 h10 M250 202 h10 M275 192 h12 M284 206 h10 M235 236 h12 M276 238 h12 M236 280 h11 M278 284 h11"
+              stroke="#6b7f9c" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
+      </g>
+
+      <!-- Stone & Wool Multiplier Callout Pills centered on wall -->
+      <rect x="212" y="88" width="108" height="26" rx="13" fill="#0d111a" stroke="#f5b841" stroke-width="1.5"/>
+      <text x="266" y="105" fill="#ffd479" font-size="12.5" font-weight="800" text-anchor="middle">Stone ×0.64</text>
+
+      <rect x="212" y="228" width="108" height="26" rx="13" fill="#0d111a" stroke="#3fd0e6" stroke-width="1.5"/>
+      <text x="266" y="245" fill="#8be9f7" font-size="12.5" font-weight="800" text-anchor="middle">Wool ×0.53</text>
+
+      <!-- Attenuated sound waves behind Stone (top-right, x=322..418) -->
+      <g fill="#c99b42" opacity="0.82">
+        <rect x="324" y="82" width="4.5" height="46" rx="2.2"/>
+        <rect x="336" y="74" width="4.5" height="62" rx="2.2"/>
+        <rect x="348" y="84" width="4.5" height="42" rx="2.2"/>
+        <rect x="360" y="78" width="4.5" height="54" rx="2.2" opacity="0.82"/>
+        <rect x="372" y="88" width="4.5" height="34" rx="2.2" opacity="0.72"/>
+        <rect x="384" y="84" width="4.5" height="42" rx="2.2" opacity="0.62"/>
+        <rect x="396" y="92" width="4.5" height="26" rx="2.2" opacity="0.50"/>
+        <rect x="408" y="95" width="4.5" height="20" rx="2.2" opacity="0.40"/>
+      </g>
+
+      <!-- Heavily muffled waves behind Wool (bottom-right, x=322..396) -->
+      <g fill="#5b8896" opacity="0.72">
+        <rect x="324" y="228" width="4.5" height="26" rx="2.2"/>
+        <rect x="336" y="224" width="4.5" height="34" rx="2.2"/>
+        <rect x="348" y="230" width="4.5" height="22" rx="2.2" opacity="0.8"/>
+        <rect x="360" y="233" width="4.5" height="16" rx="2.2" opacity="0.6"/>
+        <rect x="372" y="235" width="4.5" height="12" rx="2.2" opacity="0.42"/>
+      </g>
+
+      <!-- Dashed acoustic ray trace to Alerted Zombie -->
+      <path d="M312 105 L428 144" stroke="url(#rayAfterStone)" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <path d="M312 241 L428 182" stroke="url(#rayAfterWool)" stroke-width="2" stroke-dasharray="4 5"/>
+
+      <!-- Alerted Hostile Mob Card (x=430..532) -->
+      <rect x="428" y="106" width="104" height="114" rx="16" fill="#161f2e" stroke="#58d68d" stroke-opacity="0.55" stroke-width="1.5"/>
+      <!-- Alert '!' badge above Zombie -->
+      <rect x="464" y="84" width="32" height="28" rx="8" fill="#eb5250"/>
+      <text x="480" y="104" fill="#ffffff" font-size="19" font-weight="900" text-anchor="middle">!</text>
+
+      <!-- Pixel-art Zombie Head facing left toward the sound -->
+      <g transform="translate(448, 122)">
+        <rect x="0" y="0" width="64" height="64" rx="4" fill="#4a803a"/>
+        <rect x="0" y="0" width="64" height="12" fill="#3d6b30"/>
+        <rect x="8" y="12" width="16" height="12" fill="#568f42"/>
+        <rect x="36" y="8" width="20" height="16" fill="#5f9c48"/>
+        <rect x="4" y="44" width="20" height="16" fill="#568f42"/>
+        <rect x="40" y="40" width="20" height="20" fill="#427234"/>
+        <rect x="0" y="58" width="64" height="6" fill="#2e5226"/>
+        <!-- Eye sockets & glowing amber eyes looking left at wall -->
+        <rect x="8"  y="24" width="18" height="12" fill="#141e12"/>
+        <rect x="38" y="24" width="18" height="12" fill="#141e12"/>
+        <rect x="8"  y="28" width="6"  height="6"  fill="#ffc44c"/>
+        <rect x="14" y="28" width="6"  height="6"  fill="#ff9628"/>
+        <rect x="38" y="28" width="6"  height="6"  fill="#ffc44c"/>
+        <rect x="44" y="28" width="6"  height="6"  fill="#ff9628"/>
+        <!-- Mouth -->
+        <rect x="20" y="46" width="24" height="6" fill="#1c2818"/>
+      </g>
+      <text x="480" y="205" fill="#7ef0b1" font-size="11.5" font-weight="800" letter-spacing="0.5" text-anchor="middle">INVESTIGATES</text>
+
+      <!-- Bottom formula / stealth summary inside diagram -->
+      <text x="272" y="330" fill="#8fa0b5" font-size="11" font-weight="600" text-anchor="middle">
+        Open doors pass sound · Rain &amp; Feather Falling mask steps · Torchlight &amp; blood expose you
+      </text>
+    </svg>
+  </div>
+
+  <div class="hud-strip">
+    <div class="hud-status">
+      <span class="dot"></span>
+      <span>Stealth HUD</span>
+      <small>· ~16m</small>
+    </div>
+    <div class="hud-meters">
+      <div class="mini-m">Noise <div class="mini-bar"><div style="width:74%;background:#f5b841"></div></div></div>
+      <div class="mini-m">Light <div class="mini-bar"><div style="width:42%;background:#ffe082"></div></div></div>
+      <div class="mini-m">Scent <div class="mini-bar"><div style="width:58%;background:#eb5250"></div></div></div>
+    </div>
+    <span class="hud-tag">2-Tab GUI · /mshud</span>
+  </div>
+</div>
+
+<script>
+  const H = Number(new URLSearchParams(location.search).get("h")) || 640;
+  document.documentElement.style.height = document.body.style.height = H + "px";
+</script>
+</body>
+</html>

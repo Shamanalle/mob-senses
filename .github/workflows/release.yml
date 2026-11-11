@@ -3,7 +3,7 @@ name: Publish Release
 # Publishes the release for mod_version from gradle.properties: builds every jar, takes the notes
 # from CHANGELOG.md and attaches the jars. Starts either from a pushed tag (vX.Y.Z) or by hand
 # (Actions -> Publish Release -> Run workflow on main), in which case the tag is created too.
-# Then the files go to Modrinth and CurseForge through publish.yml.
+# Then the files go to Modrinth, CurseForge and Hangar through publish.yml.
 
 on:
   push:
@@ -39,12 +39,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The 26.x module needs Java 25
-      - name: Set up JDK 25
+      # 26.x needs Java 25; standalone Gradle 8 legacyTargets and Jabel need JDK 17 and JDK 21
+      - name: Set up JDK 17, 21 and 25
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: |
+            17
+            21
+            25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -100,9 +103,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Uploads the same files to Modrinth and CurseForge (skipped while their ids or tokens are not set)
+  # Uploads the same files to Modrinth, CurseForge and Hangar (skipped while their ids or tokens are not set)
   stores:
-    name: Modrinth & CurseForge
+    name: Modrinth, CurseForge & Hangar
     needs: release
     # Without this it would be skipped along with the in-game tests when they are skipped
     if: ${{ !cancelled() && needs.release.result == 'success' }}

@@ -1,9 +1,10 @@
 name: In-game tests
 
 # Starts real servers with Mob Senses (.github/scripts/server-smoke.sh): each must come up, hear the
-# noise of an explosion, answer /mobsenses with real text, save the settings and log no exception from
-# the mod. A client plays singleplayer with the mod and runs /mobsenses in English and Russian, with
-# screenshots. The release (release.yml) runs this first and stops when it fails.
+# noise of an explosion, answer /mobsenses with real text, save
+# the settings and log no exception from the mod. A client plays singleplayer with the mod and runs
+# /mobsenses in English and Russian, with screenshots. The release (release.yml) runs this first and
+# stops when it fails.
 #
 # A download that fails on the way (a timeout, a reset connection, HTTP 429 / 5xx; see
 # .github/scripts/net-failure.sh) is tried once more and leaves a warning on the run: the Gradle build
@@ -31,11 +32,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Check the network retry
         run: bash .github/scripts/net-retry-selftest.sh
-      - name: Set up JDK 25
+      - name: Set up JDK 17, 21 and 25
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: |
+            17
+            21
+            25
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Build
@@ -58,33 +62,45 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # One jar for every Fabric version, so each job also checks that it picks the right band
-          - { loader: fabric, mc: '1.16.5', jar: 'mob-senses-fabric-*.jar', java: '8' }
-          - { loader: fabric, mc: '1.17.1', jar: 'mob-senses-fabric-*.jar', java: '17' }
-          - { loader: fabric, mc: '1.19.2', jar: 'mob-senses-fabric-*.jar', java: '17' }
-          - { loader: fabric, mc: '1.20.1', jar: 'mob-senses-fabric-*.jar', java: '17' }
-          - { loader: fabric, mc: '1.20.6', jar: 'mob-senses-fabric-*.jar', java: '21' }
-          - { loader: fabric, mc: '1.21', jar: 'mob-senses-fabric-*.jar', java: '21' }
-          - { loader: fabric, mc: '1.21.1', jar: 'mob-senses-fabric-*.jar', java: '21' }
-          - { loader: fabric, mc: '1.21.11', jar: 'mob-senses-fabric-*.jar', java: '21' }
-          - { loader: fabric, mc: '26.1', jar: 'mob-senses-fabric-*.jar', java: '25' }
-          - { loader: fabric, mc: '26.3', jar: 'mob-senses-fabric-*.jar', java: '25' }
-          # One jar for Forge and NeoForge across 1.18 - 26.3
-          - { loader: forge, mc: '1.18.2', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge118_version' }
-          - { loader: forge, mc: '1.19.2', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge1192_version' }
-          - { loader: forge, mc: '1.19.4', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge1194_version' }
-          - { loader: forge, mc: '1.20', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge120_version_oldest', label: 'oldest' }
-          - { loader: forge, mc: '1.20.1', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'forge120_version' }
-          - { loader: forge, mc: '1.21.1', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'forge1211_version' }
-          - { loader: forge, mc: '1.21.10', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'forge12110_version' }
-          - { loader: forge, mc: '1.21.11', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'forge12111_version' }
-          - { loader: forge, mc: '26.3', jar: 'mob-senses-forge-neoforge-*.jar', java: '25', version: 'forge26_version' }
-          - { loader: neoforge, mc: '1.20.1', jar: 'mob-senses-forge-neoforge-*.jar', java: '17', version: 'nf1201_forge' }
-          - { loader: neoforge, mc: '1.21', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'nf121_neoforge_oldest', label: 'oldest' }
-          - { loader: neoforge, mc: '1.21.1', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'nf121_neoforge' }
-          - { loader: neoforge, mc: '1.21.10', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'nf12110_neoforge' }
-          - { loader: neoforge, mc: '1.21.11', jar: 'mob-senses-forge-neoforge-*.jar', java: '21', version: 'nf12111_neoforge' }
-          - { loader: neoforge, mc: '26.3', jar: 'mob-senses-forge-neoforge-*.jar', java: '25', version: 'nf26_neoforge' }
+          # One jar for every Fabric version across 1.16.5 - 26.3, so each job also checks that it picks the right band
+          - { loader: fabric, mc: '1.16.5', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '8' }
+          - { loader: fabric, mc: '1.17.1', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '17' }
+          - { loader: fabric, mc: '1.19.2', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '17' }
+          - { loader: fabric, mc: '1.20.1', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '17' }
+          - { loader: fabric, mc: '1.20.6', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '21' }
+          - { loader: fabric, mc: '1.21', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '21' }
+          - { loader: fabric, mc: '1.21.1', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '21' }
+          - { loader: fabric, mc: '1.21.11', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '21' }
+          - { loader: fabric, mc: '26.1', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '25' }
+          - { loader: fabric, mc: '26.3', jar: 'mob-senses-fabric-*+mc1.16.5-26.x.jar', java: '25' }
+          # One jar for Forge and NeoForge across 1.16.5 - 26.3 (Forge 1.16.5 runs on Java 8, 1.17.1 on Java 16)
+          - { loader: forge, mc: '1.16.5', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '8', version: 'forge116_version', alt_version: 'forge1165_version' }
+          - { loader: forge, mc: '1.17.1', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '16', version: 'forge117_version' }
+          - { loader: forge, mc: '1.18.2', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'forge118_version' }
+          - { loader: forge, mc: '1.19.2', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'forge1192_version', alt_version: 'forge119_version' }
+          - { loader: forge, mc: '1.19.4', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'forge1194_version' }
+          - { loader: forge, mc: '1.20', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'forge120_version_oldest', label: 'oldest' }
+          - { loader: forge, mc: '1.20.1', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'forge120_version' }
+          - { loader: forge, mc: '1.20.4', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'forge1204_version' }
+          - { loader: forge, mc: '1.20.6', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'forge1206_version' }
+          - { loader: forge, mc: '1.21.1', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'forge1211_version', alt_version: 'forge121_version' }
+          - { loader: forge, mc: '1.21.5', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'forge1215_version' }
+          - { loader: forge, mc: '1.21.8', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'forge1218_version' }
+          - { loader: forge, mc: '1.21.10', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'forge12110_version' }
+          - { loader: forge, mc: '1.21.11', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'forge12111_version' }
+          - { loader: forge, mc: '26.3', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '25', version: 'forge26_version' }
+          # NeoForge for 1.20.1 is a fork of Forge and loads the Forge 1.20.1 band
+          - { loader: neoforge, mc: '1.20.1', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'nf1201_forge' }
+          - { loader: neoforge, mc: '1.20.2', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'nf1202_neoforge' }
+          - { loader: neoforge, mc: '1.20.4', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '17', version: 'nf1204_neoforge' }
+          - { loader: neoforge, mc: '1.20.6', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf1206_neoforge' }
+          - { loader: neoforge, mc: '1.21', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf121_neoforge_oldest', label: 'oldest' }
+          - { loader: neoforge, mc: '1.21.1', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf121_neoforge' }
+          - { loader: neoforge, mc: '1.21.5', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf1215_neoforge' }
+          - { loader: neoforge, mc: '1.21.8', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf1218_neoforge' }
+          - { loader: neoforge, mc: '1.21.10', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf12110_neoforge' }
+          - { loader: neoforge, mc: '1.21.11', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '21', version: 'nf12111_neoforge' }
+          - { loader: neoforge, mc: '26.3', jar: 'mob-senses-forge-neoforge-*+mc1.16.5-26.x.jar', java: '25', version: 'nf26_neoforge' }
           # Paper 1.16.5 runs on Java 8: that is where the plugin's Java 8 bytecode loads for real
           - { loader: paper, mc: '1.16.5', jar: 'mob-senses-bukkit-*.jar', java: '8' }
           - { loader: paper, mc: '1.17.1', jar: 'mob-senses-bukkit-*.jar', java: '17' }
@@ -110,7 +126,11 @@ jobs:
           jar=$(ls jars/${{ matrix.jar }} | head -1)
           version=""
           if [ -n "${{ matrix.version }}" ]; then
-            version=$(grep "^${{ matrix.version }}=" gradle.properties | cut -d= -f2)
+            version=$(grep -E "^(${{ matrix.version }}${{ matrix.alt_version && format('|{0}', matrix.alt_version) || '' }})=" gradle.properties | head -1 | cut -d= -f2 || true)
+            if [ -z "${version}" ]; then
+              echo "::error::Missing ${{ matrix.version }} in gradle.properties"
+              exit 1
+            fi
           fi
           echo "Mod: ${jar} ${version}"
           bash .github/scripts/server-smoke.sh "${{ matrix.loader }}" "${{ matrix.mc }}" "${jar}" "${version}"

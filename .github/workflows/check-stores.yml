@@ -1,8 +1,8 @@
 name: Check the stores
 
-# Checks that every file of a release is on Modrinth and CurseForge with all the Minecraft versions
-# and loaders the publish matrix gives it (.github/scripts/check-stores.py). Runs after "Publish to
-# Modrinth & CurseForge", or by hand for any tag.
+# Checks that every file of a release is on Modrinth, CurseForge and Hangar with all the Minecraft
+# versions and loaders the publish matrix gives it (.github/scripts/check-stores.py). Runs after
+# "Publish to Modrinth & CurseForge", or by hand for any tag.
 
 on:
   workflow_call:
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag, e.g. v2.6.0 (empty: the latest release)'
+        description: 'Release tag, e.g. v1.5.0 (empty: the latest release)'
         type: string
         default: ''
   push:
@@ -41,6 +41,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
           TAG: ${{ inputs.tag }}
           WARN_ONLY: ${{ inputs.warn-only && '--warn-only' || '' }}
         run: |

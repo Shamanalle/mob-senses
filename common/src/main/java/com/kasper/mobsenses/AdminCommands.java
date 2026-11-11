@@ -7,8 +7,7 @@ import java.util.Locale;
 
 /**
  * {@code /mobsenses}, the same on every loader and on Bukkit: the platform passes the text after the
- * command and sends the {@link Reply} back. Only admins (operators, the console) reach it; the platform
- * checks that.
+ * command and sends the {@link Reply} back.
  */
 public final class AdminCommands {
 
@@ -16,10 +15,13 @@ public final class AdminCommands {
     public static final String HUD_COMMAND_NAME = "mshud";
     public static final String HUD_COMMAND_ALIAS = "mobsenseshud";
 
+    public static final String PERM_ADMIN = "mobsenses.admin";
+
     private static final List<String> SUBCOMMANDS = Jv.listOf(
-            "status", "preset", "hearing", "sight", "voice", "world", "set", "get", "reset", "hud", "debug", "reload", "help");
+            "status", "preset", "hearing", "sight", "voice", "world",
+            "set", "get", "reset", "hud", "debug", "reload", "help");
     private static final List<String> CATEGORIES = Jv.listOf(
-            "core", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "all");
+            "core", "server", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "all");
     private static final List<String> HUD_MODES = Jv.listOf(
             "on", "off", "tactical", "minimal", "compact", "full", "auto_hide", "range", "style",
             "opacity", "offset", "bar", "reset",
@@ -43,6 +45,11 @@ public final class AdminCommands {
         default boolean isDedicatedServer() {
             return false;
         }
+
+        /** Whether the sender holds the given permission node (defaults to {@code true}). */
+        default boolean hasPermission(String node) {
+            return true;
+        }
     }
 
     private static final Context CLIENT_CTX = new Context() {
@@ -65,6 +72,10 @@ public final class AdminCommands {
     private AdminCommands() {
     }
 
+    public static List<String> subcommands() {
+        return SUBCOMMANDS;
+    }
+
     public static Reply execute(String args, Context ctx) {
         ServerSettings s = MobSenses.settings();
         String lang = Jv.isBlank(ctx.language()) ? s.language() : ctx.language();
@@ -73,7 +84,7 @@ public final class AdminCommands {
             String sub = a.length == 0 ? "status" : a[0].toLowerCase(Locale.ROOT);
             switch (sub) {
                 case "status":
-                    return status(lang, s, ctx);
+                    return status(lang, s);
                 case "help":
                     return help(lang);
                 case "preset":
@@ -85,9 +96,10 @@ public final class AdminCommands {
                     return voice(lang, s, a);
                 case "world":
                     return world(lang, s, ctx, a);
-                case "set":
                 case "get":
-                    return setOrGet(lang, s, a);
+                    return setOrGet(lang, s, a, true);
+                case "set":
+                    return setOrGet(lang, s, a, false);
                 case "reset":
                     return reset(lang, s, a);
                 case "hud":
@@ -99,6 +111,7 @@ public final class AdminCommands {
                     return debug(lang, a);
                 case "reload":
                     s.load();
+                    MobSenses.onSettingsChanged();
                     return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "reload.done", fileName(s)));
                 default:
                     return unknown(lang, a[0]);
@@ -136,18 +149,23 @@ public final class AdminCommands {
         return suggestions("hud " + clean, CLIENT_CTX);
     }
 
-    private static Reply status(String lang, ServerSettings s, Context ctx) {
+    private static Reply status(String lang, ServerSettings s) {
         long now = System.currentTimeMillis();
         Reply r = new Reply();
         r.add(Reply.Kind.TITLE, ServerText.get(lang, "status.title", BuildInfo.version(), MobSenses.platform()));
-        r.add(Reply.Kind.INFO, ServerText.get(lang, "status.preset", presetName(lang, s.preset())));
+        r.addWithChips(Reply.Kind.INFO,
+                ServerText.get(lang, "status.preset", presetName(lang, s.preset())),
+                Reply.presetChips(s.preset()));
         for (String world : s.worlds().keySet()) {
             r.add(Reply.Kind.INFO, ServerText.get(lang, "status.world", world, presetName(lang, s.worlds().get(world))));
+        }
+        if (!s.allowClientHud()) {
+            r.add(Reply.Kind.INFO, ServerText.get(lang, "status.hud_locked"));
         }
         r.add(Reply.Kind.INFO, ServerText.get(lang, "status.senses",
                 ServerSettings.format(s.hearing()), ServerSettings.format(s.sight())));
         String voice = !s.voice() ? "status.voice.off" : MobSenses.voiceChatInstalled() ? "status.voice.on" : "status.voice.missing";
-        r.add(Reply.Kind.INFO, ServerText.get(lang, voice));
+        r.addWithChips(Reply.Kind.INFO, ServerText.get(lang, voice), Reply.toggleChips("voice", s.voice()));
         r.add(Reply.Kind.INFO, ServerText.get(lang, "status.noise", MobSenses.noise().lastMinute(now)));
         r.add(Reply.Kind.INFO, ServerText.get(lang, "status.alerted", MobSenses.alerted().lastMinute(now)));
         if (MobSenses.debug()) {
@@ -169,7 +187,7 @@ public final class AdminCommands {
         if (a.length < 2) {
             return new Reply()
                     .add(Reply.Kind.INFO, ServerText.get(lang, "status.preset", presetName(lang, s.preset())))
-                    .add(Reply.Kind.HINT, ServerText.get(lang, "preset.list", presetIds()));
+                    .addWithChips(Reply.Kind.HINT, ServerText.get(lang, "preset.list", presetIds()), Reply.presetChips(s.preset()));
         }
         Preset p = Preset.byId(a[1]);
         if (p == null) {
@@ -177,7 +195,9 @@ public final class AdminCommands {
         }
         s.setPreset(p);
         s.save();
-        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "preset.set", presetName(lang, p)));
+        MobSenses.onSettingsChanged();
+        return new Reply().addWithChips(Reply.Kind.DONE, ServerText.get(lang, "preset.set", presetName(lang, p)),
+                Reply.presetChips(p));
     }
 
     private static Reply multiplier(String lang, ServerSettings s, String sense, String[] a) {
@@ -203,12 +223,15 @@ public final class AdminCommands {
             s.setSight(value);
         }
         s.save();
+        MobSenses.onSettingsChanged();
         return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "multiplier.set", name, ServerSettings.format(value)));
     }
 
     private static Reply voice(String lang, ServerSettings s, String[] a) {
         if (a.length < 2) {
-            return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, s.voice() ? "status.voice.on" : "status.voice.off"))
+            return new Reply()
+                    .addWithChips(Reply.Kind.INFO, ServerText.get(lang, s.voice() ? "status.voice.on" : "status.voice.off"),
+                            Reply.toggleChips("voice", s.voice()))
                     .add(Reply.Kind.HINT, ServerText.get(lang, "help.voice"));
         }
         String v = a[1].toLowerCase(Locale.ROOT);
@@ -217,7 +240,9 @@ public final class AdminCommands {
         }
         s.setVoice(v.equals("on"));
         s.save();
-        Reply r = new Reply().add(Reply.Kind.DONE, ServerText.get(lang, s.voice() ? "voice.on" : "voice.off"));
+        MobSenses.onSettingsChanged();
+        Reply r = new Reply().addWithChips(Reply.Kind.DONE, ServerText.get(lang, s.voice() ? "voice.on" : "voice.off"),
+                Reply.toggleChips("voice", s.voice()));
         if (s.voice() && !MobSenses.voiceChatInstalled()) {
             r.add(Reply.Kind.HINT, ServerText.get(lang, "status.voice.missing"));
         }
@@ -236,7 +261,9 @@ public final class AdminCommands {
             next = v.equals("on");
         }
         MobSenses.setDebug(next);
-        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, next ? "debug.on" : "debug.off"));
+        MobSenses.onSettingsChanged();
+        return new Reply().addWithChips(Reply.Kind.DONE, ServerText.get(lang, next ? "debug.on" : "debug.off"),
+                Reply.toggleChips("debug", next));
     }
 
     private static Reply world(String lang, ServerSettings s, Context ctx, String[] a) {
@@ -252,6 +279,7 @@ public final class AdminCommands {
         if (a[2].equalsIgnoreCase(INHERIT)) {
             s.setWorldPreset(world, null);
             s.save();
+            MobSenses.onSettingsChanged();
             return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "world.inherit", world, presetName(lang, s.preset())));
         }
         Preset p = Preset.byId(a[2]);
@@ -260,22 +288,25 @@ public final class AdminCommands {
         }
         s.setWorldPreset(world, p);
         s.save();
+        MobSenses.onSettingsChanged();
         return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "world.set", world, presetName(lang, p)));
     }
 
-    private static Reply setOrGet(String lang, ServerSettings s, String[] a) {
+    private static Reply setOrGet(String lang, ServerSettings s, String[] a, boolean getOnly) {
         if (a.length < 2) {
             return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.usage"));
         }
         String key = a[1].toLowerCase(Locale.ROOT);
-        if (a.length == 2) {
+        if (getOnly || a.length == 2) {
             List<String> catKeys = ServerSettings.categoryKeys(key);
             if (!catKeys.isEmpty()) {
                 Reply r = new Reply().add(Reply.Kind.TITLE, "Mob Senses [" + key + "]");
                 for (String ck : catKeys) {
                     String val = s.getOption(ck);
                     if (val != null) {
-                        r.add(Reply.Kind.INFO, ServerText.get(lang, "set.show", ck, val.isEmpty() ? "(none)" : val));
+                        r.addWithChips(Reply.Kind.INFO,
+                                ServerText.get(lang, "set.show", ck, val.isEmpty() ? "(none)" : val),
+                                optionInspectChips(ck, val));
                     }
                 }
                 return r;
@@ -284,7 +315,10 @@ public final class AdminCommands {
             if (cur == null) {
                 return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, "?"));
             }
-            return new Reply().add(Reply.Kind.INFO, ServerText.get(lang, "set.show", key, cur.isEmpty() ? "(none)" : cur));
+            String canon = ServerSettings.canonicalOptionKey(key);
+            return new Reply().addWithChips(Reply.Kind.INFO,
+                    ServerText.get(lang, "set.show", key, cur.isEmpty() ? "(none)" : cur),
+                    optionInspectChips(canon, cur));
         }
         StringBuilder valBuilder = new StringBuilder(a[2]);
         for (int i = 3; i < a.length; i++) {
@@ -296,7 +330,21 @@ public final class AdminCommands {
         }
         s.save();
         String updated = s.getOption(key);
-        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, updated != null && updated.isEmpty() ? "(none)" : updated));
+        String displayVal = updated != null && updated.isEmpty() ? "(none)" : updated;
+        MobSenses.onSettingsChanged();
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, displayVal));
+    }
+
+    private static List<Reply.Span> optionInspectChips(String key, String currentValue) {
+        if ("true".equalsIgnoreCase(currentValue) || "false".equalsIgnoreCase(currentValue)) {
+            return Reply.boolChips(key, "true".equalsIgnoreCase(currentValue));
+        }
+        if ("preset".equals(key)) {
+            return Reply.presetChips(Preset.byId(currentValue));
+        }
+        return Jv.listOf(
+                Reply.suggestChip("set", "/mobsenses set " + key + " "),
+                Reply.runChip("reset", "/mobsenses reset " + key));
     }
 
     private static Reply reset(String lang, ServerSettings s, String[] a) {
@@ -304,15 +352,18 @@ public final class AdminCommands {
             return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.usage"));
         }
         String key = a[1].toLowerCase(Locale.ROOT);
+        String canon = ServerSettings.canonicalOptionKey(key);
         if (!s.resetOption(key)) {
             return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "set.bad", key, "default"));
         }
         s.save();
-        if ("all".equals(key)) {
+        MobSenses.onSettingsChanged();
+        if ("all".equals(canon)) {
             return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", "all", "default"));
         }
         String updated = s.getOption(key);
-        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, updated != null && updated.isEmpty() ? "(none)" : updated));
+        String displayVal = updated != null && updated.isEmpty() ? "(none)" : updated;
+        return new Reply().add(Reply.Kind.DONE, ServerText.get(lang, "set.done", key, displayVal));
     }
 
     private static Reply hud(String lang, String[] a) {
@@ -505,9 +556,11 @@ public final class AdminCommands {
         Reply r = new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "unknown", typed));
         String near = closest(typed.toLowerCase(Locale.ROOT), SUBCOMMANDS);
         if (near != null) {
-            r.add(Reply.Kind.HINT, ServerText.get(lang, "unknown.suggest", near));
+            r.addWithChips(Reply.Kind.HINT, ServerText.get(lang, "unknown.suggest", near),
+                    Jv.listOf(Reply.suggestChip("/mobsenses " + near, "/mobsenses " + near)));
         } else {
-            r.add(Reply.Kind.HINT, ServerText.get(lang, "unknown.help"));
+            r.addWithChips(Reply.Kind.HINT, ServerText.get(lang, "unknown.help"),
+                    Jv.listOf(Reply.runChip("help", "/mobsenses help")));
         }
         return r;
     }
@@ -612,7 +665,7 @@ public final class AdminCommands {
         if (key == null) {
             return Collections.emptyList();
         }
-        switch (key.toLowerCase(Locale.ROOT)) {
+        switch (ServerSettings.canonicalOptionKey(key)) {
             case "preset":
                 return presetList();
             case "voice":
@@ -622,6 +675,7 @@ public final class AdminCommands {
             case "darkness_stealth_enabled":
             case "scent_enabled":
             case "blood_particles":
+            case "allow_client_hud":
                 return Jv.listOf("true", "false");
             case "gunshot_range":
                 return Jv.listOf("32", "44", "64", "96", "128", "default");

@@ -4,9 +4,9 @@ plugins {
 }
 
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
-// Minecraft 1.20 - 1.20.4 (compiled against 1.20.1, Java 17 bytecode)
-def target = "mc1.20-1.20.4"
+def target = "mc1.20-1.20.1"
 version = "${project.mod_version}+${target}"
 
 base {
@@ -17,45 +17,17 @@ repositories {
     mavenCentral()
 }
 
-def src116 = file("${rootDir}/versions/fabric/1.16/src/main/java").toPath()
-def src119 = file("${rootDir}/versions/fabric/1.19/src/main/java").toPath()
-def src1194 = file("${rootDir}/versions/fabric/1.19.4/src/main/java").toPath()
-def src121 = file("${rootDir}/versions/fabric/1.21/src/main/java").toPath()
-
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.16/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.19/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.19.4/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.21/src/main/java"
-            exclude { e ->
-                if (e.directory) return false
-                def p = e.file.toPath()
-                if (p.startsWith(src116)) {
-                    def rel = src116.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/server/AdminPermission.java'
-                }
-                if (p.startsWith(src119)) {
-                    def rel = src119.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/mixin/ServerLevelMixin.java'
-                }
-                if (p.startsWith(src1194)) {
-                    def rel = src1194.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/server/GameEventHook.java'
-                }
-                if (p.startsWith(src121)) {
-                    def rel = src121.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/GuiCanvas.java'
-                            && rel != 'com/kasper/mobsenses/MobSensesFabric.java'
-                            && rel != 'com/kasper/mobsenses/server/Worlds.java'
-                }
-                return false
-            }
-        }
-    }
-}
+useShared([
+        'shared/fabric',
+        'shared/fabric-client-1.20',
+        'shared/fabric-net-1.16',
+        'shared/fabric-mixin-1.19.4',
+        'shared/mc-1.20.1',
+        'shared/mc-gui',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common')
@@ -92,6 +64,7 @@ processResources {
 
 jar {
     from project(':common').sourceSets.main.output
+    exclude 'com/terraformersmc/**'
 }
 
 remapJar {

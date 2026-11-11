@@ -3,10 +3,12 @@ package com.kasper.mobsenses.forge;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.server.MobSensesCommand;
+import com.kasper.mobsenses.server.ServerBridge;
 import com.kasper.mobsenses.server.ServerHearing;
 import com.kasper.mobsenses.server.Slf4jLog;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
@@ -14,34 +16,58 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.VanillaGameEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 /**
- * Forge entrypoint (Minecraft 1.19 - 1.19.2): the server side, also inside the singleplayer client.
+ * Forge entrypoint for Minecraft 1.19 - 1.19.2.
  */
 @Mod(MobSenses.MOD_ID)
 public final class MobSensesForge {
 
-    public MobSensesForge() {
+    public MobSensesForge(FMLJavaModLoadingContext context) {
         ModLog.use(new Slf4jLog());
-        MinecraftForge.EVENT_BUS.addListener((ServerStartingEvent e) -> MobSenses.start(FMLPaths.CONFIGDIR.get(),
-                new MobSenses.Platform("Forge", FMLLoader.versionInfo().mcVersion()), ModList.get().isLoaded("voicechat")));
+        ForgeNetworking.register();
+        MinecraftForge.EVENT_BUS.addListener((ServerStartingEvent e) -> {
+            ServerBridge.clear();
+            MobSenses.start(
+                    FMLPaths.CONFIGDIR.get(),
+                    new MobSenses.Platform("Forge", FMLLoader.versionInfo().mcVersion()),
+                    ModList.get().isLoaded("voicechat"));
+        });
+        MinecraftForge.EVENT_BUS.addListener((ServerStoppingEvent e) -> ServerBridge.clear());
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
+            if (e.getEntity() != null) {
+                ServerBridge.onDisconnect(e.getEntity().getUUID());
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> MobSensesCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent e) -> {
             if (e.phase == TickEvent.Phase.END) {
-                ServerHearing.tickServer(e.getServer());
-                MobSenses.serverTick();
+                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+                if (server != null) {
+                    ServerHearing.tickServer(server);
+                    MobSenses.serverTick();
+                    ForgeNetworking.tickServer(server);
+                }
             }
         });
         MinecraftForge.EVENT_BUS.addListener(MobSensesForge::gameEvent);
         if (FMLEnvironment.dist.isClient()) {
-            ForgeClientHooks.register();
+            ForgeClientHooks.register(context);
         }
+    }
+
+    public MobSensesForge() {
+        this(FMLJavaModLoadingContext.get());
     }
 
     private static void gameEvent(VanillaGameEvent e) {

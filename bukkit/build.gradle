@@ -36,7 +36,6 @@ apply from: "${rootDir}/gradle/jabel.gradle"
 
 // Game events (GenericGameEvent, 1.17+) and Folia's schedulers (1.20+) exist only in newer APIs, so their
 // classes are a source set of their own, compiled against such an API and loaded only where it exists.
-// They go into the same jar.
 sourceSets {
     modern {
         compileClasspath += sourceSets.main.output + configurations.compileClasspath
@@ -66,7 +65,7 @@ tasks.named('jar') {
     }
 }
 
-// Guards the jar against losing the texts: without them every reply is a bare key
+// Guards the jar against losing the texts or classes: without them every reply is a bare key
 tasks.register('checkPluginJar') {
     def jarFile = tasks.named('jar').flatMap { it.archiveFile }
     inputs.file jarFile
@@ -74,10 +73,13 @@ tasks.register('checkPluginJar') {
     doLast {
         def names = new java.util.zip.ZipFile(jarFile.get().asFile).withCloseable { zip -> zip.entries().collect { it.name } }
         for (String required : ['plugin.yml', 'assets/mobsenses/lang/en_us.json', 'assets/mobsenses/lang/ru_ru.json',
-                                'com/kasper/mobsenses/ServerText.class', 'com/kasper/mobsenses/bukkit/GameEventListener.class',
+                                'com/kasper/mobsenses/ServerText.class',
+                                'com/kasper/mobsenses/LinkProtocol.class',
+                                'com/kasper/mobsenses/bukkit/GameEventListener.class',
                                 'com/kasper/mobsenses/bukkit/FoliaScheduling.class',
                                 'com/kasper/mobsenses/bukkit/BukkitSenses.class',
-                                'com/kasper/mobsenses/bukkit/PaperPathfinder.class']) {
+                                'com/kasper/mobsenses/bukkit/PaperPathfinder.class',
+                                'com/kasper/mobsenses/bukkit/ReplyAdventure.class']) {
             if (!names.contains(required)) {
                 throw new GradleException("The plugin jar lacks " + required)
             }
@@ -85,3 +87,38 @@ tasks.register('checkPluginJar') {
     }
 }
 tasks.named('build') { dependsOn 'checkPluginJar' }
+
+// The Paper API the plugin is checked against by .github/workflows/compat-bukkit.yml: the plugin jar,
+// built against bukkit_api_version (1.16.5; the modern/Folia part against 1.20.1), must link against
+// every Paper release the same way. -PcompatPaperApi=<paper-api version> picks the version; newer ones
+// need Java 21 or 25, so the configuration asks for the newest Java instead of the plugin's own 17.
+configurations {
+    compatPaper {
+        canBeConsumed = false
+        canBeResolved = true
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_API))
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
+        }
+    }
+}
+
+dependencies {
+    // The reference is the modern Paper API (1.20.1, which GameEventListener & FoliaScheduling compile against);
+    // 1.16.5 uses com.destroystokyo.paper via -PcompatPaperGroup=com.destroystokyo.paper
+    compatPaper "${project.findProperty('compatPaperGroup') ?: 'io.papermc.paper'}:paper-api:${project.findProperty('compatPaperApi') ?: project.bukkit_modern_api_version}"
+    compatPaper "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
+}
+
+tasks.register('writeCompatClasspath') {
+    def out = layout.buildDirectory.file('compat-classpath.txt')
+    def files = configurations.compatPaper
+    outputs.file out
+    outputs.upToDateWhen { false }
+    doLast {
+        out.get().asFile.text = files.files.join('\n') + '\n'
+    }
+}

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mob Senses gallery card</title>
+<style>
+  /* One 1920x1080 picture: the cover (?cover) or a card (?title=&text=&shot=). Rendered by make.js. */
+  @font-face {
+    font-family: "Inter";
+    src: url("fonts/Inter-latin.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+  :root {
+    --bg: #131926;
+    --bg-deep: #0d111a;
+    --amber: #f5b841;
+    --cyan: #3fd0e6;
+    --text: #f0f4f8;
+    --dim: #a3b1c2;
+    --line: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    font-family: "Inter", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 700px at 85% -8%, rgba(245, 184, 65, 0.16), transparent 70%),
+      radial-gradient(900px 600px at -5% 110%, rgba(63, 208, 230, 0.09), transparent 70%),
+      linear-gradient(160deg, var(--bg) 0%, var(--bg-deep) 100%);
+    -webkit-font-smoothing: antialiased;
+  }
+  .shot {
+    display: block;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Card: heading and subtitle above a 1520x855 screenshot */
+  .card { position: absolute; inset: 0; }
+  .card header {
+    position: absolute; left: 200px; right: 200px; top: 44px;
+    display: flex; align-items: center; gap: 28px;
+  }
+  .card header img.icon { width: 84px; height: 84px; image-rendering: pixelated; flex: none; }
+  .card h1 { font-size: 50px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+  .card p { font-size: 26px; color: var(--dim); margin-top: 8px; line-height: 1.3; }
+  .card .shot { position: absolute; left: 200px; top: 168px; width: 1520px; height: 855px; }
+
+  /* Cover: brand & capabilities on the left, physics diagram strip + full settings screen on the right */
+  .cover { position: absolute; inset: 0; }
+  .cover .left {
+    position: absolute; left: 104px; top: 0; bottom: 0; width: 720px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding-bottom: 44px;
+  }
+  .cover img.icon { width: 136px; height: 136px; image-rendering: pixelated; }
+  .cover .for { margin-top: 34px; font-size: 25px; font-weight: 700; color: var(--amber); letter-spacing: 0.02em; }
+  .cover h1 { font-size: 98px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; margin-top: 10px; }
+  .cover .line { font-size: 29px; color: var(--dim); line-height: 1.36; margin-top: 24px; }
+  .cover .chips { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 34px; }
+  .cover .chip {
+    font-size: 20.5px; font-weight: 600; padding: 9px 17px; border-radius: 999px;
+    background: rgba(245, 184, 65, 0.12); border: 1px solid rgba(245, 184, 65, 0.36); color: #ffe4a8;
+  }
+  .cover .loaders { position: absolute; left: 104px; bottom: 56px; font-size: 23px; color: var(--dim); }
+  .cover .loaders b { color: var(--text); font-weight: 600; }
+
+  .cover .physics-strip {
+    position: absolute; left: 870px; top: 146px; width: 960px; height: 96px;
+    border-radius: 13px; border: 1px solid var(--line);
+    background: linear-gradient(165deg, rgba(22, 29, 44, 0.90), rgba(11, 15, 24, 0.94));
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+    display: flex; align-items: center; justify-content: center; padding: 0 22px;
+  }
+  .cover .shot { position: absolute; left: 870px; top: 266px; width: 960px; height: 540px; }
+  .cover .caption-pill {
+    position: absolute; left: 870px; top: 828px; width: 960px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px; border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line);
+    font-size: 19px; color: var(--dim);
+  }
+  .cover .caption-pill b { color: var(--text); font-weight: 700; }
+</style>
+</head>
+<body>
+<script>
+  const q = new URLSearchParams(location.search);
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const physicsSvg = `
+    <svg viewBox="0 0 916 72" width="916" height="72" xmlns="http://www.w3.org/2000/svg">
+      <!-- Emitter -->
+      <rect x="4" y="12" width="48" height="48" rx="10" fill="#1c2638" stroke="#f5b841" stroke-opacity="0.6"/>
+      <path d="M17 31 H23 L31 23 V49 L23 41 H17 Z" fill="#ffd479"/>
+      <path d="M36 28 C40 32, 40 40, 36 44" fill="none" stroke="#ffd479" stroke-width="2.4" stroke-linecap="round"/>
+      <text x="66" y="32" fill="#f0f4f8" font-size="16" font-weight="800">Noise · Guns · Voice</text>
+      <text x="66" y="51" fill="#95a5b8" font-size="13.5" font-weight="600">44 bl. shot · 16 bl. silenced</text>
+
+      <!-- Loud bars -->
+      <g fill="#f5b841">
+        <rect x="258" y="20" width="5" height="32" rx="2.5" opacity="0.8"/>
+        <rect x="270" y="10" width="5" height="52" rx="2.5"/>
+        <rect x="282" y="16" width="5" height="40" rx="2.5" opacity="0.92"/>
+        <rect x="294" y="8"  width="5" height="56" rx="2.5"/>
+        <rect x="306" y="18" width="5" height="36" rx="2.5" opacity="0.9"/>
+      </g>
+
+      <!-- Stone & Wool Wall Blocks -->
+      <rect x="326" y="8" width="152" height="26" rx="6" fill="#232b38" stroke="#f5b841" stroke-opacity="0.55"/>
+      <text x="402" y="26" fill="#ffd479" font-size="14" font-weight="800" text-anchor="middle">Stone Wall ×0.64</text>
+      <rect x="326" y="38" width="152" height="26" rx="6" fill="#1c2736" stroke="#3fd0e6" stroke-opacity="0.55"/>
+      <text x="402" y="56" fill="#8be9f7" font-size="14" font-weight="800" text-anchor="middle">Wool Wall ×0.53</text>
+
+      <!-- Attenuated bars -->
+      <g fill="#c89a42" opacity="0.82">
+        <rect x="494" y="24" width="4.5" height="24" rx="2.2"/>
+        <rect x="505" y="20" width="4.5" height="32" rx="2.2"/>
+        <rect x="516" y="26" width="4.5" height="20" rx="2.2" opacity="0.75"/>
+        <rect x="527" y="29" width="4.5" height="14" rx="2.2" opacity="0.55"/>
+      </g>
+
+      <!-- Torchlight & Blood Scent Pills -->
+      <rect x="550" y="10" width="146" height="24" rx="6" fill="rgba(255,224,130,0.12)" stroke="rgba(255,224,130,0.4)"/>
+      <text x="623" y="27" fill="#ffe49e" font-size="13" font-weight="700" text-anchor="middle">Torchlight +50%</text>
+      <rect x="550" y="38" width="146" height="24" rx="6" fill="rgba(235,82,80,0.14)" stroke="rgba(235,82,80,0.45)"/>
+      <text x="623" y="55" fill="#ff9e9c" font-size="13" font-weight="700" text-anchor="middle">Blood Scent ≤50% HP</text>
+
+      <!-- Alerted Zombie Icon -->
+      <g transform="translate(718, 12)">
+        <rect x="0" y="0" width="48" height="48" rx="6" fill="#4a803a"/>
+        <rect x="6" y="18" width="13" height="9" fill="#141e12"/>
+        <rect x="29" y="18" width="13" height="9" fill="#141e12"/>
+        <rect x="6" y="21" width="5" height="4" fill="#ffc44c"/>
+        <rect x="29" y="21" width="5" height="4" fill="#ffc44c"/>
+        <rect x="15" y="35" width="18" height="4" fill="#1c2818"/>
+      </g>
+      <rect x="754" y="4" width="22" height="22" rx="6" fill="#eb5250"/>
+      <text x="765" y="20" fill="#ffffff" font-size="15" font-weight="900" text-anchor="middle">!</text>
+      <text x="786" y="32" fill="#7ef0b1" font-size="15.5" font-weight="800">Alerted Mob</text>
+      <text x="786" y="51" fill="#95a5b8" font-size="13.5" font-weight="600">Walks to source</text>
+    </svg>`;
+
+  if (q.has("cover")) {
+    const chips = q.getAll("chip").map(c => `<span class="chip">${esc(c)}</span>`).join("");
+    document.body.innerHTML = `
+      <div class="cover">
+        <div class="left">
+          <img class="icon" src="../../icon.png" alt="">
+          <div class="for">${esc(q.get("for") || "")}</div>
+          <h1>${esc(q.get("title") || "")}</h1>
+          <div class="line">${esc(q.get("text") || "")}</div>
+          <div class="chips">${chips}</div>
+        </div>
+        <div class="physics-strip">${physicsSvg}</div>
+        <img class="shot" src="${esc(q.get("shot"))}" alt="">
+        <div class="caption-pill">
+          <span><b>Zero library dependencies</b> · Vanilla clients can join</span>
+          <span><b>Noise · Light · Scent · Voice · Guns</b></span>
+        </div>
+        <div class="loaders">${q.get("loaders") || ""}</div>
+      </div>`;
+  } else {
+    document.body.innerHTML = `
+      <div class="card">
+        <header>
+          <img class="icon" src="../../icon.png" alt="">
+          <div><h1>${esc(q.get("title") || "")}</h1><p>${esc(q.get("text") || "")}</p></div>
+        </header>
+        <img class="shot" src="${esc(q.get("shot"))}" alt="">
+      </div>`;
+  }
+</script>
+</body>
+</html>

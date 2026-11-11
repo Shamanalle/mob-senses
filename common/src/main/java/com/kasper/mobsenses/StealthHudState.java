@@ -47,9 +47,19 @@ public final class StealthHudState {
     private boolean voiceActive;
     private boolean whispering;
 
-    /** Whether the client HUD overlay is visible. */
-    public boolean enabled() {
+    /** Whether a connected multiplayer server has locked/disabled the client Stealth HUD (`allow_client_hud=false`). */
+    public boolean lockedByServer() {
+        return !MobSenses.serverLink().allowClientHud();
+    }
+
+    /** Whether the player has enabled the HUD locally (ignoring any remote server fair-play lock). */
+    public boolean userEnabled() {
         return enabled;
+    }
+
+    /** Whether the client HUD overlay is visible (both enabled by player and allowed by server). */
+    public boolean enabled() {
+        return enabled && !lockedByServer();
     }
 
     public void setEnabled(boolean enabled) {
@@ -124,12 +134,18 @@ public final class StealthHudState {
         double dtSec = (lastUpdateMs != 0L && nowMs > lastUpdateMs) ? (nowMs - lastUpdateMs) / 1000.0 : 0.0;
         decayNoise(nowMs);
 
+        ServerLink link = MobSenses.serverLink();
+        ServerSettings srv = link.effectiveSettings();
+        Preset activePreset = link.activePreset();
+
         double stepRange = 0.0;
         double movementNoise = 0.0;
-        if (moving) {
-            NoiseModel.Posture posture = sneaking ? NoiseModel.Posture.SNEAKING
-                    : (sprinting ? NoiseModel.Posture.SPRINTING : NoiseModel.Posture.WALKING);
-            stepRange = NoiseModel.Kind.STEP.defaultRange() * posture.factor() * Math.max(0.15, stepSurfaceFactor);
+        if (moving && activePreset != Preset.OFF) {
+            double posFactor = sneaking ? srv.sneakStepMultiplier()
+                    : (sprinting ? srv.sprintStepMultiplier() : NoiseModel.Posture.WALKING.factor());
+            double surfaceMult = srv.surfaceSoundScaling() ? Math.max(0.15, stepSurfaceFactor) : 1.0;
+            double baseStep = srv.stepRange() * posFactor * surfaceMult;
+            stepRange = NoiseModel.effectiveRange(baseStep, activePreset, srv.hearing());
             movementNoise = Math.min(100.0, (stepRange / FULL_SCALE_NOISE_RANGE) * 100.0);
         }
 

@@ -4,8 +4,8 @@ plugins {
 }
 
 evaluationDependsOn(':common-j8')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
-// Minecraft 1.16.5 (Java 8 bytecode via Jabel)
 def target = "mc1.16.5"
 version = "${project.mod_version}+${target}"
 
@@ -19,13 +19,18 @@ repositories {
 
 apply from: "${rootDir}/gradle/jabel.gradle"
 
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-        }
-    }
-}
+useShared([
+        'shared/fabric',
+        'shared/fabric-client-1.16',
+        'shared/fabric-net-1.16',
+        'shared/mc-1.16',
+        'shared/mc-1.18',
+        'shared/mc-1.19',
+        'shared/mc-pose',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common-j8')
@@ -52,6 +57,7 @@ processResources {
 
 jar {
     from project(':common-j8').sourceSets.main.output
+    exclude 'com/terraformersmc/**'
 }
 
 remapJar {

@@ -2,10 +2,11 @@
 // Compiling against Loom's cached Mojang-named Minecraft jar plus Forge's universal/userdev jars
 // avoids running a second decompiler pipeline per band.
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
 def targetName = project.ext.bandTarget
-def mcVer = project.ext.mcVersion
-def forgeVer = project.findProperty("loaderOverride.${project.name}") ?: project.ext.forgeVersion
+def forgeVer = (project.findProperty("loaderOverride.${project.name}") ?: project.ext.forgeVersion).toString()
+def mcVer = forgeVer.contains('-') ? forgeVer.substring(0, forgeVer.indexOf('-')) : project.ext.mcVersion
 def eventbusVer = project.ext.has('eventbusVersion') ? project.ext.eventbusVersion : '7.0-beta.12'
 def unobfuscated = project.ext.has('unobfuscated') && project.ext.unobfuscated
 
@@ -19,14 +20,6 @@ repositories {
     maven { url = uri("https://maven.minecraftforge.net/") }
     maven { url = uri("https://libraries.minecraft.net/") }
     mavenCentral()
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-        }
-    }
 }
 
 dependencies {

@@ -1,5 +1,5 @@
 {
-  "description": "Mobs hear steps, blocks, TaCZ gunshots (with suppressors!) & Simple Voice Chat through walls, see torchlight and smell blood trails. Server-side: Fabric, Quilt, Forge, NeoForge, Paper 1.16.5–26.3.",
+  "description": "Mobs hear steps, blocks, gunshots with suppressors (TaCZ) & Simple Voice Chat through walls, spot torchlight vs darkness, and track blood trails. Stealth HUD & 2-tab GUI: Fabric, Quilt, Forge, NeoForge, Paper, Folia 1.16.5–26.3. / Мобы слышат шаги, выстрелы и голос сквозь стены, видят свет и идут по следу крови.",
   "topics": [
     "minecraft",
     "minecraft-mod",
@@ -8,15 +8,18 @@
     "forge-mod",
     "neoforge",
     "paper-plugin",
-    "spigot-plugin",
+    "purpur",
     "folia",
+    "spigot-plugin",
     "mob-ai",
     "stealth",
     "survival",
     "horror",
     "tacz",
+    "gunshots",
     "simple-voice-chat",
     "voice-chat",
+    "sound-physics",
     "zombie-awareness"
   ]
 }

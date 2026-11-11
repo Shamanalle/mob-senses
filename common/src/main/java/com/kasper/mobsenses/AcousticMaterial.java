@@ -1,5 +1,7 @@
 package com.kasper.mobsenses;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Locale;
 
 /**
@@ -15,6 +17,9 @@ public enum AcousticMaterial {
     STONE("stone", 1.00, 1.00, 1.15),
     METAL("metal", 1.30, 1.30, 1.30),
     EARTH("earth", 0.90, 0.95, 0.90),
+    DIRT("dirt", 0.90, 0.95, 0.90),
+    GRAVEL("gravel", 0.85, 1.50, 1.10),
+    SAND("sand", 0.95, 1.20, 0.90),
     WOOD("wood", 0.70, 1.05, 1.00),
     WOOL("wool", 1.40, 0.20, 0.30),
     SOFT("soft", 1.20, 0.50, 0.50),
@@ -22,8 +27,11 @@ public enum AcousticMaterial {
     ICE("ice", 0.70, 1.10, 1.15),
     DOOR("door", 0.60, 1.00, 1.00),
     LEAVES("leaves", 0.15, 1.10, 0.65),
+    FOLIAGE("foliage", 0.15, 1.10, 0.65),
     THIN("thin", 0.20, 1.00, 0.90),
     LIQUID("liquid", 0.35, 0.85, 0.50),
+    WATER("water", 0.35, 0.85, 0.50),
+    AIR("air", 0.00, 0.00, 0.00),
     OTHER("other", 1.00, 1.00, 1.00);
 
     /** Share of its weight an open door, trapdoor or fence gate keeps: the sound goes round the panel. */
@@ -79,6 +87,115 @@ public enum AcousticMaterial {
                 return m;
             }
         }
-        return null;
+        switch (wanted) {
+            case "none":
+            case "empty":
+                return AIR;
+            case "carpet":
+            case "cloth":
+                return WOOL;
+            case "plant":
+            case "plants":
+                return FOLIAGE;
+            case "iron":
+            case "copper":
+            case "steel":
+                return METAL;
+            case "rock":
+            case "brick":
+            case "concrete":
+                return STONE;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Resolves the {@link AcousticMaterial} of a block by its ID (e.g. {@code "create:industrial_iron_block"}).
+     */
+    public static AcousticMaterial fromBlockId(String blockId) {
+        return fromBlockId(blockId, Collections.<String>emptyList());
+    }
+
+    /**
+     * Resolves the {@link AcousticMaterial} of a block by its ID and optional block tags (e.g. {@code "forge:glass"}).
+     */
+    public static AcousticMaterial fromBlockId(String blockId, Collection<String> blockTags) {
+        if (blockTags != null && !blockTags.isEmpty()) {
+            for (String tag : blockTags) {
+                if (tag == null) {
+                    continue;
+                }
+                String t = tag.toLowerCase(Locale.ROOT);
+                if (t.contains("wool") || t.contains("carpet") || t.contains("dampens_vibrations")) {
+                    return WOOL;
+                }
+                if (t.contains("glass")) {
+                    return GLASS;
+                }
+                if (t.contains("leaves")) {
+                    return LEAVES;
+                }
+            }
+        }
+        if (blockId == null || Jv.isBlank(blockId)) {
+            return STONE;
+        }
+        String lower = blockId.trim().toLowerCase(Locale.ROOT);
+        int colon = lower.indexOf(':');
+        String path = colon >= 0 ? lower.substring(colon + 1) : lower;
+        if ("air".equals(path) || path.endsWith("_air")) {
+            return AIR;
+        }
+        if ("water".equals(path) || path.contains("bubble_column")) {
+            return WATER;
+        }
+        if ("lava".equals(path)) {
+            return LIQUID;
+        }
+        if (path.contains("door") || path.contains("trapdoor") || path.contains("fence_gate")) {
+            return DOOR;
+        }
+        if (path.contains("leaves")) {
+            return LEAVES;
+        }
+        if (path.contains("vine") || path.contains("bush") || path.contains("fern") || path.contains("sapling")) {
+            return FOLIAGE;
+        }
+        if (path.contains("wool") || path.contains("carpet") || path.contains("sponge") || path.contains("sculk")) {
+            return WOOL;
+        }
+        if (path.contains("ice")) {
+            return ICE;
+        }
+        if (path.contains("glass")) {
+            return GLASS;
+        }
+        if (path.contains("gravel")) {
+            return GRAVEL;
+        }
+        if (path.contains("sand")) {
+            return SAND;
+        }
+        if (path.contains("dirt") || path.contains("grass_block") || path.contains("podzol")
+                || path.contains("mycelium") || path.contains("clay") || path.contains("mud")
+                || path.contains("farmland")) {
+            return DIRT;
+        }
+        if (path.contains("bed") || path.contains("banner") || path.contains("snow")
+                || path.contains("moss") || path.contains("hay") || path.contains("honeycomb")) {
+            return SOFT;
+        }
+        if (path.contains("planks") || path.contains("log") || path.contains("wood")
+                || path.contains("stem") || path.contains("hyphae") || path.contains("bamboo")
+                || path.contains("barrel") || path.contains("chest") || path.contains("bookshelf")) {
+            return WOOD;
+        }
+        if (path.contains("rail") || path.contains("iron") || path.contains("copper")
+                || path.contains("netherite") || path.contains("gold_block") || path.contains("chain")
+                || path.contains("anvil") || path.contains("cauldron") || path.contains("hopper")) {
+            return METAL;
+        }
+        return STONE;
     }
 }

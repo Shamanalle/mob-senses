@@ -3,8 +3,8 @@ plugins {
     id 'java'
 }
 
-// Its jar carries the classes of ':common', so that module is configured first (configure-on-demand)
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
 // Minecraft 26.1 - 26.3 (compiled against 26.3, unobfuscated: no remapping)
 def target = "mc26.x"
@@ -18,13 +18,12 @@ repositories {
     mavenCentral()
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-        }
-    }
-}
+useShared([
+        'shared/fabric',
+        'shared/fabric-net-26',
+        'shared/mc-26',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common')
@@ -54,10 +53,9 @@ processResources {
 
 jar {
     from project(':common').sourceSets.main.output
+    exclude 'com/terraformersmc/**'
 }
 
-// The classpath the mod compiles against, one entry per line. The 26.x compatibility check
-// (.github/workflows/compat-26.yml) compares the jar against this list for each Minecraft version.
 tasks.register('writeCompileClasspath') {
     def out = layout.buildDirectory.file('compile-classpath.txt')
     def files = sourceSets.main.compileClasspath
@@ -68,8 +66,6 @@ tasks.register('writeCompileClasspath') {
     }
 }
 
-// In-game test (Fabric client gametest, run by .github/workflows/ingame.yml): starts a singleplayer
-// world with the mod and runs /mobsenses as a player, in English and Russian, with screenshots
 fabricApi {
     configureTests {
         createSourceSet = true
@@ -85,7 +81,6 @@ sourceSets {
         java {
             srcDir "${rootDir}/shared/gametest/src/java"
         }
-        // The mod's texts: in the dev client ':common' is a plain library, so its assets are not loaded
         resources {
             srcDir "${rootDir}/common/src/main/resources"
             include "assets/**", "data/**", "fabric.mod.json"

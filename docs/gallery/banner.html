@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mob Senses description banner</title>
+<style>
+  /* An 840 px wide picture for the CurseForge description: a section heading (?title=&text=&accent=)
+     or the strip of three facts under the intro (?facts). Rendered by curseforge.js. */
+  @font-face {
+    font-family: "Inter";
+    src: url("fonts/Inter-latin.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+  :root {
+    --bg: #131926;
+    --bg-deep: #0d111a;
+    --text: #f0f4f8;
+    --dim: #a3b1c2;
+    --line: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 840px; background: transparent; }
+  body { font-family: "Inter", sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+  .box {
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    position: relative;
+    background:
+      radial-gradient(520px 165px at 100% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+      linear-gradient(160deg, var(--bg) 0%, var(--bg-deep) 100%);
+  }
+  .heading { height: 104px; display: flex; align-items: center; gap: 22px; padding: 0 30px; }
+  .heading::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--accent); }
+  .heading img { width: 56px; height: 56px; image-rendering: pixelated; flex: none; }
+  .heading h1 { font-size: 33px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+  .heading p { font-size: 16.5px; color: var(--dim); margin-top: 6px; line-height: 1.25; }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .fact { padding: 18px 22px; }
+  .fact + .fact { border-left: 1px solid var(--line); }
+  .fact b { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .fact span { display: block; font-size: 17.5px; font-weight: 600; margin-top: 6px; line-height: 1.3; }
+</style>
+</head>
+<body>
+<script>
+  const q = new URLSearchParams(location.search);
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  document.documentElement.style.setProperty("--accent", q.get("accent") || "#f5b841");
+  if (q.has("facts")) {
+    const facts = q.getAll("fact").map(f => f.split("|"))
+      .map(([k, v]) => `<div class="fact"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("");
+    document.body.innerHTML = `<div class="box facts">${facts}</div>`;
+  } else {
+    document.body.innerHTML = `
+      <div class="box heading">
+        <img src="../../icon.png" alt="">
+        <div><h1>${esc(q.get("title") || "")}</h1><p>${esc(q.get("text") || "")}</p></div>
+      </div>`;
+  }
+</script>
+</body>
+</html>

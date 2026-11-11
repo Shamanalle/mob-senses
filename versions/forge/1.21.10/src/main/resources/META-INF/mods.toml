@@ -1,5 +1,5 @@
 modLoader = "javafml"
-loaderVersion = "[56,)"
+loaderVersion = "[59,)"
 license = "MIT"
 issueTrackerURL = "https://github.com/Shamanalle/mob-senses/issues"
 
@@ -19,14 +19,14 @@ Mobs hear your steps, blocks, doors and fights through walls, see your light and
 [[dependencies.mobsenses]]
 modId = "forge"
 mandatory = true
-versionRange = "[56,)"
+versionRange = "[59,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.mobsenses]]
 modId = "minecraft"
 mandatory = true
-versionRange = "[1.21.6,1.21.11)"
+versionRange = "[1.21.9,1.21.11)"
 ordering = "NONE"
 side = "BOTH"
 

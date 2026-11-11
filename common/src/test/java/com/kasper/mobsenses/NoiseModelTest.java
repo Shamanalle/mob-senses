@@ -83,14 +83,28 @@ class NoiseModelTest {
         assertTrue(NoiseModel.isFirearmItem("pointblank:glock17"));
         assertTrue(NoiseModel.isFirearmItem("cgm:assault_rifle"));
         assertTrue(NoiseModel.isFirearmItem("scguns:iron_musket"));
+        assertTrue(NoiseModel.isFirearmItem("superbwarfare:m4a1"));
+        assertTrue(NoiseModel.isFirearmItem("sbw:rpg_7"));
+        assertTrue(NoiseModel.isFirearmItem("jeg:combat_rifle"));
         assertFalse(NoiseModel.isFirearmItem("minecraft:gunpowder"));
         assertFalse(NoiseModel.isFirearmItem("tacz:ammo"));
         assertFalse(NoiseModel.isFirearmItem("tacz:gun_smith_table"));
+        assertFalse(NoiseModel.isFirearmItem("superbwarfare:tactical_vest"));
+        assertFalse(NoiseModel.isFirearmItem("superbwarfare:combat_helmet"));
+        assertFalse(NoiseModel.isFirearmItem("superbwarfare:wrench"));
+        assertFalse(NoiseModel.isFirearmItem("superbwarfare:drone"));
+        assertFalse(NoiseModel.isFirearmItem("jeg:gunmetal_ingot"));
+        assertFalse(NoiseModel.isFirearmItem("jeg:scrap"));
+        assertFalse(NoiseModel.isFirearmItem("jeg:rifle_part"));
         assertFalse(NoiseModel.isFirearmItem("minecraft:bow"));
 
         assertTrue(NoiseModel.isBulletEntity("tacz:bullet"));
         assertTrue(NoiseModel.isBulletEntity("tacz:kinetic_bullet"));
         assertTrue(NoiseModel.isBulletEntity("cgm:projectile"));
+        assertTrue(NoiseModel.isBulletEntity("superbwarfare:projectile"));
+        assertTrue(NoiseModel.isBulletEntity("sbw:mortar_shell"));
+        assertTrue(NoiseModel.isBulletEntity("jeg:projectile"));
+        assertFalse(NoiseModel.isBulletEntity("superbwarfare:apc"));
         assertFalse(NoiseModel.isBulletEntity("minecraft:arrow"));
         assertFalse(NoiseModel.isBulletEntity("minecraft:zombie"));
 

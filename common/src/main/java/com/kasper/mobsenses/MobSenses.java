@@ -27,8 +27,10 @@ public final class MobSenses {
     private static final VoiceTracker VOICE = new VoiceTracker();
     private static final ScentModel SCENT = new ScentModel();
     private static final StealthHudState HUD = new StealthHudState();
+    private static final ServerLink SERVER_LINK = new ServerLink();
     private static volatile ServerSettings settings = new ServerSettings(null);
     private static volatile ClientSettings clientSettings = new ClientSettings(null);
+    private static volatile Runnable settingsListener;
     private static volatile Platform platform = new Platform("unknown", "?");
     private static volatile boolean voiceChat;
     private static volatile boolean debug;
@@ -90,6 +92,7 @@ public final class MobSenses {
         try {
             if (++ticks % RELOAD_CHECK_TICKS == 0 && settings.reloadIfChanged()) {
                 ModLog.info("Read " + ServerSettings.FILE_NAME + " again: preset " + settings.preset().id());
+                onSettingsChanged();
             }
         } catch (Throwable t) {
             ModLog.failure("The server tick", t);
@@ -98,6 +101,27 @@ public final class MobSenses {
 
     public static ServerSettings settings() {
         return settings;
+    }
+
+    public static ServerLink serverLink() {
+        return SERVER_LINK;
+    }
+
+    /** Registers a server/plugin listener notified whenever admin commands or disk reloads change settings. */
+    public static void setSettingsListener(Runnable listener) {
+        settingsListener = listener;
+    }
+
+    /** Notifies the active platform listener (if any) to broadcast fresh {@code mobsenses:state} to clients. */
+    public static void onSettingsChanged() {
+        Runnable listener = settingsListener;
+        if (listener != null) {
+            try {
+                listener.run();
+            } catch (Throwable t) {
+                ModLog.failure("Notifying settings listener", t);
+            }
+        }
     }
 
     public static Platform platform() {

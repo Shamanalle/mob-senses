@@ -3,8 +3,8 @@ plugins {
     id 'java'
 }
 
-// Its jar carries the classes of ':common', so that module is configured first (configure-on-demand)
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
 // Minecraft 1.21 - 1.21.11 (compiled against 1.21.8, see gradle.properties)
 def target = "mc1.21.x"
@@ -18,13 +18,15 @@ repositories {
     mavenCentral()
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-        }
-    }
-}
+useShared([
+        'shared/fabric',
+        'shared/fabric-client-1.20',
+        'shared/fabric-net-1.21',
+        'shared/fabric-mixin-1.21',
+        'shared/mc-gui',
+        'shared/mc-1.21.8',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common')
@@ -61,14 +63,13 @@ processResources {
 
 jar {
     from project(':common').sourceSets.main.output
+    exclude 'com/terraformersmc/**'
 }
 
 remapJar {
     archiveClassifier = ''
 }
 
-// In-game test (Fabric client gametest, run by .github/workflows/ingame.yml): starts a singleplayer
-// world with the mod and runs /mobsenses as a player, in English and Russian, with screenshots
 fabricApi {
     configureTests {
         createSourceSet = true
@@ -84,7 +85,6 @@ sourceSets {
         java {
             srcDir "${rootDir}/shared/gametest/src/java"
         }
-        // The mod's texts: in the dev client ':common' is a plain library, so its assets are not loaded
         resources {
             srcDir "${rootDir}/common/src/main/resources"
             include "assets/**", "data/**", "fabric.mod.json"
@@ -92,7 +92,6 @@ sourceSets {
     }
 }
 
-// The loader's Mixin for 1.21 does not run on Java 25, so the test client runs on Java 21
 tasks.matching { it.name == 'runClientGameTest' }.configureEach {
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(21)

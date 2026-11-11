@@ -9,10 +9,13 @@ description: Mobs hear your steps, blocks, doors and fights through walls, see y
 softdepend: [voicechat]
 commands:
   mobsenses:
-    description: Mob Senses settings for admins
-    usage: /mobsenses [status|preset|hearing|sight|voice|set|get|reset|debug|world|reload|help]
+    description: Mob Senses settings
+    usage: /mobsenses [status|preset|hearing|sight|voice|world|set|get|reset|debug|reload|help]
     permission: mobsenses.admin
 permissions:
   mobsenses.admin:
-    description: Use /mobsenses
+    description: Full access to /mobsenses and remote GUI server controls
     default: op
+  mobsenses.bypass:
+    description: Emit zero noise, voice or blood scent and never alert mobs via Mob Senses (for vanished staff)
+    default: false

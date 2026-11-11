@@ -1,18 +1,35 @@
 name: Modrinth page
 
-# Uploads docs/modrinth.md as the Modrinth project description, updates the short summary from
-# docs/store-description.md, and syncs the gallery from docs/gallery.json.
-# Needs .modrinth in .github/publish.json and the MODRINTH_TOKEN secret with the "Write projects"
-# scope; without either, validates the files and skips the upload.
+# Uploads docs/modrinth.md as the Modrinth project page, the English summary from
+# docs/store-description.md as its short description, and docs/hangar.md as the PaperMC Hangar
+# project page (when "hangar" in .github/publish.json and HANGAR_TOKEN are set), so the store pages
+# are edited with a commit. Also validates docs/gallery.json and ensures all images embedded in
+# docs/curseforge.html and docs/curseforge-plugin.html render narrower than CurseForge's 850 px limit.
+#
+# Pull requests only validate the pages, summary, CurseForge image widths and gallery without uploading.
 
 on:
   push:
     branches: [ "main" ]
     paths:
       - "docs/modrinth.md"
+      - "docs/hangar.md"
+      - "docs/curseforge.html"
+      - "docs/curseforge-plugin.html"
       - "docs/store-description.md"
       - "docs/gallery.json"
-      - "docs/images/store-*.png"
+      - "docs/images/**"
+      - ".github/publish.json"
+      - ".github/workflows/modrinth-page.yml"
+  pull_request:
+    paths:
+      - "docs/modrinth.md"
+      - "docs/hangar.md"
+      - "docs/curseforge.html"
+      - "docs/curseforge-plugin.html"
+      - "docs/store-description.md"
+      - "docs/gallery.json"
+      - "docs/images/**"
       - ".github/publish.json"
       - ".github/workflows/modrinth-page.yml"
   workflow_dispatch:
@@ -21,63 +38,268 @@ permissions:
   contents: read
 
 jobs:
-  modrinth-page:
+  page:
     name: Check and upload
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Check files
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the request and validate store pages
         run: |
-          test -s docs/modrinth.md
-          jq -e 'type == "array" and length > 0' docs/gallery.json > /dev/null
-          jq -r '.[] | [.file, .title] | @tsv' docs/gallery.json | while IFS=$'\t' read -r file title; do
-            test -s "${file}" || { echo "::error::Missing gallery image: ${file}"; exit 1; }
-            test -n "${title}" || { echo "::error::Missing title for ${file}"; exit 1; }
-            size=$(stat -c%s "${file}")
-            if [ "${size}" -gt 5242880 ]; then
-              echo "::error::${file} is ${size} bytes (Modrinth limit is 5 MiB)"
+          summary=$(grep -m1 '^\*\*Summary:\*\*' docs/store-description.md | sed 's/^\*\*Summary:\*\* *//')
+          if [ -z "${summary}" ]; then
+            echo "::error file=docs/store-description.md::No **Summary:** line"
+            exit 1
+          fi
+          # Modrinth allows 3 - 256 characters in the summary
+          if [ "${#summary}" -gt 256 ]; then
+            echo "::error file=docs/store-description.md::The summary is ${#summary} characters; Modrinth allows 256"
+            exit 1
+          fi
+          if [ ! -s docs/modrinth.md ]; then
+            echo "::error file=docs/modrinth.md::The page is empty"
+            exit 1
+          fi
+          if [ ! -s docs/hangar.md ]; then
+            echo "::error file=docs/hangar.md::The page is empty"
+            exit 1
+          fi
+          jq -n --arg description "${summary}" --rawfile body docs/modrinth.md \
+            '{description: $description, body: $body}' > request.json
+          echo "Summary: ${#summary} characters; Modrinth page: $(wc -c < docs/modrinth.md) bytes; Hangar page: $(wc -c < docs/hangar.md) bytes"
+
+      - name: Check CurseForge and Hangar image widths (< 850 px)
+        run: |
+          python3 - <<'PY'
+          import html.parser
+          import os
+          import re
+          import struct
+          import sys
+
+          MAX_WIDTH = 849
+
+          def image_dimensions(path):
+              with open(path, "rb") as f:
+                  data = f.read(64)
+                  if len(data) >= 24 and data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR":
+                      w, h = struct.unpack(">II", data[16:24])
+                      return w, h
+                  if len(data) >= 30 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+                      chunk = data[12:16]
+                      if chunk == b"VP8 " and len(data) >= 30:
+                          w, h = struct.unpack("<HH", data[26:30])
+                          return w & 0x3FFF, h & 0x3FFF
+                      if chunk == b"VP8L" and len(data) >= 25:
+                          bits = struct.unpack("<I", data[21:25])[0]
+                          return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+                      if chunk == b"VP8X" and len(data) >= 30:
+                          w = int.from_bytes(data[24:27], "little") + 1
+                          h = int.from_bytes(data[27:30], "little") + 1
+                          return w, h
+                  if data[:2] == b"\xff\xd8":
+                      f.seek(2)
+                      while True:
+                          marker = f.read(2)
+                          if len(marker) < 2 or marker[0] != 0xFF:
+                              break
+                          while marker[1] == 0xFF:
+                              b = f.read(1)
+                              if not b:
+                                  break
+                              marker = b"\xff" + b
+                          code = marker[1]
+                          if code in (0xD8, 0xD9):
+                              continue
+                          seg_len_bytes = f.read(2)
+                          if len(seg_len_bytes) < 2:
+                              break
+                          seg_len = struct.unpack(">H", seg_len_bytes)[0]
+                          if code in (0xC0, 0xC1, 0xC2, 0xC3):
+                              sof = f.read(5)
+                              h, w = struct.unpack(">HH", sof[1:5])
+                              return w, h
+                          f.seek(seg_len - 2, os.SEEK_CUR)
+              return None, None
+
+          def resolve_local_image(src):
+              if not src:
+                  return None
+              m = re.search(r"(docs/images/[^\s\"'?#)]+)", src)
+              if m:
+                  return m.group(1)
+              if src.startswith("./"):
+                  cand = os.path.normpath(os.path.join("docs", src[2:]))
+                  if os.path.exists(cand):
+                      return cand
+              if os.path.exists(src):
+                  return src
+              return None
+
+          class ImgChecker(html.parser.HTMLParser):
+              def __init__(self, filename, require_under_850):
+                  super().__init__()
+                  self.filename = filename
+                  self.require_under_850 = require_under_850
+                  self.errors = []
+                  self.count = 0
+
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() != "img":
+                      return
+                  self.count += 1
+                  ad = {k.lower(): (v or "") for k, v in attrs}
+                  src = ad.get("src", "")
+                  width_attr = ad.get("width", "").strip()
+                  style_attr = ad.get("style", "")
+                  explicit_px = None
+
+                  if width_attr:
+                      if width_attr.endswith("%"):
+                          pct = float(width_attr[:-1])
+                          if pct > 100:
+                              self.errors.append(f"{src}: width={width_attr} exceeds 100%")
+                          return
+                      m = re.fullmatch(r"(\d+)(?:px)?", width_attr, re.IGNORECASE)
+                      if not m:
+                          self.errors.append(f"{src}: invalid width attribute '{width_attr}'")
+                          return
+                      explicit_px = int(m.group(1))
+                      if self.require_under_850 and explicit_px > MAX_WIDTH:
+                          self.errors.append(f"{src}: width='{width_attr}' must be < 850 px")
+                          return
+
+                  for prop in ("max-width", "width"):
+                      sm = re.search(rf"(?:^|;|\s){prop}\s*:\s*(\d+)px", style_attr, re.IGNORECASE)
+                      if sm:
+                          px = int(sm.group(1))
+                          if self.require_under_850 and px > MAX_WIDTH:
+                              self.errors.append(f"{src}: style {prop}:{px}px must be < 850 px")
+                              return
+                          explicit_px = px if explicit_px is None else min(explicit_px, px)
+
+                  local = resolve_local_image(src)
+                  if local:
+                      if not os.path.isfile(local) or os.path.getsize(local) == 0:
+                          self.errors.append(f"{src}: referenced local file '{local}' is missing or empty")
+                          return
+                      w, _ = image_dimensions(local)
+                      if w is not None and self.require_under_850 and explicit_px is None and w > MAX_WIDTH:
+                          self.errors.append(
+                              f"{local}: intrinsic width is {w} px without a width=\"<850\" attribute (CurseForge requires < 850 px)"
+                          )
+
+          failed = False
+          for html_file in ("docs/curseforge.html", "docs/curseforge-plugin.html"):
+              if not os.path.isfile(html_file) or os.path.getsize(html_file) == 0:
+                  print(f"::error file={html_file}::Missing or empty CurseForge HTML description")
+                  failed = True
+                  continue
+              checker = ImgChecker(html_file, require_under_850=True)
+              with open(html_file, encoding="utf-8") as f:
+                  checker.feed(f.read())
+              for err in checker.errors:
+                  print(f"::error file={html_file}::{err}")
+                  failed = True
+              print(f"{html_file}: checked {checker.count} <img> tag(s)")
+
+          for md_file in ("docs/hangar.md", "docs/modrinth.md"):
+              checker = ImgChecker(md_file, require_under_850=False)
+              with open(md_file, encoding="utf-8") as f:
+                  text = f.read()
+              checker.feed(text)
+              for m in re.finditer(r"!\[[^\]]*\]\(([^)\s]+)", text):
+                  local = resolve_local_image(m.group(1))
+                  if local and (not os.path.isfile(local) or os.path.getsize(local) == 0):
+                      checker.errors.append(f"{m.group(1)}: referenced local file '{local}' is missing or empty")
+              for err in checker.errors:
+                  print(f"::error file={md_file}::{err}")
+                  failed = True
+
+          if failed:
+              sys.exit(1)
+          PY
+
+      - name: Check the gallery
+        run: |
+          list=docs/gallery.json
+          jq -e 'type == "array" and length > 0' "${list}" > /dev/null || { echo "::error file=${list}::Not a non-empty list"; exit 1; }
+          titles=$(jq -r '.[].title' "${list}" | sort | uniq -d)
+          if [ -n "${titles}" ]; then
+            echo "::error file=${list}::Two pictures share a title: ${titles}"
+            exit 1
+          fi
+          jq -c '.[]' "${list}" | while read -r entry; do
+            file=$(echo "${entry}" | jq -r '.file')
+            title=$(echo "${entry}" | jq -r '.title // ""')
+            if [ ! -s "${file}" ]; then
+              echo "::error file=${list}::${file} is missing or empty"
+              exit 1
+            fi
+            if [ -z "${title}" ] || [ "${#title}" -gt 100 ]; then
+              echo "::error file=${list}::${file}: the title must be 1 - 100 characters"
+              exit 1
+            fi
+            if [ "$(wc -c < "${file}")" -gt 5242880 ]; then
+              echo "::error file=${list}::${file} is over 5 MiB, Modrinth refuses it"
               exit 1
             fi
           done
+          echo "Gallery: $(jq length "${list}") pictures"
 
       - name: Upload to Modrinth
+        if: github.event_name != 'pull_request'
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: |
-          project=$(jq -r '.modrinth // empty' .github/publish.json)
+          project=$(jq -r '.modrinth // ""' .github/publish.json)
           if [ -z "${project}" ] || [ -z "${MODRINTH_TOKEN}" ]; then
-            echo "::notice::Modrinth page upload skipped: set .modrinth in .github/publish.json and MODRINTH_TOKEN (with the Write projects scope) to enable."
+            echo "::notice::Modrinth page skipped: set \"modrinth\" in .github/publish.json and the MODRINTH_TOKEN secret"
             exit 0
           fi
-
-          ua="Shamanalle/mob-senses (https://github.com/Shamanalle/mob-senses)"
-          api="https://api.modrinth.com/v2/project/${project}"
-
-          summary=$(sed -n 's/^\*\*Summary:\*\* //p' docs/store-description.md | head -n 1)
-          if [ -n "${summary}" ]; then
-            jq -n --rawfile body docs/modrinth.md --arg desc "${summary}" '{body: $body, description: $desc}' > request.json
-          else
-            jq -n --rawfile body docs/modrinth.md '{body: $body}' > request.json
-          fi
-          code=$(curl -sS -o response.json -w '%{http_code}' -X PATCH "${api}" \
+          status=$(curl -sS -o response.txt -w '%{http_code}' -X PATCH \
             -H "Authorization: ${MODRINTH_TOKEN}" \
-            -H "User-Agent: ${ua}" \
             -H "Content-Type: application/json" \
-            --data-binary @request.json)
-          if [ "${code}" != "204" ]; then
-            cat response.json
-            echo "::error::Modrinth PATCH ${api} failed with HTTP ${code}"
+            -H "User-Agent: Shamanalle/mob-senses (GitHub Actions)" \
+            --data @request.json \
+            "https://api.modrinth.com/v2/project/${project}")
+          if [ "${status}" = "204" ]; then
+            echo "Modrinth page updated"
+          elif [ "${status}" = "401" ] || [ "${status}" = "403" ]; then
+            echo "::error::Modrinth refused the token (${status}): give MODRINTH_TOKEN the \"Write projects\" scope"
+            cat response.txt
+            exit 1
+          else
+            echo "::error::Modrinth answered ${status}"
+            cat response.txt
             exit 1
           fi
-          echo "Updated project body ($(wc -c < docs/modrinth.md) bytes)"
 
-          existing=$(curl -fsSL "${api}" -H "Authorization: ${MODRINTH_TOKEN}" -H "User-Agent: ${ua}" | jq -c '.gallery // []')
-
+      - name: Upload the gallery to Modrinth
+        if: github.event_name != 'pull_request'
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          project=$(jq -r '.modrinth // ""' .github/publish.json)
+          if [ -z "${project}" ] || [ -z "${MODRINTH_TOKEN}" ]; then
+            echo "::notice::Modrinth gallery skipped: set \"modrinth\" in .github/publish.json and the MODRINTH_TOKEN secret"
+            exit 0
+          fi
+          api="https://api.modrinth.com/v2/project/${project}"
+          agent="Shamanalle/mob-senses (GitHub Actions)"
+          if [ "$(jq length docs/gallery.json)" = "0" ]; then
+            echo "The gallery list is empty: nothing to upload"
+            exit 0
+          fi
+          curl -sS -H "Authorization: ${MODRINTH_TOKEN}" -H "User-Agent: ${agent}" "${api}" > project.json
           n=0
-          jq -r '.[] | [.file, .title, (.description // ""), ((.featured // false) | tostring)] | @tsv' docs/gallery.json \
-          | while IFS=$'\t' read -r file title description featured; do
-            n=$((n + 1))
+          jq -c '.[]' docs/gallery.json | while read -r entry; do
+            file=$(echo "${entry}" | jq -r '.file')
+            title=$(echo "${entry}" | jq -r '.title')
+            description=$(echo "${entry}" | jq -r '.description // ""')
+            featured=$(echo "${entry}" | jq -r '.featured // false')
             ext="${file##*.}"
             case "${ext}" in
               png) mime="image/png" ;;
@@ -85,33 +307,68 @@ jobs:
               webp) mime="image/webp" ;;
               *) echo "::error::Unsupported image extension: ${ext}"; exit 1 ;;
             esac
-
-            old_url=$(printf '%s' "${existing}" | jq -r --arg t "${title}" '.[] | select(.title == $t) | .url' | head -n 1)
-            if [ -n "${old_url}" ]; then
-              curl -fsSL -X DELETE "${api}/gallery" \
-                -H "Authorization: ${MODRINTH_TOKEN}" \
-                -H "User-Agent: ${ua}" \
-                -G --data-urlencode "url=${old_url}" > /dev/null || true
-            fi
-
-            code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${api}/gallery" \
-              -H "Authorization: ${MODRINTH_TOKEN}" \
-              -H "User-Agent: ${ua}" \
-              -H "Content-Type: ${mime}" \
-              -G \
-              --data-urlencode "ext=${ext}" \
-              --data-urlencode "featured=${featured}" \
-              --data-urlencode "title=${title}" \
-              --data-urlencode "description=${description}" \
-              --data-urlencode "ordering=${n}" \
-              --data-binary @"${file}")
-            if [ "${code}" = "204" ]; then
-              echo "Uploaded gallery image: ${title} (${file})"
-            elif [ "${code}" = "400" ] && grep -qi "duplicate" response.json; then
-              echo "Gallery image unchanged: ${title} (${file})"
-            else
-              cat response.json
-              echo "::error::Modrinth gallery upload for ${file} failed with HTTP ${code}"
+            # The picture with this title goes first, so an update replaces it
+            old=$(jq -r --arg t "${title}" '.gallery[]? | select(.title == $t) | .url' project.json)
+            for url in ${old}; do
+              deleted=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE -H "Authorization: ${MODRINTH_TOKEN}" -H "User-Agent: ${agent}" \
+                --get --data-urlencode "url=${url}" "${api}/gallery")
+              if [ "${deleted}" != "204" ]; then
+                echo "::warning::${title}: Modrinth answered ${deleted} when removing the old picture"
+              fi
+            done
+            enc() { jq -rn --arg v "$1" '$v | @uri'; }
+            query="ext=${ext}&featured=${featured}&title=$(enc "${title}")&description=$(enc "${description}")&ordering=${n}"
+            status=$(curl -sS -o response.txt -w '%{http_code}' -X POST \
+              -H "Authorization: ${MODRINTH_TOKEN}" -H "User-Agent: ${agent}" -H "Content-Type: ${mime}" \
+              --data-binary "@${file}" "${api}/gallery?${query}")
+            echo "${title}: Modrinth answered ${status}"
+            if [ "${status}" = "400" ] && grep -qi 'duplicate' response.txt; then
+              echo "::warning::${title}: the picture is already in the Modrinth gallery, left as it is"
+            elif [ "${status}" != "204" ]; then
+              cat response.txt
               exit 1
             fi
+            n=$((n + 1))
           done
+
+      - name: Upload to Hangar
+        if: github.event_name != 'pull_request'
+        env:
+          HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
+        run: |
+          project=$(jq -r '.hangar // ""' .github/publish.json)
+          if [ -z "${project}" ] || [ -z "${HANGAR_TOKEN}" ]; then
+            echo "::notice::Hangar page skipped: set \"hangar\" in .github/publish.json and the HANGAR_TOKEN secret"
+            exit 0
+          fi
+          api="https://hangar.papermc.io/api/v1"
+          agent="Shamanalle/mob-senses (GitHub Actions)"
+          clean_key=$(printf '%s' "${HANGAR_TOKEN}" | tr -d '[:space:]')
+          enc_key=$(jq -rn --arg v "${clean_key}" '$v | @uri')
+          status=$(curl -sS -o auth.json -w '%{http_code}' -X POST -H "User-Agent: ${agent}" \
+            "${api}/authenticate?apiKey=${enc_key}")
+          if [ "${status}" != "200" ]; then
+            echo "::error::Hangar authentication answered ${status}"
+            cat auth.json
+            exit 1
+          fi
+          jwt=$(jq -r '.token // ""' auth.json)
+          rm -f auth.json
+          jq -n --rawfile content docs/hangar.md '{content: $content}' > hangar-page.json
+          status=$(curl -sS -o response.txt -w '%{http_code}' -X PATCH \
+            -H "Authorization: HangarAuth ${jwt}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: ${agent}" \
+            --data @hangar-page.json \
+            "${api}/pages/editmain/${project}")
+          if [ "${status}" = "200" ] || [ "${status}" = "204" ]; then
+            echo "Hangar page updated"
+          elif [ "${status}" = "401" ] || [ "${status}" = "403" ]; then
+            echo "::error::Hangar refused the token (${status}): give HANGAR_TOKEN the \"edit_page\" permission"
+            cat response.txt
+            exit 1
+          else
+            echo "::error::Hangar answered ${status}"
+            cat response.txt
+            exit 1
+          fi

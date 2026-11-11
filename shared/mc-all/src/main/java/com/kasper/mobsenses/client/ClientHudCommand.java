@@ -3,8 +3,7 @@ package com.kasper.mobsenses.client;
 import com.kasper.mobsenses.AdminCommands;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.Reply;
-import com.kasper.mobsenses.server.MobSensesCommand;
-import com.kasper.mobsenses.server.Worlds;
+import com.kasper.mobsenses.server.ReplyComponents;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -18,12 +17,15 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 
 import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Registers the pure client-side {@code /mshud} ({@code /mobsenseshud}) command on any Brigadier
- * client command dispatcher (Fabric v1/v2, Forge, and NeoForge) so every player can customize their
- * Stealth & Noise HUD on any server without operator permissions.
+ * client command dispatcher (Fabric v1/v2, Forge, and NeoForge).
+ * <p>
+ * Running {@code /mshud} with no arguments (or {@code /mshud gui} / {@code /mshud settings}) opens
+ * the Mob Senses settings screen; subcommands adjust HUD settings directly.
  */
 public final class ClientHudCommand {
 
@@ -99,6 +101,13 @@ public final class ClientHudCommand {
         if (mc != null && MobSenses.clientSettings().file() == null && mc.gameDirectory != null) {
             MobSenses.initClient(mc.gameDirectory.toPath().resolve("config"));
         }
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty()
+                || "gui".equalsIgnoreCase(trimmed)
+                || "settings".equalsIgnoreCase(trimmed)) {
+            ClientLink.requestOpenSettings();
+            return 1;
+        }
         String lang = (mc != null && mc.options != null) ? mc.options.languageCode : "";
         Reply reply = AdminCommands.executeHud(args, lang);
         if (mc != null) {
@@ -114,7 +123,7 @@ public final class ClientHudCommand {
                 }
             }
             for (Reply.Line line : reply.lines()) {
-                Component text = Worlds.literal(line.text()).withStyle(MobSensesCommand.color(line.kind()));
+                Component text = ReplyComponents.render(line);
                 try {
                     if (chat != null && CHAT_ADD_MESSAGE != null) {
                         CHAT_ADD_MESSAGE.invoke(chat, text);
@@ -131,6 +140,15 @@ public final class ClientHudCommand {
     private static CompletableFuture<Suggestions> suggest(SuggestionsBuilder builder) {
         String typed = builder.getRemaining();
         SuggestionsBuilder word = builder.createOffset(builder.getStart() + typed.lastIndexOf(' ') + 1);
+        if (!typed.contains(" ")) {
+            String low = typed.toLowerCase(Locale.ROOT);
+            if ("gui".startsWith(low)) {
+                word.suggest("gui");
+            }
+            if ("settings".startsWith(low)) {
+                word.suggest("settings");
+            }
+        }
         for (String s : AdminCommands.hudSuggestions(typed)) {
             word.suggest(s);
         }

@@ -1,0 +1,41 @@
+# Differences between the reference Paper API (1.20.1, which the modern/Folia classes compile against)
+# and other Paper releases (1.16.5 through 26.3) that were reviewed and are safe. One key per line, as
+# LinkCheck prints it after "DIFF".
+
+# Paper 1.16.5 predates Minecraft 1.17's sculk game events (GenericGameEvent / GameEvent), and newer
+# Paper versions turn GameEvent into an interface. MobSensesBukkit loads GameEventListener only after
+# Class.forName("org.bukkit.event.world.GenericGameEvent") succeeds (falling back to LegacyNoiseListeners
+# on 1.16.5), and GameEventListener casts e.getEvent() to org.bukkit.Keyed before reading its key.
+type org/bukkit/GameEvent
+type org/bukkit/event/world/GenericGameEvent
+method org/bukkit/event/world/GenericGameEvent.getEntity()Lorg/bukkit/entity/Entity;
+method org/bukkit/event/world/GenericGameEvent.getEvent()Lorg/bukkit/GameEvent;
+method org/bukkit/event/world/GenericGameEvent.getLocation()Lorg/bukkit/Location;
+
+# Adventure in Paper 26.2+ gives TextComponent.Builder.build() a default body instead of leaving it
+# abstract. The call is invokeinterface either way, and a default method resolves the same, so rich
+# clickable command replies in ReplyAdventure keep working.
+method net/kyori/adventure/text/TextComponent$Builder.build()Lnet/kyori/adventure/text/BuildableComponent;
+
+# Paper 1.21.9+ gives Player.spawnParticle(...) default bodies instead of leaving them abstract. The
+# calls in BukkitSenses (debug sound/scent traces) are invokeinterface either way, and default methods
+# resolve identically at runtime.
+method org/bukkit/entity/Player.spawnParticle(Lorg/bukkit/Particle;DDDIDDDD)V
+method org/bukkit/entity/Player.spawnParticle(Lorg/bukkit/Particle;DDDIDDDDLjava/lang/Object;)V
+
+# Paper 1.16.5 - 1.20 have no Folia region schedulers yet (Paper 1.20.1 added them for Folia).
+# MobSensesBukkit loads FoliaScheduling only when Class.forName finds Folia's RegionizedServer; on all
+# non-Folia servers (1.16.5 - 26.3) BukkitScheduling is used instead.
+type io/papermc/paper/threadedregions/scheduler/EntityScheduler
+type io/papermc/paper/threadedregions/scheduler/GlobalRegionScheduler
+type io/papermc/paper/threadedregions/scheduler/RegionScheduler
+type io/papermc/paper/threadedregions/scheduler/ScheduledTask
+method io/papermc/paper/threadedregions/scheduler/EntityScheduler.run(Lorg/bukkit/plugin/Plugin;Ljava/util/function/Consumer;Ljava/lang/Runnable;)Lio/papermc/paper/threadedregions/scheduler/ScheduledTask;
+method io/papermc/paper/threadedregions/scheduler/GlobalRegionScheduler.cancelTasks(Lorg/bukkit/plugin/Plugin;)V
+method io/papermc/paper/threadedregions/scheduler/GlobalRegionScheduler.runAtFixedRate(Lorg/bukkit/plugin/Plugin;Ljava/util/function/Consumer;JJ)Lio/papermc/paper/threadedregions/scheduler/ScheduledTask;
+method io/papermc/paper/threadedregions/scheduler/RegionScheduler.execute(Lorg/bukkit/plugin/Plugin;Lorg/bukkit/Location;Ljava/lang/Runnable;)V
+method org/bukkit/Bukkit.getGlobalRegionScheduler()Lio/papermc/paper/threadedregions/scheduler/GlobalRegionScheduler;
+method org/bukkit/Bukkit.getRegionScheduler()Lio/papermc/paper/threadedregions/scheduler/RegionScheduler;
+method org/bukkit/Bukkit.isOwnedByCurrentRegion(Lorg/bukkit/Location;)Z
+method org/bukkit/Bukkit.isOwnedByCurrentRegion(Lorg/bukkit/entity/Entity;)Z
+method org/bukkit/entity/Player.getScheduler()Lio/papermc/paper/threadedregions/scheduler/EntityScheduler;

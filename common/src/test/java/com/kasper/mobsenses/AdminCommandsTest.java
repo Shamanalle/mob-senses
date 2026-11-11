@@ -201,4 +201,24 @@ class AdminCommandsTest {
             MobSenses.hud().reset();
         }
     }
+
+    @Test
+    void allowClientHudFairPlayLockAndClickableReplyChips() {
+        assertTrue(MobSenses.settings().allowClientHud());
+        Reply statusDefault = AdminCommands.execute("status", CONSOLE);
+        assertFalse(statusDefault.toString().contains("locked by server"));
+        assertTrue(statusDefault.lines().stream().anyMatch(Reply.Line::hasSpans), "status should carry clickable chips");
+        for (Reply.Line line : statusDefault.lines()) {
+            assertFalse(line.text().contains("["), "Plain console text must stay free of [chip] brackets: " + line.text());
+        }
+
+        assertFalse(AdminCommands.execute("set allow_client_hud false", CONSOLE).refused());
+        assertFalse(MobSenses.settings().allowClientHud());
+        String lockedStatus = AdminCommands.execute("status", CONSOLE).toString();
+        assertTrue(lockedStatus.contains("Client Stealth HUD: locked by server"), lockedStatus);
+
+        Reply presetReply = AdminCommands.execute("preset hardcore", CONSOLE);
+        assertEquals("Preset is now Hardcore (hardcore).", presetReply.lines().get(0).text());
+        assertTrue(presetReply.lines().get(0).hasSpans());
+    }
 }

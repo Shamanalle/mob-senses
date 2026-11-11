@@ -10,6 +10,9 @@ ext {
 
 apply from: "${rootDir}/gradle/neoforge-band.gradle"
 
-sourceSets.main.java {
-    srcDir "${rootDir}/versions/neoforge/1.21/src/main/java"
-}
+useShared([
+        'shared/neoforge',
+        'shared/mc-gui',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])

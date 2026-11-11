@@ -4,6 +4,7 @@ plugins {
 }
 
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
 def target = "mc1.18-1.18.2"
 version = "${project.mod_version}+${target}"
@@ -30,28 +31,15 @@ legacyForge {
     version = project.findProperty("loaderOverride.${project.name}") ?: project.forge118_version
 }
 
-def src116 = file("${rootDir}/versions/fabric/1.16/src/main/java").toPath()
-
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-            srcDir "${rootDir}/versions/fabric/1.16/src/main/java"
-            exclude { e ->
-                if (e.directory) return false
-                def p = e.file.toPath()
-                if (p.startsWith(src116)) {
-                    def rel = src116.relativize(p).toString().replace('\\', '/')
-                    return rel != 'com/kasper/mobsenses/PoseCanvas.java'
-                            && rel != 'com/kasper/mobsenses/server/AdminPermission.java'
-                            && rel != 'com/kasper/mobsenses/server/PlayerLanguage.java'
-                            && rel != 'com/kasper/mobsenses/server/Worlds.java'
-                }
-                return false
-            }
-        }
-    }
-}
+useShared([
+        'shared/forge-net-1.18',
+        'shared/mc-1.18',
+        'shared/mc-1.19',
+        'shared/mc-pose',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common')

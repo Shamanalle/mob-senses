@@ -4,8 +4,9 @@ plugins {
 }
 
 evaluationDependsOn(':common')
+apply from: "${rootDir}/gradle/shared-sources.gradle"
 
-def target = "mc1.20-1.20.4"
+def target = "mc1.20-1.20.1"
 version = "${project.mod_version}+${target}"
 
 base {
@@ -30,13 +31,16 @@ legacyForge {
     version = project.findProperty("loaderOverride.${project.name}") ?: project.forge120_version
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir "${rootDir}/shared/mc-all/src/main/java"
-        }
-    }
-}
+useShared([
+        'shared/forge-1.19.4',
+        'shared/forge-client-1.20',
+        'shared/forge-net-1.18',
+        'shared/mc-1.20.1',
+        'shared/mc-gui',
+        'shared/mc-1.21.8',
+        'shared/mc-1.21.10',
+        'shared/mc-all',
+])
 
 dependencies {
     implementation project(':common')

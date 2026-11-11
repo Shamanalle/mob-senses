@@ -11,29 +11,10 @@ ext {
 
 apply from: "${rootDir}/gradle/forge-band.gradle"
 
-def srcForge12110 = file("${rootDir}/versions/forge/1.21.10/src/main/java").toPath()
-def srcNeo12111 = file("${rootDir}/versions/neoforge/1.21.11/src/main/java").toPath()
-def srcFab121 = file("${rootDir}/versions/fabric/1.21/src/main/java").toPath()
-
-sourceSets.main.java {
-    srcDir "${rootDir}/versions/forge/1.21.10/src/main/java"
-    srcDir "${rootDir}/versions/neoforge/1.21.11/src/main/java"
-    srcDir "${rootDir}/versions/fabric/1.21/src/main/java"
-    exclude { e ->
-        if (e.directory) return false
-        def p = e.file.toPath()
-        if (p.startsWith(srcForge12110)) {
-            def rel = srcForge12110.relativize(p).toString().replace('\\', '/')
-            return rel != 'com/kasper/mobsenses/forge/MobSensesForge.java'
-        }
-        if (p.startsWith(srcNeo12111)) {
-            def rel = srcNeo12111.relativize(p).toString().replace('\\', '/')
-            return rel.startsWith('com/kasper/mobsenses/neoforge/')
-        }
-        if (p.startsWith(srcFab121)) {
-            def rel = srcFab121.relativize(p).toString().replace('\\', '/')
-            return rel != 'com/kasper/mobsenses/GuiCanvas.java'
-        }
-        return false
-    }
-}
+useShared([
+        'shared/forge-bus7',
+        'shared/forge-net-1.21.11',
+        'shared/mc-1.21.11',
+        'shared/mc-gui',
+        'shared/mc-all',
+])

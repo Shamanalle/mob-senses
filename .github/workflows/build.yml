@@ -19,12 +19,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Java 25 compiles every module; older targets use --release 8 / 16 / 17 / 21
-      - name: Set up JDK 25
+      # Java 25 runs Gradle and compiles every modern module; JDK 17 and 21 are also installed so
+      # gradle/jabel.gradle (JAVA_HOME_17_X64) and standalone Gradle 8 legacyTargets (JAVA_HOME_17_X64 /
+      # JAVA_HOME_21_X64) always find exact Temurin toolchains.
+      - name: Set up JDK 17, 21 and 25
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: |
+            17
+            21
+            25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -32,8 +37,8 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      - name: Unit tests (shared logic, translations, jar merging)
-        run: bash .github/scripts/net-retry.sh -- ./gradlew :common:test :packaging:test --no-daemon
+      - name: Unit tests (shared logic, translations, band dispatch, jar merging)
+        run: bash .github/scripts/net-retry.sh -- ./gradlew :common:test :universal:test :packaging:test --no-daemon
 
       - name: Build every Minecraft target
         run: bash .github/scripts/net-retry.sh -- ./gradlew build -x test --no-daemon
@@ -52,9 +57,10 @@ jobs:
           name: test-report
           path: |
             common/build/reports/tests/
+            universal/build/reports/tests/
             packaging/build/reports/tests/
 
-  # Each Forge / NeoForge jar serves a band of Minecraft versions: it is built against the newest loader
+  # Each Forge / NeoForge band serves a range of Minecraft versions: it is built against the newest loader
   # of the band, and here also compiled against the oldest, so a call missing there fails the build
   oldest:
     name: Oldest loader of ${{ matrix.module }}
@@ -63,24 +69,64 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - { module: forge-1.17, key: forge117_version_oldest, alt_key: forge117_version }
+          - { module: forge-1.18.2, key: forge118_version_oldest }
+          - { module: forge-1.19.2, key: forge1192_version_oldest, alt_key: forge119_version_oldest }
+          - { module: forge-1.19.4, key: forge1194_version_oldest }
           - { module: forge-1.20.1, key: forge120_version_oldest }
+          - { module: forge-1.20.6, key: forge1206_version_oldest }
+          - { module: forge-1.21.1, key: forge1211_version_oldest, alt_key: forge121_version_oldest }
+          - { module: forge-1.21.5, key: forge1215_version_oldest }
+          - { module: forge-1.21.8, key: forge1218_version_oldest, alt_key: forge1218_version }
+          - { module: forge-1.21.10, key: forge12110_version_oldest }
           - { module: forge-1.21.11, key: forge12111_version_oldest }
+          - { module: forge-26, key: forge26_version_oldest }
           - { module: neoforge-1.21, key: nf121_neoforge_oldest }
+          - { module: neoforge-1.21.5, key: nf1215_neoforge_oldest }
+          - { module: neoforge-1.21.8, key: nf1218_neoforge_oldest }
+          - { module: neoforge-1.21.10, key: nf12110_neoforge_oldest }
+          - { module: neoforge-1.21.11, key: nf12111_neoforge_oldest }
           - { module: neoforge-26, key: nf26_neoforge_oldest }
+          # Standalone Gradle 8 builds (legacyTargets in build.gradle)
+          - { module: forge-1.16.5, key: forge116_version_oldest, alt_key: forge1165_version_oldest, own: true }
+          - { module: forge-1.20.4, key: forge1204_version_oldest, own: true }
+          - { module: neoforge-1.20.2, key: nf1202_neoforge_oldest, own: true }
+          - { module: neoforge-1.20.4, key: nf1204_neoforge_oldest, own: true }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up JDK 25
+      - name: Set up JDK 17, 21 and 25
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '25'
+          java-version: |
+            17
+            21
+            25
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Compile against the oldest loader
         run: |
           chmod +x gradlew
-          oldest=$(grep "^${{ matrix.key }}=" gradle.properties | cut -d= -f2)
-          echo "${{ matrix.module }} against ${oldest}"
-          bash .github/scripts/net-retry.sh -- ./gradlew :${{ matrix.module }}:compileJava \
-            -PloaderOverride.${{ matrix.module }}=${oldest} --configure-on-demand --no-daemon
+          oldest=$(grep -E "^(${{ matrix.key }}${{ matrix.alt_key && format('|{0}', matrix.alt_key) || '' }})=" gradle.properties | head -1 | cut -d= -f2 || true)
+          if [ -z "${oldest}" ]; then
+            echo "::error::Missing ${{ matrix.key }} in gradle.properties"
+            exit 1
+          fi
+          module="${{ matrix.module }}"
+          echo "${module} against ${oldest}"
+          if [ "${{ matrix.own }}" = "true" ]; then
+            cd "versions/${module%%-*}/${module#*-}"
+            wrapper=gradlew
+            [ -f "${wrapper}" ] || wrapper=../1.20.4/gradlew
+            [ -f "${wrapper}" ] || wrapper=../../neoforge/1.20.4/gradlew
+            case "${module}" in
+              forge-*) home="${JAVA_HOME_17_X64}" ;;
+              *) home="${JAVA_HOME_21_X64}" ;;
+            esac
+            bash "${GITHUB_WORKSPACE}/.github/scripts/net-retry.sh" -- \
+              env JAVA_HOME="${home}" sh "${wrapper}" compileJava -PloaderOverride=${oldest} --no-daemon
+          else
+            bash .github/scripts/net-retry.sh -- ./gradlew :${module}:compileJava \
+              -PloaderOverride.${module}=${oldest} --configure-on-demand --no-daemon
+          fi

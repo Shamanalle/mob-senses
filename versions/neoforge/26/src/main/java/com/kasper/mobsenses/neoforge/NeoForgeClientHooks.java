@@ -1,62 +1,60 @@
 package com.kasper.mobsenses.neoforge;
 
+import com.kasper.mobsenses.ExtractorCanvas;
 import com.kasper.mobsenses.MobSenses;
-import com.kasper.mobsenses.client.Canvas;
+import com.kasper.mobsenses.MobSensesScreen;
 import com.kasper.mobsenses.client.ClientHudCommand;
+import com.kasper.mobsenses.client.ClientLink;
+import com.kasper.mobsenses.client.SettingsKey;
 import com.kasper.mobsenses.client.StealthHudOverlay;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 
 /**
- * Client-only HUD and {@code /mshud} listener for NeoForge 26.x.
+ * Client hooks for NeoForge 26.x.
  */
 final class NeoForgeClientHooks {
+
+    private static KeyMapping settingsKey;
 
     private NeoForgeClientHooks() {
     }
 
-    static void register() {
+    static void register(IEventBus modBus, ModContainer container) {
         MobSenses.initClient(FMLPaths.CONFIGDIR.get());
-        NeoForge.EVENT_BUS.addListener((RegisterClientCommandsEvent e) ->
-                ClientHudCommand.register(e.getDispatcher()));
-        NeoForge.EVENT_BUS.addListener((RenderGuiEvent.Post e) -> {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc != null && mc.font != null) {
-                GuiGraphicsExtractor g = e.getGuiGraphics();
-                Font font = mc.font;
-                StealthHudOverlay.render(new Canvas() {
-                    @Override
-                    public int width() {
-                        return g.guiWidth();
-                    }
-
-                    @Override
-                    public int height() {
-                        return g.guiHeight();
-                    }
-
-                    @Override
-                    public int textWidth(Component text) {
-                        return font.width(text);
-                    }
-
-                    @Override
-                    public void fill(int x1, int y1, int x2, int y2, int argb) {
-                        g.fill(x1, y1, x2, y2, argb);
-                    }
-
-                    @Override
-                    public void text(Component text, int x, int y, int argb) {
-                        g.text(font, text, x, y, argb, true);
-                    }
-                });
+        ClientLink.setSettingsScreenFactory(MobSensesScreen::new);
+        ClientLink.bindNetworking(NeoNetworking::sendHelloToServer, NeoNetworking::sendAdminToServer);
+        settingsKey = SettingsKey.create();
+        if (container != null) {
+            container.registerExtensionPoint(IConfigScreenFactory.class,
+                    (IConfigScreenFactory) (mod, parent) -> new MobSensesScreen(parent));
+        }
+        modBus.addListener((RegisterKeyMappingsEvent e) -> {
+            if (settingsKey != null) {
+                e.register(settingsKey);
             }
         });
+        modBus.addListener((RegisterGuiLayersEvent e) -> e.registerAboveAll(
+                Identifier.fromNamespaceAndPath(MobSenses.MOD_ID, "stealth_hud"),
+                (graphics, delta) -> {
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc != null && mc.font != null) {
+                        StealthHudOverlay.render(new ExtractorCanvas(graphics, mc.font));
+                    }
+                }));
+        NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post e) ->
+                ClientLink.tick(Minecraft.getInstance(), settingsKey));
+        NeoForge.EVENT_BUS.addListener((RegisterClientCommandsEvent e) ->
+                ClientHudCommand.register(e.getDispatcher()));
     }
 }

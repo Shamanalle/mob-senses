@@ -5,6 +5,30 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-11
+
+### English
+
+#### Added
+- **In-game settings screen.** Tune your Stealth HUD with a live interactive preview on the *Stealth HUD* tab, and adjust presets, hearing, firearms, voice chat, torchlight stealth, blood trails and world settings on the *Senses & World* tab. Open it from Mod Menu (Fabric and Quilt), *Mods → Config* (Forge and NeoForge), your own key in *Controls*, or `/mshud`.
+- **Live sync between client and server.** When both sides have Mob Senses — including Paper, Purpur and Folia servers — your Stealth HUD automatically uses the active preset and multipliers of the server or dimension so its audible distance readout stays accurate. Server operators can adjust presets and sliders live on the *Senses & World* tab, or hide the client HUD for fair PvP and horror play.
+- **Clickable `/mobsenses` replies and staff bypass.** `/mobsenses` chat replies now include clickable controls to switch presets and settings directly from chat, and servers can grant vanished moderators a bypass permission so mobs ignore their extra noise, held light and blood trails.
+- **Forge 1.16.5 – 1.17.1 and more firearm mods.** The universal Forge and NeoForge file now covers every Minecraft version from 1.16.5 to 26.3, matching Fabric and Paper, and firearm and suppressor detection now also supports *Superb Warfare* and *Just Enough Guns*.
+
+#### Fixed
+- Small fixes.
+
+### Русский
+
+#### Добавлено
+- **Экран настроек в игре.** Настраивайте индикатор скрытности с живым интерактивным предпросмотром на вкладке *Stealth HUD*, а пресеты, слух, оружие, голосовой чат, свет факела, след крови и параметры мира — на вкладке *Senses & World*. Открывается через Mod Menu (Fabric и Quilt), *Mods → Config* (Forge и NeoForge), свою клавишу в настройках управления или команду `/mshud`.
+- **Живая синхронизация клиента и сервера.** Когда мод установлен с обеих сторон — в том числе при входе на серверы Paper, Purpur и Folia — индикатор скрытности сам учитывает активный пресет и множители сервера или текущего измерения для точного расчёта радиуса слышимости. Операторы сервера могут менять пресеты и ползунки прямо на вкладке *Senses & World*, а для честного PvP и хоррора сервер может скрыть клиентский HUD.
+- **Кликабельные ответы `/mobsenses` и обход для персонала.** В ответах `/mobsenses` появились кликабельные кнопки для быстрого переключения пресетов и параметров прямо из чата, а модераторам в ванише можно выдать право обхода, чтобы мобы не реагировали на их дополнительный шум, свет в руке и след крови.
+- **Forge 1.16.5 – 1.17.1 и новые оружейные моды.** Универсальный файл Forge и NeoForge теперь охватывает все версии Minecraft от 1.16.5 до 26.3 наравне с Fabric и Paper, а поддержка огнестрельного оружия и глушителей дополнена модами *Superb Warfare* и *Just Enough Guns*.
+
+#### Исправлено
+- Мелкие исправления.
+
 ## [1.4.0] - 2026-11-10
 
 ### English
