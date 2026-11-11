@@ -16,20 +16,24 @@ import java.util.Locale;
  * Opens the 2-tab Mob Senses settings screen ({@code HUD} and {@code SENSES}) in a real client,
  * in English and in Russian across two window geometries ({@code 854x480} and {@code 1280x960}),
  * scrolls each tab through its full viewport height, exercises remote server state synchronization
- * (both admin mode and fair-play HUD lock), and captures 4K store GUI screenshots.
+ * (both admin mode and fair-play HUD lock), and captures Full HD (1920x1080) store GUI screenshots.
  */
 public class SettingsScreenGameTest implements FabricClientGameTest {
 
     private static final int[][] WINDOWS = {{854, 480}, {1280, 960}};
     private static final String[] LANGUAGES = {"en_us", "ru_ru"};
-    private static final int STORE_WIDTH = 3840;
-    private static final int STORE_HEIGHT = 2160;
-    private static final int STORE_GUI_SCALE = 8;
+    private static final int STORE_WIDTH = 1920;
+    private static final int STORE_HEIGHT = 1080;
+    private static final int STORE_GUI_SCALE = 3;
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        try (TestSingleplayerContext world = context.worldBuilder().create()) {
+        try (TestSingleplayerContext world = context.worldBuilder().adjustSettings(TestScreens::allowCommands).create()) {
             context.waitTicks(40);
+            context.runOnClient(client -> TestScreens.command(client, "gamemode creative"));
+            context.waitTicks(5);
+            context.runOnClient(TestScreens::setupInvestigationScene);
+            context.waitTicks(20);
             for (String language : LANGUAGES) {
                 context.runOnClient(client -> TestScreens.language(client, language));
                 context.waitTicks(5);
@@ -52,10 +56,10 @@ public class SettingsScreenGameTest implements FabricClientGameTest {
         }
     }
 
-    private static void pretendServerState(boolean admin, boolean allowClientHud) {
+    private static void pretendServerState(boolean admin, boolean allowClientHud, double hearing, double wallMuffling) {
         ServerSettings settings = new ServerSettings(null);
-        settings.setOption("hearing", "1.25");
-        settings.setOption("wall_muffling", "0.75");
+        settings.setOption("hearing", String.format(Locale.ROOT, "%.2f", hearing));
+        settings.setOption("wall_muffling", String.format(Locale.ROOT, "%.2f", wallMuffling));
         settings.setOption("allow_client_hud", allowClientHud ? "on" : "off");
         String payload = LinkProtocol.writeState(
                 settings,
@@ -68,6 +72,29 @@ public class SettingsScreenGameTest implements FabricClientGameTest {
                 "Paper 1.21.8"
         );
         MobSenses.serverLink().onStateText(payload);
+    }
+
+    private static void pretendServerState(boolean admin, boolean allowClientHud) {
+        pretendServerState(admin, allowClientHud, 1.25, 0.75);
+    }
+
+    private static void scrollScreenTo(Screen screen, int targetScrollY) {
+        if (!(screen instanceof SettingsScreen)) {
+            return;
+        }
+        try {
+            java.lang.reflect.Field maxF = SettingsScreen.class.getDeclaredField("maxScroll");
+            java.lang.reflect.Field curF = SettingsScreen.class.getDeclaredField("scrollY");
+            java.lang.reflect.Method layoutM = SettingsScreen.class.getDeclaredMethod("layoutScrollRows");
+            maxF.setAccessible(true);
+            curF.setAccessible(true);
+            layoutM.setAccessible(true);
+            int max = maxF.getInt(screen);
+            curF.setInt(screen, Math.max(0, Math.min(max, targetScrollY)));
+            layoutM.invoke(screen);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static void shootTabs(ClientGameTestContext context, String language, int[] window) {
@@ -114,6 +141,17 @@ public class SettingsScreenGameTest implements FabricClientGameTest {
     }
 
     private static void shootStore(ClientGameTestContext context) {
+        net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions optsHud =
+                net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions.of("store-ui-hud").withSize(STORE_WIDTH, STORE_HEIGHT);
+        net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions optsServer =
+                net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions.of("store-ui-server").withSize(STORE_WIDTH, STORE_HEIGHT);
+        net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions optsHearing =
+                net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions.of("store-ui-hearing").withSize(STORE_WIDTH, STORE_HEIGHT);
+        net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions optsSight =
+                net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions.of("store-ui-sight").withSize(STORE_WIDTH, STORE_HEIGHT);
+        net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions optsLocked =
+                net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions.of("store-ui-locked").withSize(STORE_WIDTH, STORE_HEIGHT);
+
         context.getInput().resizeWindow(STORE_WIDTH, STORE_HEIGHT);
         context.waitTicks(4);
         context.runOnClient(client -> {
@@ -124,35 +162,49 @@ public class SettingsScreenGameTest implements FabricClientGameTest {
         });
         context.waitTicks(2);
 
-        // 1. Stealth HUD tab (live preview + acoustic test pulses)
+        // 1. Stealth HUD tab (live preview + acoustic test pulses + full HUD controls)
         context.runOnClient(client -> {
             SettingsScreen.openOn(SettingsScreen.Tab.HUD);
             TestScreens.open(client, ClientLink.createSettingsScreen(null));
         });
         parkCursor(context);
-        context.takeScreenshot("store-ui-hud");
+        context.takeScreenshot(optsHud);
         context.runOnClient(client -> TestScreens.open(client, null));
         context.waitTicks(1);
 
-        // 2. Senses & World tab (connected admin telemetry + acoustic wall attenuation summary)
+        // 2. Senses & World tab — Top: live Paper telemetry + Acoustic Wall Attenuation summary + presets
         context.runOnClient(client -> {
-            pretendServerState(true, true);
+            pretendServerState(true, true, 1.00, 1.00);
             SettingsScreen.openOn(SettingsScreen.Tab.SENSES);
             TestScreens.open(client, ClientLink.createSettingsScreen(null));
         });
         parkCursor(context);
-        context.takeScreenshot("store-ui-senses");
+        context.takeScreenshot(optsServer);
+
+        // 3. Senses & World tab — Middle: Global Sense Preset + Hearing, Walls, Firearms & Voice Chat
+        context.runOnClient(client -> scrollScreenTo(TestScreens.current(client), 116));
+        parkCursor(context);
+        context.takeScreenshot(optsHearing);
+
+        // 4. Senses & World tab — Bottom: Sight, Darkness, Blood Scent & World/Server controls
+        context.runOnClient(client -> {
+            if (TestScreens.current(client) instanceof SettingsScreen s) {
+                s.scrollToEnd();
+            }
+        });
+        parkCursor(context);
+        context.takeScreenshot(optsSight);
         context.runOnClient(client -> TestScreens.open(client, null));
         context.waitTicks(1);
 
-        // 3. Fair-play server HUD lock banner
+        // 5. Fair-play server HUD lock banner
         context.runOnClient(client -> {
-            pretendServerState(false, false);
+            pretendServerState(false, false, 1.00, 1.00);
             SettingsScreen.openOn(SettingsScreen.Tab.HUD);
             TestScreens.open(client, ClientLink.createSettingsScreen(null));
         });
         parkCursor(context);
-        context.takeScreenshot("store-ui-locked");
+        context.takeScreenshot(optsLocked);
 
         context.runOnClient(client -> {
             TestScreens.open(client, null);

@@ -13,15 +13,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Plays singleplayer with the mod: the world's own server runs Mob Senses inside the client.
  * Sets up a stone courtyard with listener mobs, triggers noise with debug particles enabled, verifies
  * that mobs hear the sound and pathfind toward its origin, exercises voice, held-torch sight, and
- * wounded blood-scent with the client Stealth & Noise HUD, captures 4K {@code store-*} screenshots,
- * and exercises {@code /mobsenses} in English and Russian.
+ * wounded blood-scent with the client Stealth & Noise HUD, captures Full HD (1920x1080) {@code store-*}
+ * screenshots, and exercises {@code /mobsenses} in English and Russian.
  */
 public class CommandsGameTest implements FabricClientGameTest {
 
     private static final String[] LANGUAGES = {"en_us", "ru_ru"};
-    private static final int STORE_WIDTH = 3840;
-    private static final int STORE_HEIGHT = 2160;
-    private static final int STORE_GUI_SCALE = 5;
+    private static final int STORE_WIDTH = 1920;
+    private static final int STORE_HEIGHT = 1080;
+    private static final int STORE_GUI_SCALE = 3;
 
     /** Chat lines as the client received them. */
     private static final List<String> RECEIVED = new CopyOnWriteArrayList<>();
@@ -52,16 +52,30 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.runOnClient(client -> TestScreens.guiScale(client, STORE_GUI_SCALE));
             context.waitTicks(5);
 
-            // Enable debug particles, ring the bell, and capture 4K store screenshots as mobs investigate
-            context.runOnClient(TestScreens::clearChat);
+            // Enable debug particles, ring the bell, and capture Full HD store screenshots as mobs investigate
             context.runOnClient(client -> TestScreens.command(client, "mobsenses debug on"));
-            context.waitTicks(5);
+            context.waitTicks(8);
+            context.runOnClient(TestScreens::clearChat);
             context.runOnClient(TestScreens::ringSceneBell);
+            context.runOnClient(TestScreens::triggerVoiceSightAndScent);
             context.waitTicks(5);
+            context.runOnClient(TestScreens::refreshVoiceAndNoiseForHud);
+            context.waitTicks(1);
             storeShot(context, "store-debug");
 
-            context.waitTicks(35);
+            // Combined debug traces + clickable /mobsenses status chat shot (ui-debug.png)
+            context.runOnClient(TestScreens::clearChat);
+            context.runOnClient(client -> TestScreens.command(client, "mobsenses status"));
+            context.waitTicks(6);
             context.runOnClient(TestScreens::ringSceneBell);
+            context.runOnClient(TestScreens::refreshVoiceAndNoiseForHud);
+            context.waitTicks(2);
+            storeShot(context, "store-ui-debug");
+            context.runOnClient(TestScreens::clearChat);
+
+            context.waitTicks(28);
+            context.runOnClient(TestScreens::ringSceneBell);
+            context.runOnClient(TestScreens::refreshVoiceAndNoiseForHud);
             context.waitTicks(5);
             storeShot(context, "store-hearing");
             TestScreens.verifyInvestigation();
@@ -71,14 +85,17 @@ public class CommandsGameTest implements FabricClientGameTest {
             context.waitTicks(35);
             context.runOnClient(TestScreens::clearChat);
 
-            // Exercise voice, held-torch sight, wounded scent trail, and capture 4K HUD screenshot
+            // Exercise voice, held-torch sight, wounded scent trail, and capture Full HD HUD screenshot
             context.runOnClient(TestScreens::triggerVoiceSightAndScent);
             context.waitTicks(5);
             context.runOnClient(TestScreens::refreshVoiceAndNoiseForHud);
             context.waitTicks(1);
             storeShot(context, "store-hud");
             context.runOnClient(TestScreens::restorePlayerState);
-            context.waitTicks(20);
+            context.runOnClient(client -> TestScreens.command(client, "tp @e[type=minecraft:husk] 0 -100 0"));
+            context.waitTicks(5);
+            context.runOnClient(TestScreens::setupInvestigationScene);
+            context.waitTicks(15);
 
             context.runOnClient(TestScreens::clearChat);
             context.runOnClient(client -> TestScreens.command(client, "mobsenses status"));
