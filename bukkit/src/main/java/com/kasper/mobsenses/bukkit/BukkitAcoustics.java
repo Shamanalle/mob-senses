@@ -2,13 +2,17 @@ package com.kasper.mobsenses.bukkit;
 
 import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.RayBundle;
+import com.kasper.mobsenses.TacticalTargets;
 import com.kasper.mobsenses.VoxelRay;
+import org.bukkit.Keyed;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Openable;
+import org.bukkit.block.data.Waterlogged;
 
+import java.lang.reflect.Method;
 import java.util.Locale;
 
 /**
@@ -16,6 +20,17 @@ import java.util.Locale;
  * 5-ray occlusion bundles through a Bukkit {@link World}.
  */
 public final class BukkitAcoustics {
+
+    private static final Method BLOCK_GET_BIOME;
+
+    static {
+        Method getBiome = null;
+        try {
+            getBiome = Block.class.getMethod("getBiome");
+        } catch (Throwable ignored) {
+        }
+        BLOCK_GET_BIOME = getBiome;
+    }
 
     private BukkitAcoustics() {
     }
@@ -173,5 +188,182 @@ public final class BukkitAcoustics {
                 (ax, ay, az, bx, by, bz) -> traceSingleRay(world, ax, ay, az, bx, by, bz),
                 (x, y, z) -> isOpenForDetour(world, x, y, z),
                 sx, sy, sz, tx, ty, tz);
+    }
+
+    /** Whether {@code (x, y, z)} contains water or waterlogged blocks (excluding lava). */
+    public static boolean isWaterAt(World world, int x, int y, int z) {
+        if (world == null) {
+            return false;
+        }
+        try {
+            Block block = world.getBlockAt(x, y, z);
+            Material type = block.getType();
+            if (type == null || type == Material.LAVA) {
+                return false;
+            }
+            if (type == Material.WATER) {
+                return true;
+            }
+            String n = type.name();
+            if ("BUBBLE_COLUMN".equals(n) || "KELP".equals(n) || "KELP_PLANT".equals(n)
+                    || "SEAGRASS".equals(n) || "TALL_SEAGRASS".equals(n)) {
+                return true;
+            }
+            BlockData data = block.getBlockData();
+            if (data instanceof Waterlogged && ((Waterlogged) data).isWaterlogged()) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** Whether {@code (x, y, z)} is exposed to rain under the sky in a wet biome. */
+    public static boolean isSkyExposedRain(World world, int x, int y, int z) {
+        if (world == null || !world.hasStorm() || world.getEnvironment() != World.Environment.NORMAL) {
+            return false;
+        }
+        try {
+            Block at = world.getBlockAt(x, y, z);
+            if (at.getHumidity() <= 0.0 || at.getTemperature() < 0.15) {
+                return false;
+            }
+            if (BLOCK_GET_BIOME != null) {
+                Object rawBiome = BLOCK_GET_BIOME.invoke(at);
+                if (rawBiome instanceof Keyed) {
+                    String biome = ((Keyed) rawBiome).getKey().getKey().toLowerCase(Locale.ROOT);
+                    if (biome.contains("desert") || biome.contains("savanna") || biome.contains("badlands")
+                            || biome.contains("mesa") || biome.contains("snow") || biome.contains("ice")
+                            || biome.contains("frozen") || "grove".equals(biome)) {
+                        return false;
+                    }
+                }
+            }
+            return (y + 1) >= world.getHighestBlockYAt(x, z);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isDirectHazardName(String name) {
+        if (name == null || name.isEmpty()) {
+            return false;
+        }
+        return "fire".equals(name) || name.contains("soul_fire") || name.contains("campfire")
+                || name.contains("lava") || name.contains("magma") || name.contains("cactus")
+                || name.contains("sweet_berry_bush") || name.contains("wither_rose")
+                || name.contains("powder_snow") || name.contains("pointed_dripstone");
+    }
+
+    private static boolean isOpenPitfallTrap(Block block, String lowerName) {
+        if (block == null || lowerName == null) {
+            return false;
+        }
+        if (!lowerName.contains("trapdoor") && !lowerName.contains("fence_gate")) {
+            return false;
+        }
+        try {
+            BlockData data = block.getBlockData();
+            return data instanceof Openable && ((Openable) data).isOpen();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isSupportingFloor(Block block) {
+        if (block == null) {
+            return false;
+        }
+        Material type = block.getType();
+        if (type == null || type.isAir() || isLiquidMaterial(type)) {
+            return false;
+        }
+        String name = type.name().toLowerCase(Locale.ROOT);
+        if (isOpenPitfallTrap(block, name)) {
+            return false;
+        }
+        try {
+            return !block.isPassable() && type.isSolid();
+        } catch (Throwable ignored) {
+            return type.isSolid();
+        }
+    }
+
+    /**
+     * Whether block {@code (x, y, z)} is a hazard (fire, lava, magma, campfire, cactus, berry bush,
+     * wither rose, powder snow, pointed dripstone, or open trapdoor/fence-gate drop).
+     */
+    public static boolean isHazardousBlock(World world, int x, int y, int z) {
+        if (world == null) {
+            return false;
+        }
+        try {
+            Block block = world.getBlockAt(x, y, z);
+            Material type = block.getType();
+            if (type == null || type.isAir()) {
+                return false;
+            }
+            String name = type.name().toLowerCase(Locale.ROOT);
+            if (isDirectHazardName(name)) {
+                return true;
+            }
+            if (isOpenPitfallTrap(block, name)) {
+                int dropDepth = 0;
+                for (int dy = 1; dy <= 3; dy++) {
+                    Block below = world.getBlockAt(x, y - dy, z);
+                    Material btype = below.getType();
+                    String bname = btype != null ? btype.name().toLowerCase(Locale.ROOT) : "";
+                    if (isDirectHazardName(bname)) {
+                        return true;
+                    }
+                    if (isSupportingFloor(below)) {
+                        break;
+                    }
+                    dropDepth++;
+                }
+                return dropDepth >= 3;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** Returns a {@link TacticalTargets.HazardWorld} view of {@code world} for {@code safe_goal_filter}. */
+    public static TacticalTargets.HazardWorld hazardWorld(final World world) {
+        if (world == null) {
+            return null;
+        }
+        return new TacticalTargets.HazardWorld() {
+            @Override
+            public boolean isHazardous(int x, int y, int z) {
+                return isHazardousBlock(world, x, y, z);
+            }
+
+            @Override
+            public boolean isStandable(int x, int y, int z) {
+                if (isHazardousBlock(world, x, y, z)
+                        || isHazardousBlock(world, x, y - 1, z)
+                        || isHazardousBlock(world, x, y + 1, z)) {
+                    return false;
+                }
+                Block feet = world.getBlockAt(x, y, z);
+                Block head = world.getBlockAt(x, y + 1, z);
+                Block floor = world.getBlockAt(x, y - 1, z);
+                if (isWaterAt(world, x, y, z) || isWaterAt(world, x, y + 1, z)
+                        || isLiquidMaterial(feet.getType()) || isLiquidMaterial(head.getType())) {
+                    return false;
+                }
+                try {
+                    if (!feet.isPassable() || !head.isPassable()) {
+                        return false;
+                    }
+                } catch (Throwable ignored) {
+                    if (feet.getType().isSolid() || head.getType().isSolid()) {
+                        return false;
+                    }
+                }
+                return isSupportingFloor(floor);
+            }
+        };
     }
 }

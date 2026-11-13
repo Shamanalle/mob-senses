@@ -22,6 +22,14 @@ public final class StealthHudState {
     /** Decay rate of the transient peak-hold marker once its hold window expires. */
     private static final double PEAK_HOLD_DECAY_PER_SEC = 65.0;
 
+    /** Nearby mob alertness levels synchronized from the server/world. */
+    public static final int ALERT_CALM = 0;
+    public static final int ALERT_SUSPICIOUS = 1;
+    public static final int ALERT_SEARCHING = 2;
+    public static final int ALERT_HUNTED = 3;
+
+    private static final long MOB_ALERT_HOLD_MS = 2800L;
+
     /** Smooth auto-hide envelope timings (milliseconds). */
     private static final long AUTO_HIDE_FADEIN_MS = 140L;
     private static final long AUTO_HIDE_HOLD_MS = 1150L;
@@ -46,6 +54,8 @@ public final class StealthHudState {
     private int audibleRangeBlocks;
     private boolean voiceActive;
     private boolean whispering;
+    private int mobAlertLevel;
+    private long mobAlertUntilMs;
 
     /** Whether a connected multiplayer server has locked/disabled the client Stealth HUD (`allow_client_hud=false`). */
     public boolean lockedByServer() {
@@ -131,6 +141,38 @@ public final class StealthHudState {
                                     double health, double maxHealth,
                                     double voiceLevel01, long nowMs,
                                     boolean invisible, boolean whispering, double voiceRangeBlocks) {
+        update(blockLight, skyLight, heldLight, sneaking, sprinting, moving,
+                stepSurfaceFactor, health, maxHealth, voiceLevel01, nowMs,
+                invisible, whispering, voiceRangeBlocks, false, false);
+    }
+
+    /**
+     * Full frame update supporting potion invisibility, Simple Voice Chat whisper state,
+     * audible voice distance in blocks, and water/rain blood-scent wash-off.
+     */
+    public synchronized void update(int blockLight, int skyLight, int heldLight,
+                                    boolean sneaking, boolean sprinting, boolean moving,
+                                    double stepSurfaceFactor,
+                                    double health, double maxHealth,
+                                    double voiceLevel01, long nowMs,
+                                    boolean invisible, boolean whispering, double voiceRangeBlocks,
+                                    boolean inWater, boolean inRain) {
+        update(blockLight, skyLight, heldLight, sneaking, sprinting, moving,
+                stepSurfaceFactor, health, maxHealth, voiceLevel01, nowMs,
+                invisible, whispering, voiceRangeBlocks, inWater, inRain, 1.0);
+    }
+
+    /**
+     * Full frame update supporting potion invisibility, Simple Voice Chat whisper state, audible voice
+     * distance in blocks, water/rain blood-scent wash-off, and environmental/gear step muffling.
+     */
+    public synchronized void update(int blockLight, int skyLight, int heldLight,
+                                    boolean sneaking, boolean sprinting, boolean moving,
+                                    double stepSurfaceFactor,
+                                    double health, double maxHealth,
+                                    double voiceLevel01, long nowMs,
+                                    boolean invisible, boolean whispering, double voiceRangeBlocks,
+                                    boolean inWater, boolean inRain, double envGearMult) {
         double dtSec = (lastUpdateMs != 0L && nowMs > lastUpdateMs) ? (nowMs - lastUpdateMs) / 1000.0 : 0.0;
         decayNoise(nowMs);
 
@@ -144,7 +186,8 @@ public final class StealthHudState {
             double posFactor = sneaking ? srv.sneakStepMultiplier()
                     : (sprinting ? srv.sprintStepMultiplier() : NoiseModel.Posture.WALKING.factor());
             double surfaceMult = srv.surfaceSoundScaling() ? Math.max(0.15, stepSurfaceFactor) : 1.0;
-            double baseStep = srv.stepRange() * posFactor * surfaceMult;
+            double gearMult = Double.isFinite(envGearMult) ? Math.max(0.0, envGearMult) : 1.0;
+            double baseStep = srv.stepRange() * posFactor * surfaceMult * gearMult;
             stepRange = NoiseModel.effectiveRange(baseStep, activePreset, srv.hearing());
             movementNoise = Math.min(100.0, (stepRange / FULL_SCALE_NOISE_RANGE) * 100.0);
         }
@@ -174,8 +217,19 @@ public final class StealthHudState {
         noisePercent = (int) Math.round(Math.max(0.0, Math.min(100.0, peakNoisePercent)));
         audibleRangeBlocks = noisePercent <= 0 ? 0 : (int) Math.round(Math.max(0.0, peakRangeBlocks));
 
-        int targetLight = SightModel.lightExposurePercent(blockLight, skyLight, heldLight, sneaking, invisible);
-        int targetScent = (int) Math.round(ScentModel.scentStrength(health, maxHealth) * 100.0);
+        int targetLight = SightModel.lightExposurePercent(blockLight, skyLight, heldLight, sneaking, invisible, srv);
+        double rawScent = (inWater || activePreset == Preset.OFF)
+                ? 0.0
+                : ScentModel.scentStrength(health, maxHealth, srv) * 100.0;
+        if (inRain && !inWater) {
+            rawScent *= ScentModel.RAIN_SCENT_FACTOR;
+        }
+        int targetScent = (int) Math.round(rawScent);
+
+        if (mobAlertUntilMs > 0L && nowMs > mobAlertUntilMs) {
+            mobAlertLevel = ALERT_CALM;
+            mobAlertUntilMs = 0L;
+        }
 
         if (!initialized || dtSec <= 0.0 || dtSec > 0.25) {
             displayLight = targetLight;
@@ -193,9 +247,10 @@ public final class StealthHudState {
         lightPercent = (int) Math.round(Math.max(0.0, Math.min(100.0, displayLight)));
         scentPercent = (int) Math.round(Math.max(0.0, Math.min(100.0, displayScent)));
 
-        boolean activeNow = noisePercent >= 12 || scentPercent > 0 || this.voiceActive || lightPercent >= 55;
+        boolean activeNow = noisePercent >= 12 || scentPercent > 0 || this.voiceActive
+                || lightPercent >= 55 || mobAlertLevel > ALERT_CALM;
         if (activeNow) {
-            markActive(nowMs, noisePercent >= 50 || scentPercent >= 50);
+            markActive(nowMs, noisePercent >= 50 || scentPercent >= 50 || mobAlertLevel >= ALERT_HUNTED);
         }
     }
 
@@ -228,6 +283,24 @@ public final class StealthHudState {
             }
             if (nowMs > peakHoldUntilMs) {
                 peakHoldPercent = Math.max(peakNoisePercent, peakHoldPercent - PEAK_HOLD_DECAY_PER_SEC * dtSec);
+            }
+        } else if (lastUpdateMs != 0L && nowMs < lastUpdateMs && nowMs > 0L) {
+            // Re-anchor timestamps after a backwards system clock jump so decay and fades never stall.
+            lastUpdateMs = nowMs;
+            if (peakHoldUntilMs > 0L) {
+                peakHoldUntilMs = Math.min(peakHoldUntilMs, nowMs + PEAK_HOLD_MS);
+            }
+            if (previewUntilMs > 0L) {
+                previewUntilMs = Math.min(previewUntilMs, nowMs + PREVIEW_DURATION_MS);
+            }
+            if (lastActiveMs > nowMs) {
+                lastActiveMs = nowMs;
+            }
+            if (activeSinceMs > nowMs) {
+                activeSinceMs = nowMs;
+            }
+            if (mobAlertUntilMs > 0L) {
+                mobAlertUntilMs = Math.min(mobAlertUntilMs, nowMs + MOB_ALERT_HOLD_MS);
             }
         }
         if (nowMs > lastUpdateMs || lastUpdateMs == 0L) {
@@ -300,14 +373,67 @@ public final class StealthHudState {
         return whispering;
     }
 
+    /** Synchronizes the local/remote nearby mob alertness level ({@code 0..3}). */
+    public synchronized void syncRemoteMobAlert(int level, long nowMs) {
+        int clamped = Math.max(ALERT_CALM, Math.min(ALERT_HUNTED, level));
+        if (clamped == ALERT_CALM) {
+            this.mobAlertLevel = ALERT_CALM;
+            this.mobAlertUntilMs = 0L;
+            return;
+        }
+        this.mobAlertLevel = clamped;
+        if (nowMs > 0L) {
+            this.mobAlertUntilMs = Math.max(this.mobAlertUntilMs, nowMs + MOB_ALERT_HOLD_MS);
+            markActive(nowMs, clamped >= ALERT_HUNTED);
+        }
+    }
+
+    public synchronized int mobAlertLevel() {
+        return mobAlertLevel;
+    }
+
+    /** Translation key describing the current nearby mob alertness state. */
+    public synchronized String alertKey() {
+        switch (mobAlertLevel) {
+            case ALERT_HUNTED:
+                return "gui.mobsenses.hud.alert.hunted";
+            case ALERT_SEARCHING:
+                return "gui.mobsenses.hud.alert.searching";
+            case ALERT_SUSPICIOUS:
+                return "gui.mobsenses.hud.alert.suspicious";
+            default:
+                return "gui.mobsenses.hud.alert.calm";
+        }
+    }
+
     /** Overall exposure score in {@code 0..100} combining noise, light, and scent. */
     public synchronized int overallExposure() {
-        return Math.max(noisePercent, Math.max(lightPercent, scentPercent));
+        return overallExposure(true, true, true);
+    }
+
+    /** Overall exposure score in {@code 0..100} across the currently enabled HUD bars. */
+    public synchronized int overallExposure(boolean includeNoise, boolean includeLight, boolean includeScent) {
+        int max = 0;
+        if (includeNoise && noisePercent > max) {
+            max = noisePercent;
+        }
+        if (includeLight && lightPercent > max) {
+            max = lightPercent;
+        }
+        if (includeScent && scentPercent > max) {
+            max = scentPercent;
+        }
+        return max;
     }
 
     /** Translation key for the player's current stealth state. */
     public synchronized String statusKey() {
-        int max = overallExposure();
+        return statusKey(true, true, true);
+    }
+
+    /** Translation key for the player's stealth state across the enabled HUD bars. */
+    public synchronized String statusKey(boolean includeNoise, boolean includeLight, boolean includeScent) {
+        int max = overallExposure(includeNoise, includeLight, includeScent);
         if (max >= 65) {
             return "gui.mobsenses.hud.exposed";
         }
@@ -335,5 +461,7 @@ public final class StealthHudState {
         audibleRangeBlocks = 0;
         voiceActive = false;
         whispering = false;
+        mobAlertLevel = ALERT_CALM;
+        mobAlertUntilMs = 0L;
     }
 }

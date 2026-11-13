@@ -191,4 +191,21 @@ public class LinkProtocolTest {
         assertFalse(link.lastReplyOk());
         assertEquals(Preset.HARDCORE, MobSenses.settings().preset());
     }
+
+    @Test
+    @DisplayName("ServerLink syncs player_alert telemetry and resets it on disconnect")
+    void playerAlertSyncsAndResets(@TempDir Path dir) {
+        MobSenses.start(dir, new MobSenses.Platform("Paper", "1.21.4"), false);
+        ServerLink link = MobSenses.serverLink();
+
+        Properties hunted = LinkProtocol.buildState(
+                MobSenses.settings(), "minecraft:overworld", false, false, false, 5L, 2L, "Paper 1.21.4",
+                StealthHudState.ALERT_HUNTED);
+        assertTrue(link.onState(hunted));
+        assertEquals(StealthHudState.ALERT_HUNTED, MobSenses.hud().mobAlertLevel());
+        assertEquals("gui.mobsenses.hud.alert.hunted", MobSenses.hud().alertKey());
+
+        link.resetClientState();
+        assertEquals(StealthHudState.ALERT_CALM, MobSenses.hud().mobAlertLevel());
+    }
 }

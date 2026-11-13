@@ -344,7 +344,7 @@ public final class ClientSettings {
      * and reloads it automatically.
      */
     public void pollReload(long nowMs) {
-        if (file == null || nowMs - lastPollMs < RELOAD_POLL_INTERVAL_MS) {
+        if (file == null || (nowMs >= lastPollMs && nowMs - lastPollMs < RELOAD_POLL_INTERVAL_MS)) {
             return;
         }
         lastPollMs = nowMs;
@@ -415,6 +415,9 @@ public final class ClientSettings {
         showLight = parseBool(p.getProperty("show_light", "true"), true);
         showScent = parseBool(p.getProperty("show_scent", "true"), true);
         showVoice = parseBool(p.getProperty("show_voice", "true"), true);
+        if (this == MobSenses.clientSettings()) {
+            MobSenses.hud().setEnabled(enabled);
+        }
     }
 
     /** Writes the current client HUD settings with English and Russian comments. */

@@ -76,8 +76,8 @@ public final class PoseScaler {
     private static Ops resolve(Class<?> type) {
         Method poseGetter = findPoseGetter(type);
         Class<?> stackType = poseGetter != null ? poseGetter.getReturnType() : type;
-        Method push = findZeroArg(stackType, "pushPose", "pushMatrix", "method_22903", "m_85836_");
-        Method pop = findZeroArg(stackType, "popPose", "popMatrix", "method_22909", "m_85849_");
+        Method push = findZeroArg(stackType, "pushPose", "pushMatrix", "method_22903", "m_85836_", "func_227860_a_");
+        Method pop = findZeroArg(stackType, "popPose", "popMatrix", "method_22909", "m_85849_", "func_227865_b_");
         Method scale2 = findMethod(stackType, float.class, float.class);
         Method scale3 = findMethod(stackType, float.class, float.class, float.class);
         return new Ops(poseGetter, push, pop, scale2, scale3);
@@ -107,7 +107,7 @@ public final class PoseScaler {
     }
 
     private static Method findMethod(Class<?> type, Class<?>... params) {
-        for (String name : new String[]{"scale", "method_22905", "m_85841_"}) {
+        for (String name : new String[]{"scale", "method_22905", "m_85841_", "func_227862_a_"}) {
             try {
                 return type.getMethod(name, params);
             } catch (NoSuchMethodException ignored) {

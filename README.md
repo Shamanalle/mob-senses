@@ -64,16 +64,16 @@ Hostile mobs in vanilla notice you only within a fixed radius. With **Mob Senses
 
 ## How mobs sense you
 
-### Hearing & wall occlusion
-- **Movement & surfaces:** walking carries `8` blocks by default, sprinting `×1.75` farther and sneaking `×0.25`. Walking on wool or carpet muffles footsteps, while gravel, metal and amethyst give you away. *Feather Falling* boots and *Swift Sneak* leggings reduce footstep noise by `20%`.
-- **World actions:** breaking (`18` blocks) and placing (`12` blocks) blocks, opening doors/trapdoors/fence gates (`14`), chests/barrels/shulker boxes (`12`), melee combat (`16`), arrows & projectiles (`15`), explosions (`48`), bells (`40`), note blocks (`28`) and eating/drinking (`8`) each emit sound with customizable ranges.
-- **Acoustic raycasting through walls:** every sound traces blocks between you and each listener mob. Solid stone/brick walls cut range (`×0.64` per block) and wool muffles even more (`×0.53`), wood and glass block less, and open doors, open trapdoors and open fence gates let sound pass freely. Rain (`25%`) and thunderstorms (`45%`) mask outdoor noise.
-- **Investigation AI:** alerted mobs walk to **the exact spot where the sound came from**, search the area (`8 s` by default, moving faster for urgent sounds like gunshots, bells and explosions), and return to normal if you stay hidden. The goal yields immediately whenever a mob enters combat.
+### Hearing, decoys & wall occlusion
+- **Movement & surfaces:** walking carries `8` blocks by default, sprinting `×1.75` farther and sneaking `×0.25`. Over 1,000 vanilla and modded blocks map across 11 acoustic materials: wool and carpet muffle footsteps, water splashes and rain-soaked ground carry farther, and gravel, metal and amethyst give you away. *Feather Falling* boots and *Swift Sneak* leggings reduce footstep noise by `20%`.
+- **World actions & `Q`-drop decoys:** breaking (`18` blocks) and placing (`12` blocks) blocks, opening doors/trapdoors/fence gates (`14`), chests/barrels/shulker boxes (`12`), melee combat (`16`), arrows & projectiles (`15`), explosions (`48`), bells (`40`), note blocks (`28`), eating/drinking (`8`) and tossing items (`Q`, `decoy_throw_enabled`) each emit sound — toss bells or metal gear to pull guards away while feathers and wool land softly.
+- **Acoustic raycasting & sound cover:** every sound traces blocks between you and each listener mob. Solid stone/brick walls cut range (`×0.64` per block) and wool muffles even more (`×0.53`), wood and glass block less, and open doors, open trapdoors and open fence gates let sound pass freely. Rain (`25%`) and thunderstorms (`45%`) mask outdoor noise, and loud nearby noises (thunder, explosions, bells, gunshots) dynamically mask quieter steps and block actions (`sound_cover_enabled`).
+- **Tactical investigation AI:** unaware mobs hearing a faint cue near the edge of range pause and look toward it first (`suspicion_enabled`) before advancing on a second cue; investigating mobs avoid lava, fire, magma, powder snow and open trapdoor pitfalls (`safe_goal_filter`), walk to **the exact spot where the sound came from** (faster on urgent sounds like gunshots, bells and explosions), rally nearby allies in a ring (`horde_alert_range`) instead of stacking on one block, sweep/flee unseen long-range or dark ambushes instead of pinpointing you immediately, and search the area (`8 s` by default) before returning to normal. The goal yields immediately whenever a mob enters combat.
 
-### Firearms, suppressors & bullet lures
-- Native acoustics for **[TaCZ](https://modrinth.com/mod/timeless-and-classics-zero)** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2**, **Superb Warfare** and **Just Enough Guns**.
+### Firearms, suppressors, air guns & bullet lures
+- Native acoustics for **[TaCZ](https://modrinth.com/mod/timeless-and-classics-zero)** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2** (including quiet air/pneumatic guns), **Superb Warfare** and **Just Enough Guns**.
 - **Unsuppressed shots** carry across the area (`44` blocks by default) and pull nearby mobs toward the shooter.
-- **Suppressors & silencers** are detected directly on the weapon and cut gunshot noise down to close range (`16` blocks).
+- **Suppressors, silencers & air guns** are detected directly on the weapon (attached muzzles, integrally silenced firearms such as *VSS*, *AS Val*, *MP5SD*, *Honey Badger*, and air guns) and cut gunshot noise down to close range (`16` blocks).
 - **Tactical bullet wall-impact lures:** firing a silenced round into a distant wall creates noise where the bullet lands (`20` blocks), letting you distract or lure hordes away from a doorway.
 - **Per-weapon tuning:** override any firearm by registry ID or keyword in `mobsenses-server.properties` (for example `gun.tacz\:ai_awp.range=85` or `gun.glock.silenced_range=8`).
 
@@ -89,7 +89,7 @@ Hostile mobs in vanilla notice you only within a fixed radius. With **Mob Senses
 
 ## For players
 
-- **Tactical & Minimal Stealth HUD:** switch between the chamfered **Tactical** card (dynamic stealth eye, `30%`/`65%` threshold ticks, transient peak-hold marker) and the slim **Minimal** bar strip. Displays live noise, estimated audible radius (`~Xm`), light exposure, blood scent, and `[Voice]` / `[Whisper]` badges, with smooth auto-hide fading when quiet.
+- **Tactical & Minimal Stealth HUD:** switch between the chamfered **Tactical** card (dynamic stealth eye, `30%`/`65%` threshold ticks, transient peak-hold marker) and the slim **Minimal** bar strip. Displays live noise, estimated audible radius (`~Xm`), light exposure, blood scent, `[Voice]` / `[Whisper]` badges, and `[?]` / `[!]` alert indicators when mobs become suspicious or start searching, with smooth auto-hide fading when quiet.
 - **Sleek 2-tab dark-slate Settings GUI:**
   - **Stealth HUD** — features a **live interactive HUD preview**, HUD visibility, *Tactical* / *Minimal* style, compact header mode, screen anchor, pixel offsets, opacity, audible `~Xm` readout, smooth auto-hide, and per-meter toggles.
   - **Senses & World** — presets (`Off`, `Subtle`, `Default`, `Hardcore`), hearing & wall-muffling sliders, firearm / suppressor / bullet-impact ranges, Simple Voice Chat toggles, torchlight & darkness stealth, blood trail & horde settings, per-dimension preset, and fair-play HUD rules (directly edits your integrated world in singleplayer, or syncs live when you have operator permissions on a multiplayer server).
@@ -134,7 +134,7 @@ Available in the universal Fabric/Quilt and Forge/NeoForge mods and as a standal
 | **Paper / Purpur / Folia / Spigot / Bukkit** | `1.16.5 – 26.3` | `mob-senses-bukkit-….jar` | 8+ (17+ on 1.18+) | Server plugin (`folia-supported: true`); vanilla clients need nothing |
 
 - **Three universal files in total.** Each `.jar` bundles native adapter builds across the entire `1.16.5 – 26.3` span and selects the exact build for your running Minecraft version at startup.
-- **Pre-1.20 parity:** `1.16.5`, `1.17.1`, `1.18.2`, `1.19.2` and `1.19.4` get the same v1.5.0 features on Fabric, Quilt, Forge and Paper (Forge itself skipped `1.20.5` and `1.21.2`; NeoForge `1.20.1` loads the universal Forge/NeoForge file automatically).
+- **Pre-1.20 parity:** `1.16.5`, `1.17.1`, `1.18.2`, `1.19.2` and `1.19.4` get the same v1.6.0 features on Fabric, Quilt, Forge and Paper (Forge itself skipped `1.20.5` and `1.21.2`; NeoForge `1.20.1` loads the universal Forge/NeoForge file automatically).
 - **Java version:** whatever your Minecraft version already runs on (`8` for `1.16.5`, `16` for `1.17.1`, `17` for `1.18 – 1.20.4`, `21` for `1.20.5 – 1.21.11`, `25` for `26.x`).
 
 ## Commands and permissions
@@ -210,7 +210,8 @@ Configuration files are written with bilingual comments on first start and re-re
 | `sight_range`, `held_light_enabled`, `held_light_bonus`, `darkness_stealth_enabled`, `darkness_min_visibility`, `sneak_sight_multiplier`, `sprint_sight_multiplier` | `16`, `true`, `0.5`, `true`, `0.2`, `0.6`, `1.15` | Base sight distance (`0` – `256`), held-light visibility bonus, darkness stealth floor, and posture visibility multipliers |
 | `scent_enabled`, `scent_health_threshold`, `scent_range`, `scent_max_range`, `scent_duration_seconds`, `blood_particles`, `scent_mobs` | `true`, `50`, `14`, `24`, `15`, `true`, — | Blood scent toggle, health threshold (`5` – `100%`), base & critical range (`0` – `256` blocks), trail duration (`s`), crimson droplets, and extra scent-tracking mob IDs |
 | `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds` | `1`, `1.15`, `8` | Walk speed when investigating normal vs urgent sounds (`gunshot`, `explosion`, `bell`), and search duration in seconds |
-| `max_alerted_mobs`, `horde_alert_range`, `horde_max_allies`, `alert_cooldown_ms` | `8`, `0`, `4`, `900` | Max mobs alerted per event (`1` – `64`), horde chain-alert radius (`0` – `64`, `0` = off), max allies per mob, and per-mob cooldown in `ms` |
+| `max_alerted_mobs`, `horde_alert_range`, `horde_max_allies`, `alert_cooldown_ms` | `8`, `8`, `4`, `900` | Max mobs alerted per event (`1` – `64`), horde chain-alert radius (`0` – `64`, `0` = off), max allies per mob, and per-mob cooldown in `ms` |
+| `sound_cover_enabled`, `decoy_throw_enabled`, `safe_goal_filter`, `suspicion_enabled` | `true`, `true`, `true`, `true` | Acoustic masking by louder sounds, `Q`-dropped item decoys, hazard-safe destination snapping, and two-stage outer-fringe suspicion pause |
 | `extra_listeners`, `ignored_mobs` | — | Comma-separated mob IDs or `namespace:*` wildcards to include in or exclude from Mob Senses |
 | `language` | `en_us` | Fallback language for console logs and players with unknown locale |
 | `world.<id>.preset` | — | Per-dimension preset (`world.minecraft\:the_nether.preset=off` on mods; `world.world_nether.preset=off` on Paper) |

@@ -98,4 +98,36 @@ class NoiseCoalescerTest {
         assertTrue(totalHeard > 0);
         assertTrue(msPerTick < 5.0, "Expected < 5 ms per server tick, got " + msPerTick + " ms");
     }
+
+    @Test
+    void loudSoundCoverMasksNearbyQuietStepsUntilExpired() {
+        NoiseCoalescer coalescer = new NoiseCoalescer();
+        long t0 = 10_000L;
+        coalescer.registerSoundCover("minecraft:overworld", NoiseModel.Kind.EXPLOSION, 0.0, 64.0, 0.0, 32.0, t0);
+
+        double masked = coalescer.applySoundCover(
+                "minecraft:overworld", NoiseModel.Kind.STEP, 4.0, 64.0, 4.0, 8.0, t0 + 400L);
+        assertTrue(masked < 8.0, "Nearby explosion should mask footsteps: " + masked);
+
+        double unmaskedFar = coalescer.applySoundCover(
+                "minecraft:overworld", NoiseModel.Kind.STEP, 60.0, 64.0, 60.0, 8.0, t0 + 400L);
+        assertEquals(8.0, unmaskedFar, 1e-6);
+
+        double afterExpiry = coalescer.applySoundCover(
+                "minecraft:overworld", NoiseModel.Kind.STEP, 4.0, 64.0, 4.0, 8.0, t0 + 5000L);
+        assertEquals(8.0, afterExpiry, 1e-6);
+    }
+
+    @Test
+    void rapidFireGunshotsMergeCoverInsteadOfEvictingDistantExplosionCover() {
+        NoiseCoalescer coalescer = new NoiseCoalescer();
+        long t0 = 20_000L;
+        coalescer.registerSoundCover("minecraft:overworld", NoiseModel.Kind.EXPLOSION, 100.0, 64.0, 100.0, 40.0, t0);
+        for (int i = 0; i < 45; i++) {
+            coalescer.registerSoundCover("minecraft:overworld", NoiseModel.Kind.GUNSHOT, 0.5, 64.0, 0.5, 36.0, t0 + i * 50L);
+        }
+        double maskedNearExplosion = coalescer.applySoundCover(
+                "minecraft:overworld", NoiseModel.Kind.STEP, 104.0, 64.0, 100.0, 8.0, t0 + 2300L);
+        assertTrue(maskedNearExplosion < 8.0, "Rapid gunfire must not evict distant explosion cover: " + maskedNearExplosion);
+    }
 }

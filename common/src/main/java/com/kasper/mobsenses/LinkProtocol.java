@@ -109,6 +109,13 @@ public final class LinkProtocol {
      * server telemetry from {@link MobSenses}.
      */
     public static Properties buildState(ServerSettings settings, String world, boolean admin) {
+        return buildState(settings, world, admin, 0);
+    }
+
+    /**
+     * Builds a complete {@code mobsenses:state} payload with live server settings and nearby mob alertness.
+     */
+    public static Properties buildState(ServerSettings settings, String world, boolean admin, int playerAlert) {
         ServerSettings s = settings != null ? settings : MobSenses.settings();
         long now = System.currentTimeMillis();
         return buildState(
@@ -119,7 +126,8 @@ public final class LinkProtocol {
                 MobSenses.voiceChatInstalled(),
                 MobSenses.noise().lastMinute(now),
                 MobSenses.alerted().lastMinute(now),
-                MobSenses.platform().toString());
+                MobSenses.platform().toString(),
+                playerAlert);
     }
 
     /**
@@ -128,6 +136,15 @@ public final class LinkProtocol {
     public static Properties buildState(ServerSettings settings, String world,
                                         boolean admin, boolean debug, boolean voiceInstalled,
                                         long noiseMin, long alertedMin, String platform) {
+        return buildState(settings, world, admin, debug, voiceInstalled, noiseMin, alertedMin, platform, 0);
+    }
+
+    /**
+     * Builds a complete {@code mobsenses:state} payload with explicit runtime telemetry fields and player alert.
+     */
+    public static Properties buildState(ServerSettings settings, String world,
+                                        boolean admin, boolean debug, boolean voiceInstalled,
+                                        long noiseMin, long alertedMin, String platform, int playerAlert) {
         Properties p = new Properties();
         p.setProperty("v", String.valueOf(VERSION));
         if (settings != null) {
@@ -138,6 +155,7 @@ public final class LinkProtocol {
         p.setProperty("voice_installed", String.valueOf(voiceInstalled));
         p.setProperty("noise_min", String.valueOf(Math.max(0L, noiseMin)));
         p.setProperty("alerted_min", String.valueOf(Math.max(0L, alertedMin)));
+        p.setProperty("player_alert", String.valueOf(Math.max(0, Math.min(3, playerAlert))));
         if (platform != null && !Jv.isBlank(platform)) {
             p.setProperty("platform", platform.trim());
         }

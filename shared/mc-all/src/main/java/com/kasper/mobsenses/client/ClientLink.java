@@ -135,6 +135,8 @@ public final class ClientLink {
                 activeConnection = null;
                 helloCountdownTicks = 0;
                 MobSenses.serverLink().resetClientState();
+                StealthHudOverlay.resetClientTracking();
+                MobSenses.hud().syncRemoteMobAlert(com.kasper.mobsenses.StealthHudState.ALERT_CALM, 0L);
             }
             return;
         }
@@ -143,6 +145,8 @@ public final class ClientLink {
         if (conn != activeConnection) {
             activeConnection = conn;
             MobSenses.serverLink().resetClientState();
+            StealthHudOverlay.resetClientTracking();
+            MobSenses.hud().syncRemoteMobAlert(com.kasper.mobsenses.StealthHudState.ALERT_CALM, 0L);
             helloCountdownTicks = integrated ? 0 : 5;
         }
 

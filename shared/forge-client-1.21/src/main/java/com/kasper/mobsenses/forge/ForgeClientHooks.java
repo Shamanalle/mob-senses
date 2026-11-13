@@ -11,6 +11,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.client.event.CustomizeGuiOverlayEvent;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -105,6 +106,12 @@ final class ForgeClientHooks {
             eventType = (Class<? extends Event>) Class.forName(LAYERS_EVENT);
             getLayeredDraw = eventType.getMethod("getLayeredDraw");
         } catch (ReflectiveOperationException | LinkageError e) {
+            MinecraftForge.EVENT_BUS.addListener((CustomizeGuiOverlayEvent.Chat ev) -> {
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null && mc.font != null && !mc.options.hideGui) {
+                    StealthHudOverlay.render(new GuiCanvas(ev.getGuiGraphics(), mc.font));
+                }
+            });
             return;
         }
         Consumer<Event> listener = event -> {

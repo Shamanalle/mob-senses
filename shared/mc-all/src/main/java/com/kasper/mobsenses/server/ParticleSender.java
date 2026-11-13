@@ -100,7 +100,7 @@ public final class ParticleSender {
     private static boolean canSeeDebug(ServerPlayer player, double sx, double sy, double sz) {
         return player != null
                 && player.distanceToSqr(sx, sy, sz) <= 96.0 * 96.0
-                && AdminPermission.isAdmin(player.createCommandSourceStack());
+                && CommandSources.isAdmin(player);
     }
 
     public static void sendHearingTrace(

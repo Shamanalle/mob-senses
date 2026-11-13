@@ -249,4 +249,82 @@ class ServerSettingsTest {
         assertFalse(dst.allowClientHud());
         assertEquals(64.0, dst.gunshotRange(), 1e-6);
     }
+
+    @Test
+    void tacticalFeatureFlagsAndDefaultHordeRangePersistAndRoundTrip() throws Exception {
+        Path file = dir.resolve("tactical-settings.properties");
+        ServerSettings s = new ServerSettings(file);
+        s.load();
+
+        assertEquals(8.0, s.hordeAlertRange(), 1e-6);
+        assertTrue(s.soundCoverEnabled());
+        assertTrue(s.decoyThrowEnabled());
+        assertTrue(s.safeGoalFilter());
+        assertTrue(s.suspicionEnabled());
+
+        assertTrue(s.setOption("sound_cover_enabled", "false"));
+        assertTrue(s.setOption("decoy_throw_enabled", "false"));
+        assertTrue(s.setOption("safe_goal_filter", "false"));
+        assertTrue(s.setOption("suspicion_enabled", "false"));
+        assertTrue(s.setOption("horde_alert_range", "14"));
+        s.save();
+
+        ServerSettings reloaded = new ServerSettings(file);
+        reloaded.load();
+        assertFalse(reloaded.soundCoverEnabled());
+        assertFalse(reloaded.decoyThrowEnabled());
+        assertFalse(reloaded.safeGoalFilter());
+        assertFalse(reloaded.suspicionEnabled());
+        assertEquals(14.0, reloaded.hordeAlertRange(), 1e-6);
+
+        java.util.Properties wire = new java.util.Properties();
+        reloaded.writeState(wire, "minecraft:overworld");
+        ServerSettings clientCopy = new ServerSettings(null);
+        clientCopy.readState(wire);
+        assertFalse(clientCopy.soundCoverEnabled());
+        assertFalse(clientCopy.decoyThrowEnabled());
+        assertFalse(clientCopy.safeGoalFilter());
+        assertFalse(clientCopy.suspicionEnabled());
+
+        reloaded.resetAll();
+        assertTrue(reloaded.soundCoverEnabled());
+        assertTrue(reloaded.decoyThrowEnabled());
+        assertTrue(reloaded.safeGoalFilter());
+        assertTrue(reloaded.suspicionEnabled());
+        assertEquals(8.0, reloaded.hordeAlertRange(), 1e-6);
+    }
+
+    @Test
+    void nonFiniteRejectionWorldAliasDeduplicationAndCleanFormatting() {
+        ServerSettings s = new ServerSettings(null);
+        s.setHearing(1.25);
+        s.setMaxAlertedMobs(12);
+
+        assertFalse(s.setOption("hearing", "NaN"));
+        assertFalse(s.setOption("hearing", "Infinity"));
+        assertFalse(s.setOption("hearing", "-Infinity"));
+        assertFalse(s.setOption("max_alerted_mobs", "NaN"));
+        assertFalse(s.setOption("max_alerted_mobs", "Infinity"));
+        assertFalse(s.setOption("investigate_speed", "NaN"));
+        assertEquals(1.25, s.hearing(), 1e-6);
+        assertEquals(12, s.maxAlertedMobs());
+
+        assertNull(s.worldOwnPreset("minecraft:overworld"));
+        s.setWorldPreset("the_nether", Preset.SUBTLE);
+        assertEquals(Preset.SUBTLE, s.worldOwnPreset("minecraft:the_nether"));
+        s.setWorldPreset("minecraft:the_nether", Preset.HARDCORE);
+        assertEquals(1, s.worlds().size(), "World alias updates must deduplicate equivalent keys");
+        assertEquals(Preset.HARDCORE, s.worldOwnPreset("the_nether"));
+        s.setWorldPreset("the_nether", null);
+        assertTrue(s.worlds().isEmpty());
+        assertNull(s.worldOwnPreset("minecraft:the_nether"));
+
+        assertEquals("0", ServerSettings.format(-0.0));
+        assertEquals("0", ServerSettings.format(-0.001));
+        assertEquals("0", ServerSettings.format(Double.NaN));
+        assertEquals("0", ServerSettings.format(Double.POSITIVE_INFINITY));
+        assertEquals("1", ServerSettings.format(1.0));
+        assertEquals("0.75", ServerSettings.format(0.75));
+        assertEquals("1.2", ServerSettings.format(1.20));
+    }
 }

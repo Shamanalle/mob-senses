@@ -12,7 +12,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.block.AbstractChestBlock;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.BellBlock;
@@ -55,6 +54,7 @@ import java.util.UUID;
 public final class MobSensesForge {
 
     private static final Map<UUID, Vec3> LAST_STEP = new HashMap<>();
+    private static final Map<UUID, Float> FALL_DIST = new HashMap<>();
 
     public MobSensesForge(FMLJavaModLoadingContext context) {
         ModLog.use(new Slf4jLog());
@@ -62,6 +62,7 @@ public final class MobSensesForge {
         MinecraftForge.EVENT_BUS.addListener((FMLServerStartingEvent e) -> {
             ServerBridge.clear();
             LAST_STEP.clear();
+            FALL_DIST.clear();
             MobSenses.start(
                     FMLPaths.CONFIGDIR.get(),
                     new MobSenses.Platform("Forge", "1.16.5"),
@@ -70,11 +71,14 @@ public final class MobSensesForge {
         MinecraftForge.EVENT_BUS.addListener((FMLServerStoppingEvent e) -> {
             ServerBridge.clear();
             LAST_STEP.clear();
+            FALL_DIST.clear();
         });
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
             if (e.getPlayer() != null) {
-                ServerBridge.onDisconnect(e.getPlayer().getUUID());
-                LAST_STEP.remove(e.getPlayer().getUUID());
+                UUID uid = e.getPlayer().getUUID();
+                ServerBridge.onDisconnect(uid);
+                LAST_STEP.remove(uid);
+                FALL_DIST.remove(uid);
             }
         });
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> MobSensesCommand.register(e.getDispatcher()));
@@ -146,9 +150,8 @@ public final class MobSensesForge {
         MinecraftForge.EVENT_BUS.addListener((ProjectileImpactEvent e) -> {
             Entity proj = e.getEntity();
             if (proj != null && proj.level instanceof ServerLevel) {
-                Entity owner = proj instanceof Projectile ? ((Projectile) proj).getOwner() : proj;
                 ServerHearing.onGameEvent((ServerLevel) proj.level, "minecraft:projectile_land",
-                        proj.getX(), proj.getY(), proj.getZ(), owner, null);
+                        proj.getX(), proj.getY(), proj.getZ(), proj, null);
             }
         });
     }
@@ -174,26 +177,41 @@ public final class MobSensesForge {
 
     private static void tickPlayerSteps(MinecraftServer server) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            UUID uid = player.getUUID();
             if (player.isSpectator() || !player.isAlive()) {
-                LAST_STEP.remove(player.getUUID());
+                LAST_STEP.remove(uid);
+                FALL_DIST.remove(uid);
                 continue;
             }
             Vec3 pos = player.position();
-            Vec3 prev = LAST_STEP.get(player.getUUID());
+            boolean onGround = player.isOnGround();
+            float prevFall = FALL_DIST.containsKey(uid) ? FALL_DIST.get(uid) : 0.0f;
+            if (onGround) {
+                if (prevFall > 1.25f && !player.isInWater()) {
+                    BlockPos below = new BlockPos(pos.x, pos.y - 0.2, pos.z);
+                    ServerLevel level = player.getLevel();
+                    ServerHearing.onGameEvent(level, "minecraft:hit_ground",
+                            pos.x, pos.y, pos.z, player, level.getBlockState(below));
+                }
+                FALL_DIST.remove(uid);
+            } else {
+                FALL_DIST.put(uid, Math.max(prevFall, player.fallDistance));
+            }
+            Vec3 prev = LAST_STEP.get(uid);
             if (prev == null) {
-                LAST_STEP.put(player.getUUID(), pos);
+                LAST_STEP.put(uid, pos);
                 continue;
             }
             double dx = pos.x - prev.x;
             double dz = pos.z - prev.z;
             double horizSq = dx * dx + dz * dz;
             if (horizSq > 64.0) {
-                LAST_STEP.put(player.getUUID(), pos);
+                LAST_STEP.put(uid, pos);
                 continue;
             }
             boolean swimming = player.isSwimming();
-            if ((swimming || (player.isOnGround() && !player.isShiftKeyDown())) && horizSq >= 3.24) {
-                LAST_STEP.put(player.getUUID(), pos);
+            if ((swimming || (onGround && !player.isShiftKeyDown())) && horizSq >= 3.24) {
+                LAST_STEP.put(uid, pos);
                 BlockPos below = new BlockPos(pos.x, pos.y - 0.2, pos.z);
                 ServerLevel level = player.getLevel();
                 ServerHearing.onGameEvent(level, swimming ? "minecraft:swim" : "minecraft:step",

@@ -2,7 +2,7 @@ package com.kasper.mobsenses.forge;
 
 import com.kasper.mobsenses.LinkProtocol;
 import com.kasper.mobsenses.client.ClientLink;
-import com.kasper.mobsenses.server.AdminPermission;
+import com.kasper.mobsenses.server.CommandSources;
 import com.kasper.mobsenses.server.ServerBridge;
 import io.netty.buffer.Unpooled;
 import net.minecraft.client.Minecraft;
@@ -81,7 +81,7 @@ final class ForgeNetworking {
     }
 
     static boolean isAdmin(ServerPlayer player) {
-        return player != null && AdminPermission.isAdmin(player.createCommandSourceStack());
+        return CommandSources.isAdmin(player);
     }
 
     static void sendState(ServerPlayer player, String raw) {

@@ -7,14 +7,14 @@ Install it on the server, on your client, or on both. **Vanilla clients can join
 ## How mobs sense you
 
 **👂 Hearing & wall occlusion**
-- Running is loud, sneaking is quiet, wool and carpet muffle footsteps while gravel and metal give you away.
-- Breaking and placing blocks, doors, trapdoors, chests, barrels, combat, arrows, explosions, bells, note blocks and eating make noise too.
-- A mob that hears noise walks to **where the sound came from**, searches the spot and returns to its business.
+- Running is loud, sneaking is quiet, wool and carpet muffle footsteps while gravel, metal and rain-soaked surfaces give you away.
+- Breaking and placing blocks, doors, trapdoors, chests, barrels, combat, arrows, explosions, bells, note blocks, eating and tossing items (`Q`) make noise too — toss metal or bells as a decoy to lure guards away, and move under loud thunder or explosion cover.
+- Mobs pause suspiciously at faint outer-range cues (`?`), walk to **where the sound came from** while avoiding lava and open trapdoor drops, fan out in a ring as a horde, and sweep or flee unseen ambushes instead of pinpointing stealth attackers.
 - Stone walls (`×0.64`), wool (`×0.53`), rain (`25%`), thunderstorms (`45%`), *Feather Falling* boots and *Swift Sneak* leggings muffle sound; glass and wood block less, and open doors let sound pass.
 
 **🔫 Firearms, suppressors & bullet lures**
-- Native support for **TaCZ** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2**, **Superb Warfare** and **Just Enough Guns**.
-- Unsuppressed shots carry across the area (`44` blocks) and draw nearby mobs; attaching a suppressor or silencer cuts the shot to close range (`16` blocks).
+- Native support for **TaCZ** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2** (including quiet air/pneumatic guns), **Superb Warfare** and **Just Enough Guns**.
+- Unsuppressed shots carry across the area (`44` blocks) and draw nearby mobs; attaching a suppressor or using integrally silenced firearms (*VSS*, *AS Val*, *MP5SD*, air guns) cuts the shot to close range (`16` blocks).
 - Firing a silenced weapon into a distant wall creates noise where the bullet lands (`20` blocks) so you can distract or lure hordes away. Every weapon can also be tuned individually (`gun.<id>.range`).
 
 **🗣️ Proximity voice chat** *(with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat))*
@@ -29,7 +29,7 @@ Install it on the server, on your client, or on both. **Vanilla clients can join
 
 ## For players
 
-- **Tactical & minimal Stealth HUD:** chamfered *Tactical* card (stealth eye, `30%`/`65%` threshold ticks, peak-hold marker) or slim *Minimal* strip showing noise, audible distance (`~Xm`), light exposure, blood scent and `[Voice]` / `[Whisper]` badges, with smooth auto-hide when quiet.
+- **Tactical & minimal Stealth HUD:** chamfered *Tactical* card (stealth eye, `30%`/`65%` threshold ticks, peak-hold marker, live `[?]`/`[!]` alert badges) or slim *Minimal* strip showing noise, audible distance (`~Xm`), light exposure, blood scent and `[Voice]` / `[Whisper]` badges, with smooth auto-hide when quiet.
 - **Sleek 2-tab dark-slate Settings GUI:** *Stealth HUD* (with live interactive preview) and *Senses & World*, opened from **Mod Menu** (Fabric/Quilt), **Mods → Config** (Forge/NeoForge), your own keybind (*Mob Senses…*), or `/mshud` on any server without operator permissions.
 - **Lightweight client ↔ server sync:** when both client and server run Mob Senses (including **Paper, Purpur and Folia** servers!), your HUD automatically syncs the active server or dimension preset, multipliers and fair-play HUD rule. Seven languages.
 
@@ -80,8 +80,8 @@ Before 1.20 the mod covers 1.16.5, 1.17.1, 1.18.2, 1.19.2 and 1.19.4 (Forge itse
 
 ## Как мобы вас чувствуют
 
-- **👂 Слух и преграды:** бег громкий, шаг в приседе тихий, шерсть и ковёр глушат шаги, а гравий и металл выдают. Каменные стены (`×0.64`), шерсть (`×0.53`), дождь, гроза, ботинки с «Невесомостью» и поножи с «Проворством» глушат звук, а открытые двери пропускают его.
-- **🔫 Оружейные моды и глушители:** нативная поддержка **TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns 2**, **Superb Warfare** и **Just Enough Guns** — выстрел без глушителя слышен на `44` блока, с глушителем на `16` блоков, а попадание пули в далёкую стену (`20` блоков) выманивает и отвлекает мобов.
+- **👂 Слух, приманки и преграды:** бег громкий, шаг в приседе тихий, шерсть и ковёр глушат шаги, а гравий, металл и мокрая под дождём земля выдают; брошенный предмет (`Q`) отвлекает мобов, а громкие звуки маскируют тихие шаги. Настороженные мобы сначала прислушиваются (`?`), обходят лаву и открытые люки, рассредотачиваются кольцом и прочёсывают или убегают от скрытой засады. Каменные стены (`×0.64`), шерсть (`×0.53`), дождь, гроза, ботинки с «Невесомостью» и поножи с «Проворством» глушат звук, а открытые двери пропускают его.
+- **🔫 Оружейные моды, глушители и пневматика:** нативная поддержка **TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns 2** (включая тихую пневматику), **Superb Warfare** и **Just Enough Guns** — выстрел без глушителя слышен на `44` блока, с глушителем или интегрированным глушителем (*ВСС*, *АС «Вал»*, *MP5SD*, пневматика) на `16` блоков, а попадание пули в далёкую стену (`20` блоков) выманивает и отвлекает мобов.
 - **🗣️ Голосовой чат** *(с [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat))* — крик разносится далеко, шёпот слышно только вблизи; громкость калибруется относительно обычного голоса каждого игрока.
 - **🔦 Свет, темнота и след крови:** факел или фонарь в руке выдаёт издалека (`+50%`), присед в темноте или невидимость сбрасывают далёкую погоню, а раненые игроки (`≤ 50%` здоровья) оставляют след с каплями крови без спавна лишних сущностей в мире.
 

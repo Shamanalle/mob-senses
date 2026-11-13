@@ -71,7 +71,10 @@ final class ForgeClientHooks {
                 try {
                     DISPATCHER.execute(msg.substring(1).trim(), new Object());
                 } catch (CommandSyntaxException ex) {
-                    ClientHudCommand.register(new CommandDispatcher<>());
+                    if (mc != null && mc.gui != null) {
+                        mc.gui.getChat().addMessage(new net.minecraft.network.chat.TextComponent(ex.getMessage())
+                                .withStyle(net.minecraft.ChatFormatting.RED));
+                    }
                 }
             }
         });

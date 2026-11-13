@@ -54,6 +54,7 @@ public final class ServerSettings {
             "scent_duration_seconds", "blood_particles", "scent_mobs",
             "investigate_speed", "urgent_investigate_speed", "investigation_seconds",
             "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
+            "sound_cover_enabled", "decoy_throw_enabled", "safe_goal_filter", "suspicion_enabled",
             "extra_listeners", "ignored_mobs",
             "allow_client_hud", "language");
 
@@ -125,9 +126,13 @@ public final class ServerSettings {
     private volatile double urgentInvestigateSpeed = 1.15;
     private volatile double investigationSeconds = 8.0;
     private volatile int maxAlertedMobs = 8;
-    private volatile double hordeAlertRange = 0.0;
+    private volatile double hordeAlertRange = 8.0;
     private volatile int hordeMaxAllies = 4;
     private volatile long alertCooldownMs = 900L;
+    private volatile boolean soundCoverEnabled = true;
+    private volatile boolean decoyThrowEnabled = true;
+    private volatile boolean safeGoalFilter = true;
+    private volatile boolean suspicionEnabled = true;
     private volatile Set<String> extraListeners = Collections.emptySet();
     private volatile Set<String> ignoredMobs = Collections.emptySet();
 
@@ -199,7 +204,24 @@ public final class ServerSettings {
         return preset;
     }
 
-    private static boolean sameWorld(String a, String b) {
+    /** The preset explicitly assigned to {@code world}, or {@code null} when inheriting the global preset. */
+    public Preset worldOwnPreset(String world) {
+        if (world == null || Jv.isBlank(world)) {
+            return null;
+        }
+        Preset own = worlds.get(world);
+        if (own != null) {
+            return own;
+        }
+        for (Map.Entry<String, Preset> e : worlds.entrySet()) {
+            if (sameWorld(e.getKey(), world)) {
+                return e.getValue();
+            }
+        }
+        return null;
+    }
+
+    static boolean sameWorld(String a, String b) {
         if (a == null || b == null) {
             return false;
         }
@@ -450,6 +472,22 @@ public final class ServerSettings {
 
     public long alertCooldownMs() {
         return alertCooldownMs;
+    }
+
+    public boolean soundCoverEnabled() {
+        return soundCoverEnabled;
+    }
+
+    public boolean decoyThrowEnabled() {
+        return decoyThrowEnabled;
+    }
+
+    public boolean safeGoalFilter() {
+        return safeGoalFilter;
+    }
+
+    public boolean suspicionEnabled() {
+        return suspicionEnabled;
     }
 
     public Set<String> extraListeners() {
@@ -795,6 +833,22 @@ public final class ServerSettings {
         this.alertCooldownMs = alertCooldownMs;
     }
 
+    public void setSoundCoverEnabled(boolean soundCoverEnabled) {
+        this.soundCoverEnabled = soundCoverEnabled;
+    }
+
+    public void setDecoyThrowEnabled(boolean decoyThrowEnabled) {
+        this.decoyThrowEnabled = decoyThrowEnabled;
+    }
+
+    public void setSafeGoalFilter(boolean safeGoalFilter) {
+        this.safeGoalFilter = safeGoalFilter;
+    }
+
+    public void setSuspicionEnabled(boolean suspicionEnabled) {
+        this.suspicionEnabled = suspicionEnabled;
+    }
+
     public void setExtraListeners(Set<String> ids) {
         this.extraListeners = normalizeSet(ids);
     }
@@ -812,11 +866,15 @@ public final class ServerSettings {
         if (world == null || Jv.isBlank(world)) {
             throw new IllegalArgumentException("world is blank");
         }
-        Map<String, Preset> copy = new TreeMap<>(worlds);
-        if (preset == null) {
-            copy.remove(world);
-        } else {
-            copy.put(world, preset);
+        String key = world.trim();
+        Map<String, Preset> copy = new TreeMap<>();
+        for (Map.Entry<String, Preset> e : worlds.entrySet()) {
+            if (!sameWorld(e.getKey(), key)) {
+                copy.put(e.getKey(), e.getValue());
+            }
+        }
+        if (preset != null) {
+            copy.put(key, preset);
         }
         worlds = Collections.unmodifiableMap(copy);
     }
@@ -938,6 +996,14 @@ public final class ServerSettings {
                 return String.valueOf(hordeMaxAllies);
             case "alert_cooldown_ms":
                 return String.valueOf(alertCooldownMs);
+            case "sound_cover_enabled":
+                return String.valueOf(soundCoverEnabled);
+            case "decoy_throw_enabled":
+                return String.valueOf(decoyThrowEnabled);
+            case "safe_goal_filter":
+                return String.valueOf(safeGoalFilter);
+            case "suspicion_enabled":
+                return String.valueOf(suspicionEnabled);
             case "extra_listeners":
                 return String.join(",", extraListeners);
             case "ignored_mobs":
@@ -981,7 +1047,8 @@ public final class ServerSettings {
             case "stealth":
             case "weather":
                 return Jv.listOf("rain_muffling", "thunder_muffling", "feather_falling_muffling",
-                        "through_wall_hearing", "surface_sound_scaling");
+                        "through_wall_hearing", "surface_sound_scaling",
+                        "sound_cover_enabled", "decoy_throw_enabled");
             case "voice":
                 return Jv.listOf("voice", "voice_range", "voice_whisper_multiplier");
             case "sight":
@@ -998,6 +1065,7 @@ public final class ServerSettings {
             case "ai":
                 return Jv.listOf("investigate_speed", "urgent_investigate_speed", "investigation_seconds",
                         "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
+                        "safe_goal_filter", "suspicion_enabled",
                         "extra_listeners", "ignored_mobs");
             case "all":
                 return OPTION_KEYS;
@@ -1187,13 +1255,25 @@ public final class ServerSettings {
                 maxAlertedMobs = 8;
                 return true;
             case "horde_alert_range":
-                hordeAlertRange = 0.0;
+                hordeAlertRange = 8.0;
                 return true;
             case "horde_max_allies":
                 hordeMaxAllies = 4;
                 return true;
             case "alert_cooldown_ms":
                 alertCooldownMs = 900L;
+                return true;
+            case "sound_cover_enabled":
+                soundCoverEnabled = true;
+                return true;
+            case "decoy_throw_enabled":
+                decoyThrowEnabled = true;
+                return true;
+            case "safe_goal_filter":
+                safeGoalFilter = true;
+                return true;
+            case "suspicion_enabled":
+                suspicionEnabled = true;
                 return true;
             case "extra_listeners":
                 extraListeners = Collections.emptySet();
@@ -1401,16 +1481,28 @@ public final class ServerSettings {
                     setInvestigationSeconds(parseDouble(val));
                     return true;
                 case "max_alerted_mobs":
-                    setMaxAlertedMobs((int) Math.round(parseDouble(val)));
+                    setMaxAlertedMobs((int) Math.round(checkBounded("max_alerted_mobs", parseDouble(val), 1.0, 64.0)));
                     return true;
                 case "horde_alert_range":
                     setHordeAlertRange(parseDouble(val));
                     return true;
                 case "horde_max_allies":
-                    setHordeMaxAllies((int) Math.round(parseDouble(val)));
+                    setHordeMaxAllies((int) Math.round(checkBounded("horde_max_allies", parseDouble(val), 0.0, 32.0)));
                     return true;
                 case "alert_cooldown_ms":
-                    setAlertCooldownMs(Math.round(parseDouble(val)));
+                    setAlertCooldownMs(Math.round(checkBounded("alert_cooldown_ms", parseDouble(val), 0.0, 10000.0)));
+                    return true;
+                case "sound_cover_enabled":
+                    setSoundCoverEnabled(parseStrictBool(val));
+                    return true;
+                case "decoy_throw_enabled":
+                    setDecoyThrowEnabled(parseStrictBool(val));
+                    return true;
+                case "safe_goal_filter":
+                    setSafeGoalFilter(parseStrictBool(val));
+                    return true;
+                case "suspicion_enabled":
+                    setSuspicionEnabled(parseStrictBool(val));
                     return true;
                 case "extra_listeners":
                     setExtraListeners("none".equalsIgnoreCase(val) || "clear".equalsIgnoreCase(val)
@@ -1497,7 +1589,10 @@ public final class ServerSettings {
             read(text);
             if (!text.contains("gunshot_range=") || !text.contains("rain_muffling=")
                     || !text.contains("through_wall_hearing=") || !text.contains("scent_max_range=")
-                    || !text.contains("allow_client_hud=")) {
+                    || !text.contains("allow_client_hud=") || !text.contains("safe_goal_filter=")
+                    || !text.contains("suspicion_enabled=") || !text.contains("sound_cover_enabled=")
+                    || !text.contains("decoy_throw_enabled=") || !text.contains("horde_max_allies=")
+                    || !text.contains("urgent_investigate_speed=")) {
                 save();
             }
         } catch (IOException | RuntimeException e) {
@@ -1645,9 +1740,13 @@ public final class ServerSettings {
         urgentInvestigateSpeed = boundedNumber(p, "urgent_investigate_speed", 0.5, 2.5, 1.15);
         investigationSeconds = boundedNumberWithAlias(p, "investigation_seconds", "investigate_duration_sec", 2.0, 60.0, 8.0);
         maxAlertedMobs = (int) Math.round(boundedNumber(p, "max_alerted_mobs", 1.0, 64.0, 8.0));
-        hordeAlertRange = boundedNumber(p, "horde_alert_range", 0.0, 64.0, 0.0);
+        hordeAlertRange = boundedNumber(p, "horde_alert_range", 0.0, 64.0, 8.0);
         hordeMaxAllies = (int) Math.round(boundedNumber(p, "horde_max_allies", 0.0, 32.0, 4.0));
         alertCooldownMs = Math.round(boundedNumber(p, "alert_cooldown_ms", 0.0, 10000.0, 900.0));
+        soundCoverEnabled = bool(p, "sound_cover_enabled", true);
+        decoyThrowEnabled = bool(p, "decoy_throw_enabled", true);
+        safeGoalFilter = bool(p, "safe_goal_filter", true);
+        suspicionEnabled = bool(p, "suspicion_enabled", true);
         extraListeners = parseCsvSet(p.getProperty("extra_listeners"));
         ignoredMobs = parseCsvSet(p.getProperty("ignored_mobs"));
 
@@ -1929,6 +2028,12 @@ public final class ServerSettings {
         lines.add("horde_alert_range=" + format(hordeAlertRange));
         lines.add("horde_max_allies=" + hordeMaxAllies);
         lines.add("alert_cooldown_ms=" + alertCooldownMs);
+        lines.add("# Acoustic masking by louder sounds, Q-dropped item decoys, hazard-safe goal snapping, and two-stage suspicion pause.");
+        lines.add("# Маскировка тихих звуков громкими, отвлечение броском предмета (Q), фильтр опасных точек цели и двухфазная настороженность.");
+        lines.add("sound_cover_enabled=" + soundCoverEnabled);
+        lines.add("decoy_throw_enabled=" + decoyThrowEnabled);
+        lines.add("safe_goal_filter=" + safeGoalFilter);
+        lines.add("suspicion_enabled=" + suspicionEnabled);
         lines.add("");
         lines.add("# Comma-separated mob IDs or mod namespaces to add as listeners or to ignore completely.");
         lines.add("# Список ID мобов (или пространств имён модов) через запятую: дополнительные слушатели и игнорируемые мобы.");
@@ -1943,8 +2048,8 @@ public final class ServerSettings {
         lines.add("# Язык ответов консоли и игрокам, чей язык неизвестен (en_us, ru_ru, ...).");
         lines.add("language=" + language);
         lines.add("");
-        lines.add("# A world's own preset: world.<world id>.preset=<preset>, e.g. world.minecraft:the_nether.preset=hardcore");
-        lines.add("# Свой пресет мира: world.<id мира>.preset=<пресет>, например world.minecraft:the_nether.preset=hardcore");
+        lines.add("# A world's own preset: world.<world id>.preset=<preset>, e.g. world.minecraft\\:the_nether.preset=hardcore");
+        lines.add("# Свой пресет мира: world.<id мира>.preset=<пресет>, например world.minecraft\\:the_nether.preset=hardcore");
         for (Map.Entry<String, Preset> e : worlds.entrySet()) {
             lines.add("world." + e.getKey().replace(":", "\\:") + ".preset=" + e.getValue().id());
         }
@@ -1960,10 +2065,24 @@ public final class ServerSettings {
 
     /** A multiplier or distance as the file and the replies show it: "1", "0.75", "44". */
     public static String format(double value) {
-        if (value == Math.rint(value)) {
-            return String.valueOf((long) value);
+        if (!Double.isFinite(value)) {
+            return "0";
         }
-        String s = String.format(Locale.ROOT, "%.2f", value);
-        return s.endsWith("0") ? s.substring(0, s.length() - 1) : s;
+        double cleaned = Math.abs(value) < 0.005 ? 0.0 : value;
+        if (cleaned == Math.rint(cleaned)) {
+            return String.valueOf((long) cleaned);
+        }
+        String s = String.format(Locale.ROOT, "%.2f", cleaned);
+        if (s.indexOf('.') >= 0) {
+            int end = s.length();
+            while (end > 0 && s.charAt(end - 1) == '0') {
+                end--;
+            }
+            if (end > 0 && s.charAt(end - 1) == '.') {
+                end--;
+            }
+            s = s.substring(0, end);
+        }
+        return "-0".equals(s) ? "0" : s;
     }
 }

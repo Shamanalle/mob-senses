@@ -1,5 +1,6 @@
 package com.kasper.mobsenses.bukkit;
 
+import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.AdminCommands;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.ModLog;
@@ -8,6 +9,8 @@ import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.ScentModel;
 import com.kasper.mobsenses.SightModel;
+import com.kasper.mobsenses.StealthHudState;
+import com.kasper.mobsenses.TacticalTargets;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Keyed;
@@ -17,10 +20,12 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
@@ -57,6 +62,9 @@ public final class BukkitSenses {
     private static final boolean HAS_PAPER_PATHFINDER = hasClass("com.destroystokyo.paper.entity.Pathfinder");
     private static final int SENSE_TICK_INTERVAL = 10;
     private static final int MAX_RAY_CHECKS_PER_NOISE = 24;
+    private static final long HORDE_RALLY_COOLDOWN_MS = 4000L;
+    private static final double PLAYER_ALERT_NOTIFY_RADIUS = 28.0;
+    private static final long SUSPICION_WINDOW_MS = 4500L;
 
     private static final Set<String> LISTENER_NAMES = new HashSet<>(Arrays.asList(
             "zombie", "zombie_villager", "husk", "drowned", "zombified_piglin", "pig_zombie",
@@ -67,20 +75,123 @@ public final class BukkitSenses {
     ));
 
     private static final Map<UUID, Long> LAST_ALERT_MS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LAST_RALLY_MS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LAST_DECOY_DROP_MS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> SPIGOT_SUSPICIOUS_UNTIL = new ConcurrentHashMap<>();
+    private static final Map<UUID, DecoyTrack> TRACKED_DECOYS = new ConcurrentHashMap<>();
+    private static final Map<UUID, AmbushTrack> PENDING_AMBUSHES = new ConcurrentHashMap<>();
+    private static final Map<UUID, TargetSuppress> UNSEEN_TARGET_SUPPRESS = new ConcurrentHashMap<>();
+    private static final Map<UUID, DirectHurt> LAST_DIRECT_HURT_MS = new ConcurrentHashMap<>();
+    private static final Map<UUID, DirectHurt> LEGITIMATE_PURSUIT = new ConcurrentHashMap<>();
+    private static final Map<UUID, PlayerSightSnapshot> PLAYER_SIGHT_SNAPSHOTS = new ConcurrentHashMap<>();
     private static int tickCounter;
     private static volatile Plugin activePlugin;
     private static volatile Scheduling activeScheduling;
+
+    private static final class DecoyTrack {
+        final UUID itemUuid;
+        final UUID ownerId;
+        final String itemTypeId;
+        final long startedAtMs;
+        volatile Location lastLoc;
+        volatile int ageTicks;
+        volatile boolean velocityConfirmed;
+
+        DecoyTrack(UUID itemUuid, UUID ownerId, String itemTypeId, Location lastLoc,
+                   long startedAtMs, boolean velocityConfirmed) {
+            this.itemUuid = itemUuid;
+            this.ownerId = ownerId;
+            this.itemTypeId = itemTypeId;
+            this.lastLoc = lastLoc;
+            this.startedAtMs = startedAtMs;
+            this.velocityConfirmed = velocityConfirmed;
+        }
+    }
+
+    private static final class AmbushTrack {
+        final UUID mobUuid;
+        final UUID attackerId;
+        final String worldName;
+        final Location mobLoc;
+        final Location attackerLoc;
+        final long hurtAtMs;
+        final int scheduledTick;
+
+        AmbushTrack(UUID mobUuid, UUID attackerId, String worldName, Location mobLoc,
+                    Location attackerLoc, long hurtAtMs, int scheduledTick) {
+            this.mobUuid = mobUuid;
+            this.attackerId = attackerId;
+            this.worldName = worldName;
+            this.mobLoc = mobLoc;
+            this.attackerLoc = attackerLoc;
+            this.hurtAtMs = hurtAtMs;
+            this.scheduledTick = scheduledTick;
+        }
+    }
+
+    private static final class TargetSuppress {
+        final UUID attackerId;
+        final long expiresAtMs;
+
+        TargetSuppress(UUID attackerId, long expiresAtMs) {
+            this.attackerId = attackerId;
+            this.expiresAtMs = expiresAtMs;
+        }
+    }
+
+    private static final class DirectHurt {
+        final UUID attackerId;
+        final long atMs;
+
+        DirectHurt(UUID attackerId, long atMs) {
+            this.attackerId = attackerId;
+            this.atMs = atMs;
+        }
+    }
+
+    private static final class PlayerSightSnapshot {
+        final String worldName;
+        final double x;
+        final double y;
+        final double eyeY;
+        final double z;
+        final double effectiveSight;
+        final long atMs;
+
+        PlayerSightSnapshot(String worldName, double x, double y, double eyeY, double z,
+                            double effectiveSight, long atMs) {
+            this.worldName = worldName;
+            this.x = x;
+            this.y = y;
+            this.eyeY = eyeY;
+            this.z = z;
+            this.effectiveSight = effectiveSight;
+            this.atMs = atMs;
+        }
+    }
 
     private BukkitSenses() {
     }
 
     public static void clear() {
         LAST_ALERT_MS.clear();
+        LAST_RALLY_MS.clear();
+        LAST_DECOY_DROP_MS.clear();
+        SPIGOT_SUSPICIOUS_UNTIL.clear();
+        TRACKED_DECOYS.clear();
+        PENDING_AMBUSHES.clear();
+        UNSEEN_TARGET_SUPPRESS.clear();
+        LAST_DIRECT_HURT_MS.clear();
+        LEGITIMATE_PURSUIT.clear();
+        PLAYER_SIGHT_SNAPSHOTS.clear();
     }
 
     public static void forgetPlayer(UUID playerId) {
         if (playerId != null) {
             MobSenses.voice().removePlayer(playerId);
+            MobSenses.clearPlayerAlert(playerId);
+            PLAYER_SIGHT_SNAPSHOTS.remove(playerId);
+            LAST_DECOY_DROP_MS.remove(playerId);
         }
     }
 
@@ -89,6 +200,18 @@ public final class BukkitSenses {
      */
     public static boolean isBypassed(Player player) {
         return player != null && (player.getGameMode() == GameMode.SPECTATOR || player.hasPermission(PERM_BYPASS));
+    }
+
+    /**
+     * Returns {@code true} when the current thread owns {@code player}'s region on Folia
+     * (always {@code true} on CraftBukkit/Spigot/Paper or when {@code player == null}).
+     */
+    public static boolean ownsPlayer(Player player) {
+        if (player == null) {
+            return true;
+        }
+        Scheduling sched = activeScheduling;
+        return sched == null || sched.owns(player);
     }
 
     public static NoiseModel.Posture posture(Player player) {
@@ -164,9 +287,55 @@ public final class BukkitSenses {
             int currentTick = ++tickCounter;
             boolean senseTick = (currentTick % SENSE_TICK_INTERVAL) == 0;
 
-            if ((currentTick % 400) == 0 && !LAST_ALERT_MS.isEmpty()) {
+            if ((currentTick % 400) == 0) {
                 long cutoff = now - 60_000L;
-                LAST_ALERT_MS.entrySet().removeIf(e -> e.getValue() < cutoff);
+                if (!LAST_ALERT_MS.isEmpty()) {
+                    LAST_ALERT_MS.entrySet().removeIf(e -> e.getValue() < cutoff);
+                }
+                if (!LAST_RALLY_MS.isEmpty()) {
+                    LAST_RALLY_MS.entrySet().removeIf(e -> e.getValue() < cutoff);
+                }
+                if (!LAST_DECOY_DROP_MS.isEmpty()) {
+                    LAST_DECOY_DROP_MS.entrySet().removeIf(e -> (now - e.getValue()) > 5_000L);
+                }
+                if (!SPIGOT_SUSPICIOUS_UNTIL.isEmpty()) {
+                    SPIGOT_SUSPICIOUS_UNTIL.entrySet().removeIf(e -> e.getValue() < now);
+                }
+                if (!UNSEEN_TARGET_SUPPRESS.isEmpty()) {
+                    UNSEEN_TARGET_SUPPRESS.entrySet().removeIf(e -> e.getValue().expiresAtMs < now);
+                }
+                if (!LAST_DIRECT_HURT_MS.isEmpty()) {
+                    LAST_DIRECT_HURT_MS.entrySet().removeIf(e -> e.getValue().atMs < cutoff);
+                }
+                if (!LEGITIMATE_PURSUIT.isEmpty()) {
+                    LEGITIMATE_PURSUIT.entrySet().removeIf(e -> (now - e.getValue().atMs) > 15_000L);
+                }
+                if (!PLAYER_SIGHT_SNAPSHOTS.isEmpty()) {
+                    PLAYER_SIGHT_SNAPSHOTS.entrySet().removeIf(e -> e.getValue().atMs < cutoff);
+                }
+            }
+
+            if (!TRACKED_DECOYS.isEmpty()) {
+                for (DecoyTrack track : new ArrayList<>(TRACKED_DECOYS.values())) {
+                    World w = track.lastLoc != null ? track.lastLoc.getWorld() : null;
+                    if (w == null || MobSenses.settings().presetOf(w.getName()) == Preset.OFF
+                            || !MobSenses.settings().decoyThrowEnabled()) {
+                        TRACKED_DECOYS.remove(track.itemUuid);
+                        continue;
+                    }
+                    scheduling.atLocation(plugin, track.lastLoc, () -> pollDecoy(w, track, now));
+                }
+            }
+
+            if (!PENDING_AMBUSHES.isEmpty()) {
+                for (AmbushTrack track : new ArrayList<>(PENDING_AMBUSHES.values())) {
+                    World w = Bukkit.getWorld(track.worldName);
+                    if (w == null || MobSenses.settings().presetOf(track.worldName) == Preset.OFF) {
+                        PENDING_AMBUSHES.remove(track.mobUuid);
+                        continue;
+                    }
+                    scheduling.atLocation(plugin, track.mobLoc, () -> processAmbush(w, track, now));
+                }
             }
 
             for (World world : Bukkit.getWorlds()) {
@@ -247,16 +416,14 @@ public final class BukkitSenses {
 
         int alerted = 0;
         int rayChecks = 0;
-        double speed = noise.kind() == NoiseModel.Kind.EXPLOSION
-                || noise.kind() == NoiseModel.Kind.GUNSHOT
-                || noise.kind() == NoiseModel.Kind.COMBAT
-                || noise.kind() == NoiseModel.Kind.BELL
-                || noise.kind() == NoiseModel.Kind.VOICE
-                ? MobSenses.settings().urgentInvestigateSpeed()
-                : MobSenses.settings().investigateSpeed();
+        double normalSpeed = MobSenses.settings().investigateSpeed();
+        double urgentSpeed = MobSenses.settings().urgentInvestigateSpeed();
+        double speed = TacticalTargets.isUrgentKind(noise.kind()) ? urgentSpeed : normalSpeed;
 
         int maxAlerts = MobSenses.settings().maxAlertedMobs();
-        double hordeRadius = MobSenses.settings().hordeAlertRange();
+        TacticalTargets.HazardWorld hazardWorld = BukkitAcoustics.hazardWorld(world);
+        boolean safeFilter = MobSenses.settings().safeGoalFilter();
+        boolean suspicionOn = MobSenses.settings().suspicionEnabled();
         for (Mob mob : candidates) {
             if (alerted >= maxAlerts || rayChecks >= MAX_RAY_CHECKS_PER_NOISE) {
                 break;
@@ -270,30 +437,41 @@ public final class BukkitSenses {
             double thickness = BukkitAcoustics.traceBundle(
                     world, noise.x(), noise.y(), noise.z(), eye.getX(), eye.getY(), eye.getZ());
             double audible = NoiseModel.audibleRange(r, thickness);
-            if (dist <= audible && investigate(mob, center, speed)) {
+            if (dist > audible) {
+                continue;
+            }
+            Location mobLoc = mob.getLocation();
+            TacticalTargets.Point3 safeGoal = TacticalTargets.resolveSafeGoal(
+                    hazardWorld, safeFilter, noise.x(), noise.y(), noise.z(),
+                    mobLoc.getX(), mobLoc.getY(), mobLoc.getZ());
+            if (safeGoal == null) {
+                continue;
+            }
+            Location goalLoc = new Location(world, safeGoal.x(), safeGoal.y(), safeGoal.z());
+            if (TacticalTargets.shouldPauseSuspiciously(
+                    noise.kind(), noise.eventId(), dist * dist, audible, suspicionOn)
+                    && makeSuspicious(mob, goalLoc)) {
                 alerted++;
                 LAST_ALERT_MS.put(mob.getUniqueId(), now);
                 MobSenses.alerted().record(now);
+                notifyPlayersNearAlert(world, mobLoc.getX(), mobLoc.getY(), mobLoc.getZ(),
+                        StealthHudState.ALERT_SUSPICIOUS, now);
                 if (MobSenses.debug()) {
                     sendDebugTrace(world, center, eye);
                 }
-                int maxAllies = MobSenses.settings().hordeMaxAllies();
-                if (hordeRadius > 0.0 && maxAllies > 0) {
-                    Collection<Entity> allies = world.getNearbyEntities(mob.getLocation(), hordeRadius, 5.0, hordeRadius);
-                    int pulled = 0;
-                    for (Entity allyEnt : allies) {
-                        if (allyEnt instanceof Mob && allyEnt != mob) {
-                            Mob ally = (Mob) allyEnt;
-                            if (isListener(ally) && ally.getTarget() == null && investigate(ally, center, speed)) {
-                                LAST_ALERT_MS.put(ally.getUniqueId(), now);
-                                MobSenses.alerted().record(now);
-                                if (++pulled >= maxAllies) {
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                continue;
+            }
+            if (investigate(mob, goalLoc, speed, false)) {
+                alerted++;
+                LAST_ALERT_MS.put(mob.getUniqueId(), now);
+                MobSenses.alerted().record(now);
+                notifyPlayersNearAlert(world, mobLoc.getX(), mobLoc.getY(), mobLoc.getZ(),
+                        StealthHudState.ALERT_SEARCHING, now);
+                if (MobSenses.debug()) {
+                    sendDebugTrace(world, center, eye);
                 }
+                rallyHordeAround(world, mob, safeGoal.x(), safeGoal.y(), safeGoal.z(), speed,
+                        false, now, hazardWorld, safeFilter);
             }
         }
     }
@@ -316,12 +494,92 @@ public final class BukkitSenses {
         double pz = ploc.getZ();
         double maxHealth = maxHealth(player);
         double investigateSpeed = MobSenses.settings().investigateSpeed();
+        TacticalTargets.HazardWorld hazardWorld = BukkitAcoustics.hazardWorld(world);
+        boolean safeFilter = MobSenses.settings().safeGoalFilter();
 
-        // Scent trail for badly wounded players
+        double sightMult = MobSenses.settings().sight();
+        double configuredSightRange = MobSenses.settings().sightRange();
+        boolean sightEnabled = sightMult > 0.0 && configuredSightRange > 0.0;
+        double baseSight = sightEnabled ? configuredSightRange * sightMult : 0.0;
+        double effectiveSight = sightEnabled ? sightRangeFor(world, player, preset, baseSight) : 0.0;
+        if (sightEnabled) {
+            PLAYER_SIGHT_SNAPSHOTS.put(player.getUniqueId(),
+                    new PlayerSightSnapshot(worldName, px, py, player.getEyeLocation().getY(), pz, effectiveSight, now));
+        }
+
+        // Darkness stealth & LKP BEFORE ALERT_HUNTED check: clear X-ray locks; search LKP only if legitimately pursued
+        if (sightEnabled && MobSenses.settings().darknessStealthEnabled()) {
+            boolean hiddenInDark = effectiveSight < baseSight * 0.78;
+            double checkRadius = Math.max(40.0, Math.max(configuredSightRange, baseSight) + 12.0);
+            double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
+            double lkpSpeed = MobSenses.settings().urgentInvestigateSpeed();
+            Collection<Entity> nearbyPursuers = world.getNearbyEntities(ploc, checkRadius, 16.0, checkRadius);
+            for (Entity entity : nearbyPursuers) {
+                if (!(entity instanceof Mob)) {
+                    continue;
+                }
+                Mob mob = (Mob) entity;
+                LivingEntity target = mob.getTarget();
+                if (!mob.isValid() || target == null
+                        || !target.getUniqueId().equals(player.getUniqueId())
+                        || !isListener(mob)) {
+                    continue;
+                }
+                if (hiddenInDark
+                        && mob.getLocation().distanceSquared(ploc) > loseDistSq
+                        && !wasRecentlyHurtDirectly(mob.getUniqueId(), player.getUniqueId(), now)) {
+                    UNSEEN_TARGET_SUPPRESS.put(mob.getUniqueId(), new TargetSuppress(player.getUniqueId(), now + 900L));
+                    clearMobCombatTarget(mob);
+                    DirectHurt prev = LEGITIMATE_PURSUIT.remove(mob.getUniqueId());
+                    if (prev != null && prev.attackerId.equals(player.getUniqueId())
+                            && (now - prev.atMs) <= 8_000L) {
+                        Location mloc = mob.getLocation();
+                        TacticalTargets.Point3 lkp = TacticalTargets.resolveSafeGoal(
+                                hazardWorld, safeFilter, px, py, pz, mloc.getX(), mloc.getY(), mloc.getZ());
+                        if (lkp != null && investigate(
+                                mob, new Location(world, lkp.x(), lkp.y(), lkp.z()), lkpSpeed, true)) {
+                            LAST_ALERT_MS.put(mob.getUniqueId(), now);
+                            MobSenses.recordPlayerAlert(player.getUniqueId(), StealthHudState.ALERT_SEARCHING, now);
+                        }
+                    }
+                } else {
+                    LEGITIMATE_PURSUIT.put(mob.getUniqueId(), new DirectHurt(player.getUniqueId(), now));
+                }
+            }
+        }
+
+        // Active aggro HUD indicator: stamp legitimate hunters and mark HUNTED
+        Collection<Entity> huntCheck = world.getNearbyEntities(
+                ploc, PLAYER_ALERT_NOTIFY_RADIUS, 8.0, PLAYER_ALERT_NOTIFY_RADIUS);
+        boolean hunted = false;
+        for (Entity entity : huntCheck) {
+            if (entity instanceof Mob) {
+                Mob mob = (Mob) entity;
+                LivingEntity target = mob.getTarget();
+                if (mob.isValid() && target != null
+                        && target.getUniqueId().equals(player.getUniqueId())
+                        && isListener(mob)) {
+                    LEGITIMATE_PURSUIT.put(mob.getUniqueId(), new DirectHurt(player.getUniqueId(), now));
+                    hunted = true;
+                }
+            }
+        }
+        if (hunted) {
+            MobSenses.recordPlayerAlert(player.getUniqueId(), StealthHudState.ALERT_HUNTED, now);
+        }
+
+        // Scent trail for badly wounded players (washed off by swimming or weakened by rain)
+        int bx = ploc.getBlockX();
+        int by = ploc.getBlockY();
+        int bz = ploc.getBlockZ();
+        boolean inWater = BukkitAcoustics.isWaterAt(world, bx, by, bz)
+                || BukkitAcoustics.isWaterAt(world, bx, by + 1, bz);
+        boolean inRain = !inWater && BukkitAcoustics.isSkyExposedRain(world, bx, by, bz);
         double scentRange = MobSenses.scent().recordPlayer(
                 worldName, player.getUniqueId(), px, py, pz,
-                player.getHealth(), maxHealth, preset, now);
-        List<ScentModel.Crumb> playerCrumbs = MobSenses.scent().activePlayerCrumbs(worldName, player.getUniqueId(), now);
+                player.getHealth(), maxHealth, preset, now, inWater, inRain);
+        List<ScentModel.Crumb> playerCrumbs = MobSenses.scent().activePlayerCrumbs(
+                worldName, player.getUniqueId(), now);
         if (scentRange > 0.0 || !playerCrumbs.isEmpty()) {
             double boxPad = scentRange > 0.0 ? scentRange : MobSenses.settings().scentMaxRange();
             double minX = px;
@@ -364,14 +622,23 @@ public final class BukkitSenses {
                 ScentModel.Crumb crumb = MobSenses.scent().findNearestScent(
                         worldName, mloc.getX(), mloc.getY(), mloc.getZ(), now);
                 if (crumb != null) {
-                    Location target = new Location(world, crumb.x(), crumb.y(), crumb.z());
-                    if (investigate(mob, target, investigateSpeed)) {
-                        MobSenses.alerted().record(now);
-                        if (MobSenses.debug()) {
-                            sendScentDebugTrace(world, target, mob.getEyeLocation());
-                        }
-                        if (++count >= 6) {
-                            break;
+                    TacticalTargets.Point3 safeCrumb = TacticalTargets.resolveSafeGoal(
+                            hazardWorld, safeFilter, crumb.x(), crumb.y(), crumb.z(),
+                            mloc.getX(), mloc.getY(), mloc.getZ());
+                    if (safeCrumb != null) {
+                        Location target = new Location(world, safeCrumb.x(), safeCrumb.y(), safeCrumb.z());
+                        if (investigate(mob, target, investigateSpeed, false)) {
+                            LAST_ALERT_MS.put(mob.getUniqueId(), now);
+                            MobSenses.alerted().record(now);
+                            MobSenses.recordPlayerAlert(player.getUniqueId(), StealthHudState.ALERT_SEARCHING, now);
+                            rallyHordeAround(world, mob, safeCrumb.x(), safeCrumb.y(), safeCrumb.z(),
+                                    investigateSpeed, true, now, hazardWorld, safeFilter);
+                            if (MobSenses.debug()) {
+                                sendScentDebugTrace(world, target, mob.getEyeLocation());
+                            }
+                            if (++count >= 6) {
+                                break;
+                            }
                         }
                     }
                 }
@@ -379,30 +646,10 @@ public final class BukkitSenses {
         }
 
         // Sight & Light (accounting for time-of-day & storm sky darkening on Bukkit)
-        double sightMult = MobSenses.settings().sight();
-        double configuredSightRange = MobSenses.settings().sightRange();
-        if (!(sightMult > 0.0) || !(configuredSightRange > 0.0)) {
+        if (!sightEnabled) {
             return;
         }
-        Block block = ploc.getBlock();
-        int blockLight = block.getLightFromBlocks();
-        int skyLight = Math.max(0, block.getLightFromSky() - skyDarkening(world));
-        EntityEquipment eq = player.getEquipment();
-        int heldLight = 0;
-        if (eq != null && MobSenses.settings().heldLightEnabled()) {
-            heldLight = Math.max(
-                    SightModel.heldItemLight(itemId(eq.getItemInMainHand())),
-                    SightModel.heldItemLight(itemId(eq.getItemInOffHand())));
-        }
-        double baseSight = configuredSightRange * sightMult;
-        double effectiveSight = SightModel.effectiveSightRange(
-                baseSight, blockLight, skyLight, heldLight,
-                player.isSneaking(), player.isSprinting(), preset);
-        if (player.isInvisible() && heldLight == 0) {
-            effectiveSight *= 0.15;
-        }
-
-        if (effectiveSight > configuredSightRange) {
+        if (effectiveSight > Math.min(SightModel.DEFAULT_SIGHT_RANGE, configuredSightRange)) {
             Collection<Entity> nearby = world.getNearbyEntities(ploc, effectiveSight, 8.0, effectiveSight);
             int spotted = 0;
             for (Entity entity : nearby) {
@@ -414,32 +661,54 @@ public final class BukkitSenses {
                     continue;
                 }
                 if (mob.getEyeLocation().distanceSquared(player.getEyeLocation()) <= effectiveSight * effectiveSight
-                        && mob.hasLineOfSight(player)
-                        && investigate(mob, ploc, investigateSpeed)) {
-                    MobSenses.alerted().record(now);
-                    if (MobSenses.debug()) {
-                        sendDebugTrace(world, player.getEyeLocation(), mob.getEyeLocation());
-                    }
-                    if (++spotted >= 6) {
-                        break;
-                    }
-                }
-            }
-        } else if (MobSenses.settings().darknessStealthEnabled() && effectiveSight < baseSight * 0.78) {
-            double checkRadius = Math.max(configuredSightRange, baseSight) + 6.0;
-            double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
-            Collection<Entity> nearby = world.getNearbyEntities(ploc, checkRadius, 8.0, checkRadius);
-            for (Entity entity : nearby) {
-                if (entity instanceof Mob) {
-                    Mob mob = (Mob) entity;
-                    LivingEntity target = mob.getTarget();
-                    if (target != null && target.getUniqueId().equals(player.getUniqueId())
-                            && mob.getLocation().distanceSquared(ploc) > loseDistSq) {
-                        mob.setTarget(null);
+                        && mob.hasLineOfSight(player)) {
+                    Location mloc = mob.getLocation();
+                    TacticalTargets.Point3 safeSpot = TacticalTargets.resolveSafeGoal(
+                            hazardWorld, safeFilter, px, py, pz, mloc.getX(), mloc.getY(), mloc.getZ());
+                    if (safeSpot != null && investigate(
+                            mob, new Location(world, safeSpot.x(), safeSpot.y(), safeSpot.z()),
+                            investigateSpeed, false)) {
+                        LAST_ALERT_MS.put(mob.getUniqueId(), now);
+                        MobSenses.alerted().record(now);
+                        MobSenses.recordPlayerAlert(player.getUniqueId(), StealthHudState.ALERT_SEARCHING, now);
+                        rallyHordeAround(world, mob, safeSpot.x(), safeSpot.y(), safeSpot.z(),
+                                investigateSpeed, true, now, hazardWorld, safeFilter);
+                        if (MobSenses.debug()) {
+                            sendDebugTrace(world, player.getEyeLocation(), mob.getEyeLocation());
+                        }
+                        if (++spotted >= 6) {
+                            break;
+                        }
                     }
                 }
             }
         }
+    }
+
+    private static double sightRangeFor(World world, Player player, Preset preset, double baseSight) {
+        Location ploc = player.getLocation();
+        Block block = ploc.getBlock();
+        int blockLight = block.getLightFromBlocks();
+        int skyLight = Math.max(0, block.getLightFromSky() - skyDarkening(world));
+        EntityEquipment eq = player.getEquipment();
+        int heldLight = 0;
+        if (eq != null && MobSenses.settings().heldLightEnabled()) {
+            heldLight = Math.max(
+                    SightModel.heldItemLight(itemId(eq.getItemInMainHand())),
+                    SightModel.heldItemLight(itemId(eq.getItemInOffHand())));
+        }
+        double effectiveSight = SightModel.effectiveSightRange(
+                baseSight, blockLight, skyLight, heldLight,
+                player.isSneaking(), player.isSprinting(), preset);
+        if (player.isInvisible() && heldLight == 0) {
+            effectiveSight *= 0.15;
+        }
+        return effectiveSight;
+    }
+
+    private static boolean wasRecentlyHurtDirectly(UUID mobId, UUID playerId, long now) {
+        DirectHurt hurt = LAST_DIRECT_HURT_MS.get(mobId);
+        return hurt != null && hurt.attackerId.equals(playerId) && (now - hurt.atMs) < 5000L;
     }
 
     /**
@@ -469,23 +738,458 @@ public final class BukkitSenses {
         return Math.max(0, Math.min(11, darken));
     }
 
+    private static void clearMobCombatTarget(Mob mob) {
+        if (mob == null) {
+            return;
+        }
+        if (HAS_PAPER_PATHFINDER) {
+            try {
+                PaperPathfinder.clearCombatTarget(mob);
+                return;
+            } catch (Throwable ignored) {
+            }
+        }
+        mob.setTarget(null);
+    }
+
     /**
      * Directs {@code mob} to walk to {@code target}: uses {@link PaperPathfinder} on Paper/Purpur/Folia
      * and falls back to {@link #spigotFallbackMove} on pure Spigot.
      */
     public static boolean investigate(Mob mob, Location target, double speed) {
+        return investigate(mob, target, speed, false);
+    }
+
+    public static boolean investigate(Mob mob, Location target, double speed, boolean bypassCooldown) {
         if (mob == null || target == null || !mob.isValid() || mob.getTarget() != null) {
             return false;
         }
         if (HAS_PAPER_PATHFINDER) {
             try {
-                if (PaperPathfinder.moveTo(activePlugin, mob, target, speed)) {
+                if (PaperPathfinder.moveTo(activePlugin, mob, target, speed, bypassCooldown)) {
                     return true;
                 }
             } catch (Throwable ignored) {
             }
         }
+        long now = System.currentTimeMillis();
+        long cooldown = MobSenses.settings().alertCooldownMs();
+        Long prev = LAST_ALERT_MS.get(mob.getUniqueId());
+        if (!bypassCooldown && prev != null && (now - prev) < cooldown) {
+            return false;
+        }
         return spigotFallbackMove(mob, target, speed);
+    }
+
+    /**
+     * Triggers Stage-1 suspicion pause and gaze toward {@code target}. Returns {@code false} if already
+     * investigating or primed so the caller escalates to Stage-2 movement.
+     */
+    public static boolean makeSuspicious(Mob mob, Location target) {
+        if (mob == null || target == null || !mob.isValid() || mob.getTarget() != null) {
+            return false;
+        }
+        if (HAS_PAPER_PATHFINDER) {
+            try {
+                return PaperPathfinder.makeSuspicious(activePlugin, mob, target);
+            } catch (Throwable ignored) {
+            }
+        }
+        long now = System.currentTimeMillis();
+        Long until = SPIGOT_SUSPICIOUS_UNTIL.get(mob.getUniqueId());
+        if (until != null && now < until) {
+            SPIGOT_SUSPICIOUS_UNTIL.remove(mob.getUniqueId());
+            return false;
+        }
+        SPIGOT_SUSPICIOUS_UNTIL.put(mob.getUniqueId(), now + SUSPICION_WINDOW_MS);
+        Location loc = mob.getLocation();
+        double dx = target.getX() - loc.getX();
+        double dz = target.getZ() - loc.getZ();
+        if (dx * dx + dz * dz > 1e-4) {
+            float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+            mob.setRotation(yaw, 0.0f);
+        }
+        return true;
+    }
+
+    /** Records a nearby mob alertness peak for non-bypassed online players within {@code 28m}. */
+    private static void notifyPlayersNearAlert(World world, double x, double y, double z,
+                                               int alertLevel, long now) {
+        if (world == null || alertLevel <= StealthHudState.ALERT_CALM) {
+            return;
+        }
+        double maxDistSq = PLAYER_ALERT_NOTIFY_RADIUS * PLAYER_ALERT_NOTIFY_RADIUS;
+        Scheduling sched = activeScheduling;
+        Plugin plugin = activePlugin;
+        for (Player player : world.getPlayers()) {
+            Runnable check = () -> {
+                if (!player.isOnline() || !player.isValid() || player.getWorld() != world || isBypassed(player)) {
+                    return;
+                }
+                Location ploc = player.getLocation();
+                double dx = ploc.getX() - x;
+                double dy = ploc.getY() - y;
+                double dz = ploc.getZ() - z;
+                if (dx * dx + dy * dy + dz * dz <= maxDistSq) {
+                    MobSenses.recordPlayerAlert(player.getUniqueId(), alertLevel, now);
+                }
+            };
+            if (sched != null && plugin != null && !sched.owns(player)) {
+                sched.onPlayer(plugin, player, check);
+            } else {
+                check.run();
+            }
+        }
+    }
+
+    /** Rallies nearby idle listener mobs in a golden-angle ring around the investigation target. */
+    private static void rallyHordeAround(
+            World world, Mob leader,
+            double x, double y, double z, double speed,
+            boolean enforceLeaderCooldown, long now,
+            TacticalTargets.HazardWorld hazardWorld, boolean safeFilter) {
+        double hordeRadius = MobSenses.settings().hordeAlertRange();
+        int maxAllies = MobSenses.settings().hordeMaxAllies();
+        if (!(hordeRadius > 0.0) || maxAllies <= 0 || leader == null || world == null) {
+            return;
+        }
+        if (enforceLeaderCooldown) {
+            Long prev = LAST_RALLY_MS.get(leader.getUniqueId());
+            if (prev != null && (now - prev) < HORDE_RALLY_COOLDOWN_MS) {
+                return;
+            }
+            LAST_RALLY_MS.put(leader.getUniqueId(), now);
+        }
+        Collection<Entity> allies = world.getNearbyEntities(leader.getLocation(), hordeRadius, 5.0, hordeRadius);
+        int pulled = 0;
+        for (Entity allyEnt : allies) {
+            if (!(allyEnt instanceof Mob) || allyEnt == leader) {
+                continue;
+            }
+            Mob ally = (Mob) allyEnt;
+            if (!isListener(ally) || ally.getTarget() != null) {
+                continue;
+            }
+            Location allyLoc = ally.getLocation();
+            TacticalTargets.Point3 offset = TacticalTargets.fanOutOffset(pulled);
+            TacticalTargets.Point3 safe = TacticalTargets.resolveSafeGoal(
+                    hazardWorld, safeFilter,
+                    x + offset.x(), y + offset.y(), z + offset.z(),
+                    allyLoc.getX(), allyLoc.getY(), allyLoc.getZ());
+            if (safe == null) {
+                continue;
+            }
+            if (investigate(ally, new Location(world, safe.x(), safe.y(), safe.z()), speed, false)) {
+                LAST_ALERT_MS.put(ally.getUniqueId(), now);
+                MobSenses.alerted().record(now);
+                if (++pulled >= maxAllies) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /** Begins tracking a Q-dropped item until it lands on ground or water and emits a decoy noise. */
+    public static void onPlayerDropDecoy(Player player, Item item) {
+        if (!MobSenses.settings().decoyThrowEnabled() || player == null || item == null || player.isDead()) {
+            return;
+        }
+        if (isBypassed(player) || (player.getGameMode() == GameMode.CREATIVE && !MobSenses.debug())) {
+            return;
+        }
+        if (item.getPickupDelay() < 25) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Long lastDropMs = LAST_DECOY_DROP_MS.get(player.getUniqueId());
+        if (lastDropMs != null && (now - lastDropMs) < 200L) {
+            return;
+        }
+        Location loc = item.getLocation();
+        if (loc.getWorld() == null || MobSenses.settings().presetOf(loc.getWorld().getName()) == Preset.OFF) {
+            return;
+        }
+        LAST_DECOY_DROP_MS.put(player.getUniqueId(), now);
+        boolean fast = item.getVelocity().lengthSquared() >= 0.02;
+        String thrownId = itemId(item.getItemStack());
+        TRACKED_DECOYS.put(item.getUniqueId(), new DecoyTrack(
+                item.getUniqueId(), player.getUniqueId(), thrownId, loc.clone(),
+                now, fast));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isItemOnGround(Item item) {
+        return item.isOnGround();
+    }
+
+    private static void pollDecoy(World world, DecoyTrack track, long now) {
+        if (!TRACKED_DECOYS.containsKey(track.itemUuid)) {
+            return;
+        }
+        if ((now - track.startedAtMs) > 6000L) {
+            TRACKED_DECOYS.remove(track.itemUuid);
+            return;
+        }
+        Item found = null;
+        for (Entity entity : world.getNearbyEntities(track.lastLoc, 4.5, 4.5, 4.5)) {
+            if (entity instanceof Item && entity.getUniqueId().equals(track.itemUuid)) {
+                found = (Item) entity;
+                break;
+            }
+        }
+        if (found == null || !found.isValid()) {
+            if ((now - track.startedAtMs) > 500L) {
+                TRACKED_DECOYS.remove(track.itemUuid);
+            }
+            return;
+        }
+        Location loc = found.getLocation();
+        track.lastLoc = loc.clone();
+        int age = ++track.ageTicks;
+        if (!track.velocityConfirmed) {
+            if (found.getVelocity().lengthSquared() >= 0.02) {
+                track.velocityConfirmed = true;
+            } else if (age >= 2) {
+                TRACKED_DECOYS.remove(track.itemUuid);
+                return;
+            }
+        }
+        int bx = loc.getBlockX();
+        int by = loc.getBlockY();
+        int bz = loc.getBlockZ();
+        if (age >= 2 && (isItemOnGround(found) || BukkitAcoustics.isWaterAt(world, bx, by, bz))) {
+            TRACKED_DECOYS.remove(track.itemUuid);
+            Block hitBlock = world.getBlockAt(bx, by, bz);
+            if (hitBlock.getType().isAir()) {
+                Block below = world.getBlockAt(bx, by - 1, bz);
+                if (!below.getType().isAir()) {
+                    hitBlock = below;
+                }
+            }
+            AcousticMaterial mat = BukkitAcoustics.material(hitBlock);
+            double env = envMultiplier(world, null, NoiseModel.Kind.PROJECTILE);
+            MobSenses.gameEvent(
+                    "mobsenses:decoy_land",
+                    world.getName(),
+                    loc.getX(), loc.getY(), loc.getZ(),
+                    NoiseModel.Posture.WALKING,
+                    mat,
+                    track.itemTypeId,
+                    true,
+                    env,
+                    track.ownerId);
+        }
+    }
+
+    /** Evaluates whether damage to {@code mob} came from an unseen sniper and schedules ambush reaction. */
+    public static void onMobDamagedByPlayer(Mob mob, Player attacker, Entity damager) {
+        if (mob == null || attacker == null || !isListener(mob)) {
+            return;
+        }
+        if (isBypassed(attacker)) {
+            return;
+        }
+        World world = mob.getWorld();
+        if (world == null) {
+            return;
+        }
+        String worldName = world.getName();
+        Preset preset = MobSenses.settings().presetOf(worldName);
+        if (preset == Preset.OFF) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Scheduling sched = activeScheduling;
+        boolean ownsAttacker = sched == null || sched.owns(attacker);
+        double sightMult = MobSenses.settings().sight();
+        double configuredSight = MobSenses.settings().sightRange();
+        double baseSight = Math.max(4.0, configuredSight * sightMult);
+
+        Location attackerEye = null;
+        Location attackerFeet = null;
+        double effectiveSight = baseSight;
+        if (ownsAttacker && attacker.getWorld() == world) {
+            if (attacker.getGameMode() == GameMode.SPECTATOR
+                    || (attacker.getGameMode() == GameMode.CREATIVE && !MobSenses.debug())) {
+                return;
+            }
+            attackerEye = attacker.getEyeLocation();
+            attackerFeet = attacker.getLocation().clone();
+            effectiveSight = sightRangeFor(world, attacker, preset, baseSight);
+        } else {
+            PlayerSightSnapshot snap = PLAYER_SIGHT_SNAPSHOTS.get(attacker.getUniqueId());
+            if (snap != null && worldName.equals(snap.worldName) && (now - snap.atMs) < 10_000L) {
+                attackerEye = new Location(world, snap.x, snap.eyeY, snap.z);
+                attackerFeet = new Location(world, snap.x, snap.y, snap.z);
+                effectiveSight = snap.effectiveSight;
+            } else if (damager != null && damager.getWorld() == world) {
+                attackerEye = damager.getLocation();
+                attackerFeet = attackerEye.clone();
+            }
+        }
+        if (attackerEye == null) {
+            return;
+        }
+        if (attackerFeet == null) {
+            attackerFeet = attackerEye.clone();
+        }
+
+        Location mobEye = mob.getEyeLocation();
+        double distSq = mobEye.distanceSquared(attackerEye);
+        if (distSq <= 9.0) {
+            LAST_DIRECT_HURT_MS.put(mob.getUniqueId(), new DirectHurt(attacker.getUniqueId(), now));
+            return;
+        }
+        double sightLimit = Math.max(3.0, effectiveSight);
+        boolean blocked = BukkitAcoustics.traceSingleRay(
+                world,
+                mobEye.getX(), mobEye.getY(), mobEye.getZ(),
+                attackerEye.getX(), attackerEye.getY(), attackerEye.getZ()) > 0.25;
+        if (distSq <= sightLimit * sightLimit && !blocked) {
+            LAST_DIRECT_HURT_MS.put(mob.getUniqueId(), new DirectHurt(attacker.getUniqueId(), now));
+            return;
+        }
+
+        UNSEEN_TARGET_SUPPRESS.put(mob.getUniqueId(), new TargetSuppress(attacker.getUniqueId(), now + 900L));
+        PENDING_AMBUSHES.put(mob.getUniqueId(), new AmbushTrack(
+                mob.getUniqueId(), attacker.getUniqueId(), worldName,
+                mob.getLocation().clone(), attackerFeet.clone(), now, tickCounter));
+    }
+
+    /** Suppresses vanilla retaliation against unseen ambushers and darkness X-ray target locks onto hidden players. */
+    public static boolean shouldSuppressTarget(Mob mob, LivingEntity target, EntityTargetEvent.TargetReason reason) {
+        if (mob == null || target == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (reason == EntityTargetEvent.TargetReason.TARGET_ATTACKED_ENTITY
+                || reason == EntityTargetEvent.TargetReason.TARGET_ATTACKED_NEARBY_ENTITY
+                || reason == EntityTargetEvent.TargetReason.CLOSEST_PLAYER
+                || reason == EntityTargetEvent.TargetReason.RANDOM_TARGET
+                || reason == EntityTargetEvent.TargetReason.CUSTOM) {
+            TargetSuppress suppress = UNSEEN_TARGET_SUPPRESS.get(mob.getUniqueId());
+            if (suppress != null) {
+                if (now >= suppress.expiresAtMs) {
+                    UNSEEN_TARGET_SUPPRESS.remove(mob.getUniqueId(), suppress);
+                } else if (suppress.attackerId.equals(target.getUniqueId())) {
+                    return true;
+                }
+            }
+        }
+        if ((reason == EntityTargetEvent.TargetReason.CLOSEST_PLAYER
+                || reason == EntityTargetEvent.TargetReason.RANDOM_TARGET)
+                && target instanceof Player
+                && MobSenses.settings().darknessStealthEnabled()
+                && isListener(mob)) {
+            Player player = (Player) target;
+            if (isBypassed(player) || (player.getGameMode() == GameMode.CREATIVE && !MobSenses.debug())) {
+                return false;
+            }
+            World world = mob.getWorld();
+            if (world == null) {
+                return false;
+            }
+            String worldName = world.getName();
+            Preset preset = MobSenses.settings().presetOf(worldName);
+            if (preset == Preset.OFF) {
+                return false;
+            }
+            double sightMult = MobSenses.settings().sight();
+            double configuredSight = MobSenses.settings().sightRange();
+            if (!(sightMult > 0.0) || !(configuredSight > 0.0)) {
+                return false;
+            }
+            double baseSight = configuredSight * sightMult;
+            Scheduling sched = activeScheduling;
+            boolean ownsPlayer = sched == null || sched.owns(player);
+            double px;
+            double py;
+            double pz;
+            double effectiveSight;
+            if (ownsPlayer && player.getWorld() == world) {
+                Location eye = player.getEyeLocation();
+                px = eye.getX();
+                py = eye.getY();
+                pz = eye.getZ();
+                effectiveSight = sightRangeFor(world, player, preset, baseSight);
+            } else {
+                PlayerSightSnapshot snap = PLAYER_SIGHT_SNAPSHOTS.get(player.getUniqueId());
+                if (snap == null || !worldName.equals(snap.worldName) || (now - snap.atMs) >= 10_000L) {
+                    return false;
+                }
+                px = snap.x;
+                py = snap.eyeY;
+                pz = snap.z;
+                effectiveSight = snap.effectiveSight;
+            }
+            if (effectiveSight >= baseSight * 0.78) {
+                return false;
+            }
+            Location mobEye = mob.getEyeLocation();
+            double dx = mobEye.getX() - px;
+            double dy = mobEye.getY() - py;
+            double dz = mobEye.getZ() - pz;
+            double loseDist = Math.max(4.0, effectiveSight);
+            if ((dx * dx + dy * dy + dz * dz) <= loseDist * loseDist) {
+                return false;
+            }
+            if (wasRecentlyHurtDirectly(mob.getUniqueId(), player.getUniqueId(), now)) {
+                return false;
+            }
+            DirectHurt legit = LEGITIMATE_PURSUIT.get(mob.getUniqueId());
+            if (legit != null && legit.attackerId.equals(player.getUniqueId()) && (now - legit.atMs) <= 8_000L) {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static void processAmbush(World world, AmbushTrack track, long now) {
+        if (!PENDING_AMBUSHES.remove(track.mobUuid, track)) {
+            return;
+        }
+        Mob found = null;
+        for (Entity entity : world.getNearbyEntities(track.mobLoc, 4.5, 4.5, 4.5)) {
+            if (entity instanceof Mob && entity.getUniqueId().equals(track.mobUuid)) {
+                found = (Mob) entity;
+                break;
+            }
+        }
+        if (found == null || !found.isValid()) {
+            return;
+        }
+        UNSEEN_TARGET_SUPPRESS.put(found.getUniqueId(), new TargetSuppress(track.attackerId, now + 900L));
+        clearMobCombatTarget(found);
+        LEGITIMATE_PURSUIT.remove(found.getUniqueId());
+        Location mloc = found.getLocation();
+        double normalSpeed = MobSenses.settings().investigateSpeed();
+        double urgentSpeed = MobSenses.settings().urgentInvestigateSpeed();
+        double seedUnit = ((Math.abs(found.getEntityId() * 37) + (int) (track.hurtAtMs & 0xFF)) & 0xFF) / 255.0;
+        TacticalTargets.AmbushPlan plan = TacticalTargets.planAmbushReaction(
+                mloc.getX(), mloc.getY(), mloc.getZ(),
+                track.attackerLoc.getX(), track.attackerLoc.getY(), track.attackerLoc.getZ(),
+                found.getHealth(), maxHealth(found),
+                normalSpeed, urgentSpeed, seedUnit);
+        TacticalTargets.HazardWorld hazardWorld = BukkitAcoustics.hazardWorld(world);
+        boolean safeFilter = MobSenses.settings().safeGoalFilter();
+        TacticalTargets.Point3 goal = TacticalTargets.resolveSafeGoal(
+                hazardWorld, safeFilter,
+                plan.targetX(), plan.targetY(), plan.targetZ(),
+                mloc.getX(), mloc.getY(), mloc.getZ());
+        if (goal == null) {
+            return;
+        }
+        Location goalLoc = new Location(world, goal.x(), goal.y(), goal.z());
+        if (investigate(found, goalLoc, plan.speed(), true)) {
+            LAST_ALERT_MS.put(found.getUniqueId(), now);
+            MobSenses.alerted().record(now);
+            MobSenses.recordPlayerAlert(track.attackerId, StealthHudState.ALERT_SEARCHING, now);
+            if (!plan.flee()) {
+                rallyHordeAround(world, found, goal.x(), goal.y(), goal.z(), plan.speed(),
+                        true, now, hazardWorld, safeFilter);
+            }
+        }
     }
 
     /**
@@ -544,8 +1248,8 @@ public final class BukkitSenses {
     }
 
     @SuppressWarnings("deprecation")
-    private static double maxHealth(Player player) {
-        return player.getMaxHealth();
+    private static double maxHealth(LivingEntity entity) {
+        return entity.getMaxHealth();
     }
 
     private static Particle findParticle(String... names) {
@@ -572,18 +1276,33 @@ public final class BukkitSenses {
     private static void runForAdminViewers(World world, Location origin, java.util.function.Consumer<Player> action) {
         Plugin plugin = activePlugin;
         Scheduling sched = activeScheduling;
+        double ox = origin.getX();
+        double oy = origin.getY();
+        double oz = origin.getZ();
         for (Player viewer : world.getPlayers()) {
-            if (!viewer.isOp() && !viewer.hasPermission(AdminCommands.PERM_ADMIN)) {
-                continue;
-            }
-            Location vloc = viewer.getLocation();
-            if (vloc.getWorld() != world || vloc.distanceSquared(origin) > 96.0 * 96.0) {
-                continue;
-            }
-            if (plugin != null && sched != null) {
-                sched.onPlayer(plugin, viewer, () -> action.accept(viewer));
-            } else {
+            Runnable task = () -> {
+                if (!viewer.isOnline() || !viewer.isValid()) {
+                    return;
+                }
+                if (!viewer.isOp() && !viewer.hasPermission(AdminCommands.PERM_ADMIN)) {
+                    return;
+                }
+                Location vloc = viewer.getLocation();
+                if (vloc.getWorld() != world) {
+                    return;
+                }
+                double dx = vloc.getX() - ox;
+                double dy = vloc.getY() - oy;
+                double dz = vloc.getZ() - oz;
+                if (dx * dx + dy * dy + dz * dz > 96.0 * 96.0) {
+                    return;
+                }
                 action.accept(viewer);
+            };
+            if (plugin != null && sched != null && !sched.owns(viewer)) {
+                sched.onPlayer(plugin, viewer, task);
+            } else {
+                task.run();
             }
         }
     }

@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -17,6 +18,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.AbstractChestBlock;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.BellBlock;
@@ -41,6 +44,7 @@ import java.util.UUID;
 public final class MobSensesFabric implements net.fabricmc.api.ModInitializer {
 
     private static final Map<UUID, Vec3> LAST_STEP = new HashMap<>();
+    private static final Map<UUID, Float> FALL_DIST = new HashMap<>();
 
     @Override
     public void onInitialize() {
@@ -54,6 +58,7 @@ public final class MobSensesFabric implements net.fabricmc.api.ModInitializer {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
             ServerBridge.clear();
             LAST_STEP.clear();
+            FALL_DIST.clear();
             MobSenses.start(loader.getConfigDir(),
                     new MobSenses.Platform("Fabric", minecraft),
                     loader.isModLoaded("voicechat"));
@@ -61,6 +66,14 @@ public final class MobSensesFabric implements net.fabricmc.api.ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             ServerBridge.clear();
             LAST_STEP.clear();
+            FALL_DIST.clear();
+        });
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            if (handler != null && handler.player != null) {
+                UUID uid = handler.player.getUUID();
+                LAST_STEP.remove(uid);
+                FALL_DIST.remove(uid);
+            }
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             tickPlayerSteps(server);
@@ -81,13 +94,24 @@ public final class MobSensesFabric implements net.fabricmc.api.ModInitializer {
             }
         });
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world instanceof ServerLevel && hand == InteractionHand.MAIN_HAND && !player.isSpectator()) {
+            if (world instanceof ServerLevel && !player.isSpectator()) {
                 BlockPos pos = hitResult.getBlockPos();
                 BlockState state = world.getBlockState(pos);
-                String event = classifyUseBlock(state.getBlock());
+                String event = (hand == InteractionHand.MAIN_HAND
+                        && (!player.isShiftKeyDown() || player.getMainHandItem().isEmpty()))
+                        ? classifyUseBlock(state.getBlock()) : null;
                 if (event != null) {
                     ServerHearing.onGameEvent((ServerLevel) world, event,
                             pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, player, state);
+                } else {
+                    ItemStack held = player.getItemInHand(hand);
+                    if (held.getItem() instanceof BlockItem) {
+                        Block placed = ((BlockItem) held.getItem()).getBlock();
+                        BlockPos placePos = pos.relative(hitResult.getDirection());
+                        ServerHearing.onGameEvent((ServerLevel) world, "minecraft:block_place",
+                                placePos.getX() + 0.5, placePos.getY() + 0.5, placePos.getZ() + 0.5,
+                                player, placed.defaultBlockState());
+                    }
                 }
             }
             return InteractionResult.PASS;
@@ -122,26 +146,41 @@ public final class MobSensesFabric implements net.fabricmc.api.ModInitializer {
 
     private static void tickPlayerSteps(MinecraftServer server) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            UUID uid = player.getUUID();
             if (player.isSpectator() || !player.isAlive()) {
-                LAST_STEP.remove(player.getUUID());
+                LAST_STEP.remove(uid);
+                FALL_DIST.remove(uid);
                 continue;
             }
             Vec3 pos = player.position();
-            Vec3 prev = LAST_STEP.get(player.getUUID());
+            boolean onGround = player.isOnGround();
+            float prevFall = FALL_DIST.containsKey(uid) ? FALL_DIST.get(uid) : 0.0f;
+            if (onGround) {
+                if (prevFall > 1.25f && !player.isInWater()) {
+                    BlockPos below = new BlockPos(pos.x, pos.y - 0.2, pos.z);
+                    ServerLevel level = player.getLevel();
+                    ServerHearing.onGameEvent(level, "minecraft:hit_ground",
+                            pos.x, pos.y, pos.z, player, level.getBlockState(below));
+                }
+                FALL_DIST.remove(uid);
+            } else {
+                FALL_DIST.put(uid, Math.max(prevFall, player.fallDistance));
+            }
+            Vec3 prev = LAST_STEP.get(uid);
             if (prev == null) {
-                LAST_STEP.put(player.getUUID(), pos);
+                LAST_STEP.put(uid, pos);
                 continue;
             }
             double dx = pos.x - prev.x;
             double dz = pos.z - prev.z;
             double horizSq = dx * dx + dz * dz;
             if (horizSq > 64.0) {
-                LAST_STEP.put(player.getUUID(), pos);
+                LAST_STEP.put(uid, pos);
                 continue;
             }
             boolean swimming = player.isSwimming();
-            if ((swimming || (player.isOnGround() && !player.isShiftKeyDown())) && horizSq >= 3.24) {
-                LAST_STEP.put(player.getUUID(), pos);
+            if ((swimming || (onGround && !player.isShiftKeyDown())) && horizSq >= 3.24) {
+                LAST_STEP.put(uid, pos);
                 BlockPos below = new BlockPos(pos.x, pos.y - 0.2, pos.z);
                 ServerLevel level = player.getLevel();
                 ServerHearing.onGameEvent(level, swimming ? "minecraft:swim" : "minecraft:step",

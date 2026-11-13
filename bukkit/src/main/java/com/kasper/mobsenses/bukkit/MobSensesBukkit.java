@@ -38,7 +38,7 @@ import java.util.logging.Level;
  */
 public final class MobSensesBukkit extends JavaPlugin implements Listener {
 
-    private static final int STATE_CHECK_TICKS = 20;
+    private static final int STATE_CHECK_TICKS = 10;
     private static final int TELEMETRY_PUSH_TICKS = 100;
 
     /** Online modded players who completed the {@code mobsenses:hello} handshake (UUID -> client language). */
@@ -77,6 +77,7 @@ public final class MobSensesBukkit extends JavaPlugin implements Listener {
         } else {
             LegacyNoiseListeners.register(this);
         }
+        TacticalBukkitListener.register(this);
 
         Bukkit.getMessenger().registerOutgoingPluginChannel(this, LinkProtocol.STATE_CHANNEL);
         Bukkit.getMessenger().registerOutgoingPluginChannel(this, LinkProtocol.ADMIN_REPLY_CHANNEL);
@@ -194,18 +195,20 @@ public final class MobSensesBukkit extends JavaPlugin implements Listener {
         }
         String worldName = w.getName();
         boolean admin = isAdmin(player);
+        long now = System.currentTimeMillis();
+        int playerAlert = MobSenses.playerAlertLevel(id, now);
         String fp = worldName + '|' + admin + '|' + MobSenses.debug()
                 + '|' + MobSenses.settings().allowClientHud()
-                + '|' + MobSenses.settings().presetOf(worldName).id();
+                + '|' + MobSenses.settings().presetOf(worldName).id()
+                + '|' + playerAlert;
         String prevFp = lastStateFingerprints.put(id, fp);
         if (forceState || !fp.equals(prevFp)) {
-            sendState(player, worldName, admin);
+            sendState(player, worldName, admin, now, playerAlert);
         }
     }
 
-    private void sendState(Player player, String worldName, boolean admin) {
-        long now = System.currentTimeMillis();
-        byte[] bytes = LinkProtocol.encodeState(
+    private void sendState(Player player, String worldName, boolean admin, long now, int playerAlert) {
+        byte[] bytes = LinkProtocol.encodePacket(LinkProtocol.buildState(
                 MobSenses.settings(),
                 worldName,
                 admin,
@@ -213,7 +216,8 @@ public final class MobSensesBukkit extends JavaPlugin implements Listener {
                 MobSenses.voiceChatInstalled(),
                 MobSenses.noise().lastMinute(now),
                 MobSenses.alerted().lastMinute(now),
-                MobSenses.platform().toString());
+                MobSenses.platform().toString(),
+                playerAlert));
         player.sendPluginMessage(this, LinkProtocol.STATE_CHANNEL, bytes);
     }
 
@@ -250,6 +254,7 @@ public final class MobSensesBukkit extends JavaPlugin implements Listener {
         moddedPlayers.remove(id);
         lastStateFingerprints.remove(id);
         BukkitSenses.forgetPlayer(id);
+        MobSenses.clearPlayerAlert(id);
     }
 
     @Override

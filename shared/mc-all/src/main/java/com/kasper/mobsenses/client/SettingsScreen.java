@@ -8,6 +8,7 @@ import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.Reply;
 import com.kasper.mobsenses.ServerLink;
 import com.kasper.mobsenses.ServerSettings;
+import com.kasper.mobsenses.SightModel;
 import com.kasper.mobsenses.StealthHudState;
 import com.kasper.mobsenses.compat.BaseScreen;
 import com.kasper.mobsenses.compat.Btn;
@@ -92,8 +93,10 @@ public abstract class SettingsScreen extends BaseScreen {
 
     private int previewStage = 1;
     private long lastPulseTimeMs;
+    private String pendingSliderKey;
     private String pendingSliderCommand;
     private int pendingSliderTicks;
+    private long lastSliderEditMs;
 
     private String localToastMessage = "";
     private boolean localToastOk = true;
@@ -161,7 +164,7 @@ public abstract class SettingsScreen extends BaseScreen {
             localToastOk = link.lastReplyOk();
             localToastTimeMs = System.currentTimeMillis();
         }
-        if (pendingSliderTicks <= 0) {
+        if (pendingSliderTicks <= 0 && (System.currentTimeMillis() - lastSliderEditMs) > 400L) {
             rebuildLayout();
         }
     }
@@ -195,18 +198,22 @@ public abstract class SettingsScreen extends BaseScreen {
         ServerSettings s = activeServerSettings();
         if (stage == 0) {
             previewHud.update(1, 0, 0, true, false, false, 0.35, 20.0, 20.0, 0.0, now, false, false, 0.0);
+            previewHud.syncRemoteMobAlert(StealthHudState.ALERT_CALM, now);
         } else if (stage == 1) {
             double stepR = Math.max(6.0, s.stepRange() * s.hearing());
             previewHud.update(7, 5, 0, false, false, true, 1.0, 16.0, 20.0, 0.40, now, false, true, 5.0);
             previewHud.onLocalNoise(stepR, now);
+            previewHud.syncRemoteMobAlert(StealthHudState.ALERT_SUSPICIOUS, now);
         } else if (stage == 2) {
             double silR = Math.max(12.0, s.gunshotSilencedRange() * s.hearing());
             previewHud.update(9, 8, 0, false, false, true, 1.0, 7.0, 20.0, 0.55, now, false, true, 6.0);
             previewHud.onLocalNoise(silR, now);
+            previewHud.syncRemoteMobAlert(StealthHudState.ALERT_SEARCHING, now);
         } else {
             double gunR = Math.max(28.0, s.gunshotRange() * s.hearing());
             previewHud.update(13, 12, 14, false, true, true, 1.4, 5.0, 20.0, 0.92, now, false, false, s.voiceRange());
             previewHud.onLocalNoise(gunR, now);
+            previewHud.syncRemoteMobAlert(StealthHudState.ALERT_HUNTED, now);
         }
         MobSenses.hud().triggerPreview(now);
     }
@@ -311,6 +318,7 @@ public abstract class SettingsScreen extends BaseScreen {
                 () -> {
                     cfg.setEnabled(!cfg.enabled());
                     cfg.save();
+                    MobSenses.hud().setEnabled(cfg.enabled());
                     rebuildLayout();
                 }, true);
         addScrollButton(rightX, y, rightW, 18,
@@ -386,10 +394,10 @@ public abstract class SettingsScreen extends BaseScreen {
                 }, true);
         y += 21;
 
-        // Row 5: Offset X | Offset Y (-200..200 px)
+        // Row 5: Offset X | Offset Y (-500..500 px)
         addScrollSlider(x, y, colW, 18,
                 "gui.mobsenses.hud.offset_x", "gui.mobsenses.hud.offset_x.tip",
-                cfg.x(), -200, 200, 1,
+                cfg.x(), -500, 500, 1,
                 v -> Math.round(v) + " px",
                 v -> {
                     cfg.setX((int) Math.round(v));
@@ -398,7 +406,7 @@ public abstract class SettingsScreen extends BaseScreen {
 
         addScrollSlider(rightX, y, rightW, 18,
                 "gui.mobsenses.hud.offset_y", "gui.mobsenses.hud.offset_y.tip",
-                cfg.y(), -200, 200, 1,
+                cfg.y(), -500, 500, 1,
                 v -> Math.round(v) + " px",
                 v -> {
                     cfg.setY((int) Math.round(v));
@@ -495,8 +503,14 @@ public abstract class SettingsScreen extends BaseScreen {
                 s.surfaceSoundScaling(), "surface_sound_scaling", editable);
         y += 21;
 
+        addServerToggle(x, y, colW, "gui.mobsenses.hearing.sound_cover", "gui.mobsenses.hearing.sound_cover.tip",
+                s.soundCoverEnabled(), "sound_cover_enabled", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.hearing.decoy_throw", "gui.mobsenses.hearing.decoy_throw.tip",
+                s.decoyThrowEnabled(), "decoy_throw_enabled", editable);
+        y += 21;
+
         addServerSlider(x, y, colW, "gui.mobsenses.hearing.rain_muffling", "gui.mobsenses.hearing.rain_muffling.tip",
-                s.rainMuffling(), 0.0, 0.90, 0.05, SettingsScreen::fmtPct01, "rain_muffling", editable);
+                s.rainMuffling(), 0.0, 1.00, 0.05, SettingsScreen::fmtPct01, "rain_muffling", editable);
         addServerSlider(rightX, y, rightW, "gui.mobsenses.hearing.feather_falling", "gui.mobsenses.hearing.feather_falling.tip",
                 s.featherFallingMuffling(), 0.0, 1.00, 0.05, SettingsScreen::fmtPct01, "feather_falling_muffling", editable);
         y += 21;
@@ -555,6 +569,12 @@ public abstract class SettingsScreen extends BaseScreen {
                 s.scentRange(), 0.0, 48.0, 1.0, SettingsScreen::fmtBlocks, "scent_range", editable);
         addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.horde_range", "gui.mobsenses.sight.horde_range.tip",
                 s.hordeAlertRange(), 0.0, 32.0, 1.0, SettingsScreen::fmtBlocks, "horde_alert_range", editable);
+        y += 21;
+
+        addServerToggle(x, y, colW, "gui.mobsenses.sight.safe_goal_filter", "gui.mobsenses.sight.safe_goal_filter.tip",
+                s.safeGoalFilter(), "safe_goal_filter", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.suspicion", "gui.mobsenses.sight.suspicion.tip",
+                s.suspicionEnabled(), "suspicion_enabled", editable);
         y += 23;
 
         // 4. World & Server
@@ -562,7 +582,7 @@ public abstract class SettingsScreen extends BaseScreen {
         y += 13;
 
         String worldId = resolveCurrentWorldId();
-        Preset worldOwn = worldId.isEmpty() ? null : s.worlds().get(worldId);
+        Preset worldOwn = worldId.isEmpty() ? null : s.worldOwnPreset(worldId);
         Component worldBadge = worldOwn == null
                 ? Txt.literal("Inherit (" + s.preset().id() + ")").withStyle(ChatFormatting.GRAY)
                 : Txt.translatable("command.mobsenses.preset." + worldOwn.id()).withStyle(ChatFormatting.AQUA);
@@ -600,6 +620,7 @@ public abstract class SettingsScreen extends BaseScreen {
                     if (currentTab == Tab.HUD) {
                         MobSenses.clientSettings().reset();
                         MobSenses.clientSettings().save();
+                        MobSenses.hud().setEnabled(MobSenses.clientSettings().enabled());
                         rebuildLayout();
                     } else {
                         applyAdminImmediate("reset all");
@@ -677,7 +698,11 @@ public abstract class SettingsScreen extends BaseScreen {
         addScrollSlider(x, y, w, 18, labelKey, tipKey, current, min, max, step, fmt, v -> {
             String formatted = ServerSettings.format(v);
             if (isRemoteMultiplayer()) {
+                if (pendingSliderKey != null && !pendingSliderKey.equals(optionKey)) {
+                    flushPendingSlider();
+                }
                 activeServerSettings().setOption(optionKey, formatted);
+                pendingSliderKey = optionKey;
                 pendingSliderCommand = "set " + optionKey + " " + formatted;
                 pendingSliderTicks = 6;
             } else {
@@ -728,12 +753,19 @@ public abstract class SettingsScreen extends BaseScreen {
     private void flushPendingSlider() {
         if (pendingSliderCommand != null) {
             String cmd = pendingSliderCommand;
+            pendingSliderKey = null;
             pendingSliderCommand = null;
             pendingSliderTicks = 0;
             if (isRemoteMultiplayer() && MobSenses.serverLink().connected() && MobSenses.serverLink().isAdmin()) {
                 MobSenses.serverLink().sendAdmin(cmd, ClientLink.languageCode(this.minecraft));
             }
         }
+    }
+
+    @Override
+    public void removed() {
+        flushPendingSlider();
+        super.removed();
     }
 
     @Override
@@ -774,7 +806,12 @@ public abstract class SettingsScreen extends BaseScreen {
             boolean active) {
         Tip tip = tipKey == null ? null : Tip.of(Txt.translatable(tipKey));
         RangeSlider slider = new RangeSlider(x, baseY, w, h, Txt.translatable(labelKey),
-                current, min, max, step, fmt, onChanged, tip);
+                current, min, max, step, fmt, v -> {
+                    lastSliderEditMs = System.currentTimeMillis();
+                    if (onChanged != null) {
+                        onChanged.accept(v);
+                    }
+                }, tip);
         slider.active = active;
         addRenderableWidget(slider);
         allWidgets.add(slider);
@@ -1057,12 +1094,8 @@ public abstract class SettingsScreen extends BaseScreen {
         if (baseRange <= 0.0 || p == null || p == Preset.OFF) {
             return 0.0;
         }
-        int effLight = Math.max(Math.max(blockLight, skyLight), heldLight);
-        double ambient = s.darknessStealthEnabled() ? (0.35 + 0.65 * (effLight / 15.0)) : 1.0;
-        double bonus = (heldLight > 0 && s.heldLightEnabled()) ? (s.heldLightBonus() * (heldLight / 15.0)) : 0.0;
-        double posture = sneaking ? (s.darknessStealthEnabled() ? s.sneakSightMultiplier() : 1.0) : 1.0;
+        double factor = SightModel.visibilityFactor(blockLight, skyLight, heldLight, sneaking, false, s);
         double minVis = s.darknessStealthEnabled() ? s.darknessMinVisibility() : 1.0;
-        double factor = Math.max(minVis, Math.min(1.85, (ambient + bonus) * posture));
         double scaled = 1.0 + (factor - 1.0) * p.sight();
         return Math.max(2.0, baseRange * Math.max(minVis, scaled));
     }

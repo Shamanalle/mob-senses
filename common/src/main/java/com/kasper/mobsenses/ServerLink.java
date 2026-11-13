@@ -29,6 +29,7 @@ public final class ServerLink {
     private volatile long noiseLastMinute;
     private volatile long alertedLastMinute;
     private volatile String worldsSummary = "";
+    private volatile int playerAlert;
 
     private volatile boolean lastReplyOk = true;
     private volatile String lastReplyMessage = "";
@@ -97,6 +98,11 @@ public final class ServerLink {
         return connected ? worldsSummary : MobSenses.settings().worldsSummary();
     }
 
+    /** Current synced nearby mob alertness level ({@code 0=calm, 1=suspicious, 2=searching, 3=hunted}). */
+    public int playerAlert() {
+        return connected ? playerAlert : MobSenses.hud().mobAlertLevel();
+    }
+
     /** Snapshot of the remote server's {@link ServerSettings}. */
     public ServerSettings remoteSettings() {
         return remoteSettings;
@@ -160,6 +166,12 @@ public final class ServerLink {
         this.worldsSummary = p.getProperty("worlds_summary") != null
                 ? p.getProperty("worlds_summary").trim()
                 : synced.worldsSummary();
+        int alert = synced.allowClientHud()
+                ? Math.max(StealthHudState.ALERT_CALM,
+                        Math.min(StealthHudState.ALERT_HUNTED, parseInt(p.getProperty("player_alert"), 0)))
+                : StealthHudState.ALERT_CALM;
+        this.playerAlert = alert;
+        MobSenses.hud().syncRemoteMobAlert(alert, System.currentTimeMillis());
         this.connected = true;
         return true;
     }
@@ -240,6 +252,8 @@ public final class ServerLink {
         this.noiseLastMinute = 0L;
         this.alertedLastMinute = 0L;
         this.worldsSummary = "";
+        this.playerAlert = 0;
+        MobSenses.hud().syncRemoteMobAlert(0, 0L);
         this.lastReplyOk = true;
         this.lastReplyMessage = "";
         this.lastReplyTimestampMs = 0L;

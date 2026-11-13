@@ -33,6 +33,7 @@ public final class ClientHudCommand {
     private static final Method MC_GET_CHAT = resolveGetChat(Minecraft.class);
     private static final Method CHAT_ADD_MESSAGE = resolveChatAddMessage();
     private static final Method PLAYER_SEND_MESSAGE = resolvePlayerSendMessage();
+    private static final Method PLAYER_DISPLAY_CLIENT_MESSAGE = resolvePlayerDisplayClientMessage();
 
     private ClientHudCommand() {
     }
@@ -57,7 +58,8 @@ public final class ClientHudCommand {
             if ("addClientSystemMessage".equals(n)
                     || "addMessage".equals(n)
                     || "method_1812".equals(n)
-                    || "m_93785_".equals(n)) {
+                    || "m_93785_".equals(n)
+                    || "func_146227_a".equals(n)) {
                 return m;
             }
             if (!n.contains("Server")) {
@@ -72,7 +74,26 @@ public final class ClientHudCommand {
             Class<?>[] p = m.getParameterTypes();
             if (p.length == 1 && p[0] == Component.class && m.getReturnType() == void.class) {
                 String n = m.getName();
-                if ("sendSystemMessage".equals(n) || "displayClientMessage".equals(n)) {
+                if ("sendSystemMessage".equals(n)
+                        || "displayClientMessage".equals(n)
+                        || "method_43496".equals(n)
+                        || "m_213846_".equals(n)) {
+                    return m;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Method resolvePlayerDisplayClientMessage() {
+        for (Method m : LocalPlayer.class.getMethods()) {
+            Class<?>[] p = m.getParameterTypes();
+            if (p.length == 2 && p[0] == Component.class && p[1] == boolean.class && m.getReturnType() == void.class) {
+                String n = m.getName();
+                if ("displayClientMessage".equals(n)
+                        || "method_7353".equals(n)
+                        || "m_5661_".equals(n)
+                        || "func_146105_b".equals(n)) {
                     return m;
                 }
             }
@@ -127,8 +148,12 @@ public final class ClientHudCommand {
                 try {
                     if (chat != null && CHAT_ADD_MESSAGE != null) {
                         CHAT_ADD_MESSAGE.invoke(chat, text);
-                    } else if (mc.player != null && PLAYER_SEND_MESSAGE != null) {
-                        PLAYER_SEND_MESSAGE.invoke(mc.player, text);
+                    } else if (mc.player != null) {
+                        if (PLAYER_SEND_MESSAGE != null) {
+                            PLAYER_SEND_MESSAGE.invoke(mc.player, text);
+                        } else if (PLAYER_DISPLAY_CLIENT_MESSAGE != null) {
+                            PLAYER_DISPLAY_CLIENT_MESSAGE.invoke(mc.player, text, Boolean.FALSE);
+                        }
                     }
                 } catch (Throwable ignored) {
                 }

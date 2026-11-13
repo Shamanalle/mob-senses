@@ -1,6 +1,6 @@
 package com.kasper.mobsenses;
 
-import com.kasper.mobsenses.server.AdminPermission;
+import com.kasper.mobsenses.server.CommandSources;
 import com.kasper.mobsenses.server.ServerBridge;
 import io.netty.buffer.ByteBuf;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -99,7 +99,7 @@ public final class ModNetworking {
     }
 
     public static boolean isAdmin(ServerPlayer player) {
-        return player != null && AdminPermission.isAdmin(player.createCommandSourceStack());
+        return CommandSources.isAdmin(player);
     }
 
     public static void sendState(ServerPlayer player, String raw) {

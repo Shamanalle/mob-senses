@@ -136,6 +136,7 @@ public final class NoiseModel {
                 return Kind.COMBAT;
             case "projectile_shoot":
             case "projectile_land":
+            case "decoy_land":
             case "fishing_rod_cast":
             case "fishing_rod_reel_in":
                 return Kind.PROJECTILE;
@@ -191,6 +192,58 @@ public final class NoiseModel {
             return Math.min(base, AcousticMaterial.SOFT.stepFactor());
         }
         return base;
+    }
+
+    /**
+     * Loudness multiplier for an item thrown as a decoy and hitting a surface: bells ring farthest,
+     * metal gear clatters louder than stone/glass, and feathers, wool, paper or snowballs land softly.
+     */
+    public static double decoyItemMultiplier(String itemId) {
+        if (itemId == null || itemId.isEmpty()) {
+            return 1.0;
+        }
+        String name = normalizeEvent(itemId);
+        if (name.contains("bell")) {
+            return 1.50;
+        }
+        if (name.contains("wool") || name.contains("carpet") || name.contains("feather")
+                || name.contains("moss") || name.contains("paper") || name.contains("sponge")
+                || name.contains("leaf") || name.contains("leaves") || name.contains("string")
+                || name.contains("kelp") || name.contains("hay") || name.contains("banner")) {
+            return 0.55;
+        }
+        if (name.contains("snowball") || name.contains("slime") || name.contains("clay")
+                || name.contains("mud") || name.contains("dirt") || name.contains("sand")
+                || name.contains("seed") || name.contains("sapling") || hasWordToken(name, "stick")
+                || name.contains("plank") || name.contains("flower") || name.contains("wheat")
+                || name.contains("bread") || name.contains("apple") || name.contains("meat")
+                || name.contains("flesh") || name.contains("leather")) {
+            return 0.85;
+        }
+        if (name.contains("iron") || name.contains("gold") || name.contains("copper")
+                || name.contains("netherite") || name.contains("diamond") || name.contains("metal")
+                || name.contains("steel") || name.contains("brass") || name.contains("chain")
+                || name.contains("anvil") || name.contains("bucket")
+                || hasWordToken(name, "rail") || name.endsWith("_rail")
+                || name.contains("minecart") || name.contains("cauldron") || name.contains("hopper")
+                || name.contains("compass") || name.contains("clock") || name.contains("trident")
+                || name.contains("sword") || name.contains("pickaxe")
+                || hasWordToken(name, "axe") || name.endsWith("_axe")
+                || name.contains("shovel") || name.contains("hoe") || name.contains("helmet")
+                || name.contains("chestplate") || name.contains("leggings") || name.contains("boots")
+                || name.contains("shield") || name.contains("shears")
+                || name.contains("flint_and_steel")) {
+            return 1.30;
+        }
+        if (name.contains("stone") || name.contains("cobble") || name.contains("brick")
+                || name.contains("glass") || name.contains("bottle") || name.contains("amethyst")
+                || name.contains("flint") || name.contains("quartz") || name.contains("prismarine")
+                || name.contains("obsidian") || name.contains("deepslate") || name.contains("basalt")
+                || name.contains("blackstone") || name.contains("ender_pearl")
+                || name.contains("fire_charge") || hasWordToken(name, "pot") || name.endsWith("_pot")) {
+            return 1.15;
+        }
+        return 1.0;
     }
 
     /**
@@ -278,6 +331,13 @@ public final class NoiseModel {
             }
             case PROJECTILE: {
                 double base = settings != null ? settings.projectileRange() : Kind.PROJECTILE.defaultRange();
+                if ("decoy_land".equals(id)) {
+                    boolean scaleSurface = settings == null || settings.surfaceSoundScaling();
+                    double matFactor = scaleSurface && effectiveMat != null && effectiveMat != AcousticMaterial.AIR
+                            ? effectiveMat.blockFactor() : 1.0;
+                    double itemFactor = scaleSurface ? decoyItemMultiplier(blockId) : 1.0;
+                    return base * (18.0 / 15.0) * matFactor * itemFactor;
+                }
                 return "projectile_land".equals(id) ? base * (16.0 / 15.0) : base * (12.0 / 15.0);
             }
             case GUNSHOT: {
@@ -388,12 +448,48 @@ public final class NoiseModel {
                 || name.contains("leggings") || name.contains("boots") || name.contains("parachute")
                 || name.contains("wrench") || name.contains("medkit") || name.contains("bandage")
                 || name.contains("drone") || name.contains("vehicle") || name.contains("crate")
+                || name.contains("bayonet") || name.contains("speedloader")
+                || name.contains("respirator") || name.contains("gas_mask")
+                || name.contains("brass_mask") || name.contains("goggles")
+                || name.contains("spawn_egg")
+                || name.contains("pickaxe") || name.contains("shovel") || name.contains("paxel")
+                || name.contains("crowbar") || name.contains("machete") || name.contains("katana")
+                || name.contains("baton") || name.contains("chainsaw") || name.contains("cleaver")
+                || name.contains("turret") || name.contains("printer") || name.contains("recycler")
+                || name.contains("macerator") || name.contains("polarizer") || name.contains("compressor")
+                || name.contains("cryoniter") || name.contains("thermolith") || name.contains("statue")
+                || name.contains("minecart") || name.contains("binoculars") || name.contains("designator")
+                || name.contains("artillery_indicator") || name.contains("dog_tag")
+                || name.contains("medical_kit") || name.contains("syringe") || name.contains("salve")
+                || name.contains("air_tank") || name.contains("battery") || name.contains("charging_station")
+                || name.contains("container") || name.contains("holosight") || name.contains("red_dot")
+                || name.contains("compensator") || name.contains("flash_hider")
+                || name.contains("schematic") || name.contains("mold") || name.contains("exo_suit")
+                || name.contains("processor") || name.contains("internals")
+                || hasWordToken(name, "axe") || hasWordToken(name, "hoe")
+                || hasWordToken(name, "sword") || hasWordToken(name, "knife")
+                || hasWordToken(name, "dagger") || hasWordToken(name, "club")
+                || hasWordToken(name, "perk") || hasWordToken(name, "target")
+                || hasWordToken(name, "pill")
+                || (!name.contains("launcher") && hasWordToken(name, "mortar"))
+                || (!name.contains("gun") && !name.contains("launcher") && hasWordToken(name, "flare"))
+                || (!name.contains("launcher") && !name.contains("gun") && !name.contains("rifle") && !name.contains("lance")
+                        && (name.contains("grenade") || name.contains("molotov") || name.contains("claymore")
+                        || name.contains("landmine") || name.contains("choke_bomb") || name.contains("swarm_bomb")
+                        || name.contains("smoke_bomb") || name.contains("flashbang") || name.contains("flash_bang")
+                        || hasWordToken(name, "c4") || name.equals("c4_bomb")
+                        || name.equals("tm_62") || name.equals("m67") || name.equals("ptkm_1r")))
+                || hasWordToken(name, "silencer") || hasWordToken(name, "suppressor")
+                || hasWordToken(name, "cartridge") || hasWordToken(name, "canister")
+                || hasWordToken(name, "shell") || hasWordToken(name, "shells")
+                || hasWordToken(name, "round") || hasWordToken(name, "rounds")
                 || hasWordToken(name, "vest") || hasWordToken(name, "hammer")
                 || hasWordToken(name, "part") || hasWordToken(name, "parts")
                 || hasWordToken(name, "scrap")) {
             return false;
         }
-        if (full.startsWith("tacz:") || full.startsWith("pointblank:")
+        if ((full.startsWith("tacz:") && name.contains("gun"))
+                || full.startsWith("pointblank:")
                 || full.startsWith("cgm:") || full.startsWith("scguns:")
                 || full.startsWith("superbwarfare:") || full.startsWith("sbw:")
                 || full.startsWith("jeg:")
@@ -433,25 +529,198 @@ public final class NoiseModel {
     }
 
     /**
-     * Whether a firearm item or its NBT/DataComponent summary indicates a suppressor/silencer is attached
-     * (such as TaCZ's {@code tacz:muzzle_silence_*} attachments).
+     * Whether a firearm item or its NBT/DataComponent summary indicates a suppressed, air-powered,
+     * pneumatic, or subsonic weapon (such as TaCZ's {@code tacz:muzzle_silence_*} attachments,
+     * integrally suppressed guns like VSS/AS Val/MP5SD, Superb Warfare {@code bocek}/{@code taser}
+     * and barrel suppressors, or Scorched Guns 2 air guns and integrally silenced firearms).
      */
     public static boolean isSilencedFirearm(String itemId, String tagSummary) {
-        if (itemId != null) {
-            String lowId = itemId.toLowerCase(Locale.ROOT);
-            if (lowId.contains("silence") || lowId.contains("suppress") || lowId.contains("subsonic")) {
+        String full = itemId != null ? itemId.trim().toLowerCase(Locale.ROOT) : "";
+        if (!full.isEmpty()) {
+            String name = normalizeEvent(full);
+            if (full.contains("silence") || full.contains("suppress") || full.contains("subsonic")
+                    || full.contains("airgun") || full.contains("air_gun")
+                    || full.contains("air_pistol") || full.contains("air_rifle")
+                    || full.contains("pneumatic") || full.contains("blowgun")
+                    || full.contains("dart_gun")
+                    || hasIntegrallySuppressedToken(full)
+                    || (full.startsWith("scguns:") && isKnownQuietScorchedGun(name))
+                    || ((full.startsWith("superbwarfare:") || full.startsWith("sbw:"))
+                            && (name.equals("bocek") || name.equals("taser")))) {
                 return true;
             }
         }
         if (tagSummary != null && !tagSummary.isEmpty()) {
-            String lowTag = tagSummary.toLowerCase(Locale.ROOT);
-            return lowTag.contains("silence")
+            String lowTag = tagSummary.toLowerCase(Locale.ROOT)
+                    .replace("issilenced:0b", "")
+                    .replace("issilenced:0", "")
+                    .replace("issilenced:false", "")
+                    .replace("\"issilenced\":false", "")
+                    .replace("\"issilenced\":0", "")
+                    .replace("silenced:0b", "")
+                    .replace("silenced:0", "")
+                    .replace("silenced:false", "")
+                    .replace("\"silenced\":false", "")
+                    .replace("\"silenced\":0", "");
+            if (lowTag.contains("silence")
                     || lowTag.contains("silencer")
                     || lowTag.contains("suppress")
                     || lowTag.contains("suppressor")
-                    || lowTag.contains("subsonic");
+                    || lowTag.contains("subsonic")
+                    || lowTag.contains("airgun")
+                    || lowTag.contains("air_gun")
+                    || lowTag.contains("pneumatic")
+                    || lowTag.contains("mobsenses:silenced")
+                    || hasIntegrallySuppressedToken(lowTag)
+                    || lowTag.contains("pbs_1")
+                    || lowTag.contains("pbs1")
+                    || lowTag.contains("pbs_4")
+                    || lowTag.contains("pbs4")
+                    || lowTag.contains("dtk4")
+                    || lowTag.contains("tgpa")) {
+                return true;
+            }
+            if ((full.startsWith("superbwarfare:") || full.startsWith("sbw:") || lowTag.contains("superbwarfare"))
+                    && hasLegacySbwBarrelSuppressor(lowTag)) {
+                return true;
+            }
         }
         return false;
+    }
+
+    private static boolean hasIntegrallySuppressedToken(String s) {
+        if (s == null || s.isEmpty()) {
+            return false;
+        }
+        if (s.contains("vintorez")
+                || s.contains("as_val")
+                || s.contains("asval")
+                || s.contains("mp5sd")
+                || s.contains("mp5_sd")
+                || s.contains("honey_badger")
+                || s.contains("honeybadger")
+                || s.contains("welrod")
+                || s.contains("de_lisle")
+                || s.contains("delisle")
+                || s.contains("vssk")
+                || s.contains("vykhlop")
+                || s.contains("maxim_9")
+                || s.contains("maxim9")) {
+            return true;
+        }
+        if (containsTokenBounded(s, "vss")) {
+            return true;
+        }
+        return s.endsWith("_sd")
+                || s.contains("_sd\"")
+                || s.contains("_sd,")
+                || s.contains("_sd}")
+                || s.contains("_sd_")
+                || s.contains("_sd ");
+    }
+
+    private static boolean containsTokenBounded(String s, String token) {
+        int from = 0;
+        while (true) {
+            int idx = s.indexOf(token, from);
+            if (idx < 0) {
+                return false;
+            }
+            boolean leftOk = idx == 0 || !isAlphaNum(s.charAt(idx - 1));
+            int after = idx + token.length();
+            boolean rightOk = after >= s.length() || !isAlphaNum(s.charAt(after));
+            if (leftOk && rightOk) {
+                return true;
+            }
+            from = idx + 1;
+        }
+    }
+
+    private static boolean isAlphaNum(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+    }
+
+    private static boolean hasLegacySbwBarrelSuppressor(String lowTag) {
+        int from = 0;
+        while (true) {
+            int idx = lowTag.indexOf("barrel", from);
+            if (idx < 0) {
+                return false;
+            }
+            boolean leftOk = idx == 0 || !isAlphaNum(lowTag.charAt(idx - 1));
+            int i = idx + "barrel".length();
+            if (leftOk) {
+                while (i < lowTag.length()) {
+                    char c = lowTag.charAt(i);
+                    if (c == '"' || c == ':' || c == '=' || c == ' ') {
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+                if (i < lowTag.length() && lowTag.charAt(i) == '2') {
+                    int next = i + 1;
+                    if (next >= lowTag.length()
+                            || (!Character.isDigit(lowTag.charAt(next)) && lowTag.charAt(next) != '.')) {
+                        return true;
+                    }
+                }
+            }
+            from = idx + 1;
+        }
+    }
+
+    private static boolean isKnownQuietScorchedGun(String name) {
+        switch (name) {
+            case "scratches":
+            case "gale":
+            case "umax_pistol":
+            case "venturi":
+            case "niami":
+            case "crusader":
+            case "valora":
+            case "mokova":
+            case "whispers":
+            case "sculk_resonator":
+            case "echoes_2":
+            case "forlorn_hope":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Whether {@code entityTypeId} is definitely a vanilla or non-gun throwable/arrow/utility projectile
+     * so holding a firearm in the offhand never upgrades an ordinary throw or bow shot to a gunshot.
+     */
+    public static boolean isNonFirearmProjectile(String entityTypeId) {
+        if (entityTypeId == null || entityTypeId.isEmpty()) {
+            return false;
+        }
+        String name = normalizeEvent(entityTypeId);
+        switch (name) {
+            case "arrow":
+            case "spectral_arrow":
+            case "snowball":
+            case "egg":
+            case "ender_pearl":
+            case "potion":
+            case "splash_potion":
+            case "lingering_potion":
+            case "experience_bottle":
+            case "trident":
+            case "fishing_bobber":
+            case "firework_rocket":
+            case "wind_charge":
+            case "breeze_wind_charge":
+            case "llama_spit":
+            case "shulker_bullet":
+            case "eye_of_ender":
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -468,14 +737,18 @@ public final class NoiseModel {
         if (full.startsWith("tacz:") || full.startsWith("pointblank:")
                 || full.startsWith("cgm:") || full.startsWith("scguns:")
                 || full.startsWith("superbwarfare:") || full.startsWith("sbw:")
-                || full.startsWith("jeg:")
-                || full.startsWith("musketmod:")) {
+                || full.startsWith("jeg:") || full.startsWith("musketmod:")
+                || full.startsWith("ava:") || full.startsWith("flansmod:")
+                || full.startsWith("techguns:")) {
             return name.contains("bullet") || name.contains("projectile")
                     || name.contains("pellet") || name.contains("shell")
                     || name.contains("rocket") || name.contains("missile")
                     || name.contains("grenade") || name.contains("ammo")
                     || name.contains("slug") || name.contains("mortar")
-                    || name.contains("rpg") || name.contains("flechette");
+                    || name.contains("rpg") || name.contains("flechette")
+                    || name.contains("dart") || name.contains("electrode")
+                    || name.contains("laser") || name.contains("beam")
+                    || name.contains("plasma") || name.contains("bolt");
         }
         return name.equals("bullet")
                 || name.endsWith("_bullet")

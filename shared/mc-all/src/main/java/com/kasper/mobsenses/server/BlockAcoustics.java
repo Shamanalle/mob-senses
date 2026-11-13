@@ -2,6 +2,7 @@ package com.kasper.mobsenses.server;
 
 import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.RayBundle;
+import com.kasper.mobsenses.TacticalTargets;
 import com.kasper.mobsenses.VoxelRay;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -253,5 +254,111 @@ public final class BlockAcoustics {
         }
         BlockPos below = pos.relative(Direction.DOWN);
         return level.getBlockState(below).isAir() ? pos : below;
+    }
+
+    /** Whether {@code pos} contains water (excluding lava). */
+    public static boolean isWaterAt(Level level, BlockPos pos) {
+        if (level == null || pos == null) {
+            return false;
+        }
+        BlockState state = level.getBlockState(pos);
+        if (state == null || state.getFluidState().isEmpty()) {
+            return false;
+        }
+        String id = blockId(state).toLowerCase(Locale.ROOT);
+        return !id.contains("lava");
+    }
+
+    private static boolean isDirectHazardBlock(BlockState state) {
+        if (state == null || state.isAir()) {
+            return false;
+        }
+        String id = blockId(state).toLowerCase(Locale.ROOT);
+        return id.endsWith(":fire") || id.contains("soul_fire") || id.contains("campfire")
+                || id.contains("lava") || id.contains("magma") || id.contains("cactus")
+                || id.contains("sweet_berry_bush") || id.contains("wither_rose")
+                || id.contains("powder_snow") || id.contains("pointed_dripstone");
+    }
+
+    private static boolean isOpenPitfallTrap(BlockState state) {
+        if (state == null) {
+            return false;
+        }
+        if (state.getBlock() instanceof TrapDoorBlock && Boolean.TRUE.equals(state.getValue(TrapDoorBlock.OPEN))) {
+            return true;
+        }
+        return state.getBlock() instanceof FenceGateBlock && Boolean.TRUE.equals(state.getValue(FenceGateBlock.OPEN));
+    }
+
+    /** Whether block {@code (x, y, z)} is a hazard (fire, lava, magma, campfire, cactus, berries, wither rose, powder snow, or open trapdoor/fence-gate drop). */
+    public static boolean isHazardousState(Level level, int x, int y, int z) {
+        if (level == null) {
+            return false;
+        }
+        BlockPos pos = new BlockPos(x, y, z);
+        BlockState state = level.getBlockState(pos);
+        if (state == null || state.isAir()) {
+            return false;
+        }
+        if (isDirectHazardBlock(state)) {
+            return true;
+        }
+        if (isOpenPitfallTrap(state)) {
+            int dropDepth = 0;
+            for (int dy = 1; dy <= 3; dy++) {
+                BlockPos belowPos = new BlockPos(x, y - dy, z);
+                BlockState below = level.getBlockState(belowPos);
+                if (isDirectHazardBlock(below)) {
+                    return true;
+                }
+                if (!isOpenPitfallTrap(below)
+                        && below.getFluidState().isEmpty()
+                        && !below.getCollisionShape(level, belowPos).isEmpty()) {
+                    break;
+                }
+                dropDepth++;
+            }
+            return dropDepth >= 3;
+        }
+        return false;
+    }
+
+    /** Returns a {@link TacticalTargets.HazardWorld} view of {@code level} for {@code safe_goal_filter}. */
+    public static TacticalTargets.HazardWorld hazardWorld(final Level level) {
+        if (level == null) {
+            return null;
+        }
+        return new TacticalTargets.HazardWorld() {
+            @Override
+            public boolean isHazardous(int x, int y, int z) {
+                return isHazardousState(level, x, y, z);
+            }
+
+            @Override
+            public boolean isStandable(int x, int y, int z) {
+                if (isHazardousState(level, x, y, z)
+                        || isHazardousState(level, x, y - 1, z)
+                        || isHazardousState(level, x, y + 1, z)) {
+                    return false;
+                }
+                BlockPos feet = new BlockPos(x, y, z);
+                BlockPos head = new BlockPos(x, y + 1, z);
+                BlockPos floor = new BlockPos(x, y - 1, z);
+                BlockState feetSt = level.getBlockState(feet);
+                BlockState headSt = level.getBlockState(head);
+                BlockState floorSt = level.getBlockState(floor);
+                if (!feetSt.getFluidState().isEmpty() || !headSt.getFluidState().isEmpty()) {
+                    return false;
+                }
+                if (!feetSt.getCollisionShape(level, feet).isEmpty()
+                        || !headSt.getCollisionShape(level, head).isEmpty()) {
+                    return false;
+                }
+                if (isOpenPitfallTrap(floorSt)) {
+                    return false;
+                }
+                return !floorSt.getCollisionShape(level, floor).isEmpty();
+            }
+        };
     }
 }

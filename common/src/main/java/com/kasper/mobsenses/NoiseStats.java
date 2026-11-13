@@ -15,7 +15,7 @@ public final class NoiseStats {
     /** One game event at {@code nowMillis}. */
     public synchronized void record(long nowMillis) {
         long second = nowMillis / 1000L;
-        int i = (int) (second % SECONDS);
+        int i = (int) Math.floorMod(second, (long) SECONDS);
         if (bucketSecond[i] != second) {
             bucketSecond[i] = second;
             buckets[i] = 0;

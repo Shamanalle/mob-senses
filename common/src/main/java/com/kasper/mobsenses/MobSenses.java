@@ -28,6 +28,13 @@ public final class MobSenses {
     private static final ScentModel SCENT = new ScentModel();
     private static final StealthHudState HUD = new StealthHudState();
     private static final ServerLink SERVER_LINK = new ServerLink();
+    private static final java.util.Map<java.util.UUID, PlayerAlertEntry> PLAYER_ALERTS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long PLAYER_ALERT_TTL_MS = 3000L;
+
+    @com.github.bsideup.jabel.Desugar
+    private record PlayerAlertEntry(int level, long expiresAtMs) {
+    }
     private static volatile ServerSettings settings = new ServerSettings(null);
     private static volatile ClientSettings clientSettings = new ClientSettings(null);
     private static volatile Runnable settingsListener;
@@ -51,6 +58,7 @@ public final class MobSenses {
         COALESCER.clear();
         VOICE.clear();
         SCENT.clear();
+        PLAYER_ALERTS.clear();
         ServerSettings s = new ServerSettings(configDir.resolve(ServerSettings.FILE_NAME));
         s.load();
         settings = s;
@@ -70,6 +78,7 @@ public final class MobSenses {
             ClientSettings cs = new ClientSettings(configDir.resolve(ClientSettings.FILE_NAME));
             cs.load();
             clientSettings = cs;
+            HUD.setEnabled(cs.enabled());
         }
         if (settings.file() == null) {
             ServerSettings ss = new ServerSettings(configDir.resolve(ServerSettings.FILE_NAME));
@@ -180,6 +189,52 @@ public final class MobSenses {
     }
 
     /**
+     * Records a nearby mob alertness peak for {@code playerId} ({@code 0=calm, 1=suspicious,
+     * 2=searching, 3=hunted}). Higher levels win within the active TTL window.
+     */
+    public static void recordPlayerAlert(java.util.UUID playerId, int level, long nowMs) {
+        if (playerId == null || level <= 0) {
+            return;
+        }
+        final int clamped = Math.max(0, Math.min(3, level));
+        final long expiresAt = nowMs + PLAYER_ALERT_TTL_MS;
+        PlayerAlertEntry merged = PLAYER_ALERTS.compute(playerId, (k, existing) -> {
+            int best = clamped;
+            if (existing != null && nowMs < existing.expiresAtMs() && existing.level() > best) {
+                best = existing.level();
+            }
+            return new PlayerAlertEntry(best, expiresAt);
+        });
+        java.util.UUID localId = localPlayerId;
+        if (localId != null && localId.equals(playerId)) {
+            HUD.syncRemoteMobAlert(merged.level(), nowMs);
+        }
+    }
+
+    /** Clears stored mob alert telemetry for {@code playerId} (e.g. on disconnect). */
+    public static void clearPlayerAlert(java.util.UUID playerId) {
+        if (playerId != null) {
+            PLAYER_ALERTS.remove(playerId);
+        }
+    }
+
+    /** Current synced mob alert level ({@code 0..3}) for {@code playerId} at {@code nowMs}. */
+    public static int playerAlertLevel(java.util.UUID playerId, long nowMs) {
+        if (playerId == null) {
+            return 0;
+        }
+        PlayerAlertEntry entry = PLAYER_ALERTS.get(playerId);
+        if (entry == null) {
+            return 0;
+        }
+        if (nowMs >= entry.expiresAtMs()) {
+            PLAYER_ALERTS.remove(playerId, entry);
+            return 0;
+        }
+        return entry.level();
+    }
+
+    /**
      * Records a voice noise emitted by a speaking player at {@code (x, y, z)} in {@code world} with
      * adaptive base range {@code baseRange}.
      */
@@ -192,9 +247,9 @@ public final class MobSenses {
             if (preset == Preset.OFF) {
                 return;
             }
-            NOISE.record(System.currentTimeMillis());
             double range = NoiseModel.effectiveRange(baseRange, preset, settings.hearing());
             if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                NOISE.record(System.currentTimeMillis());
                 COALESCER.record(world, NoiseModel.Kind.VOICE, "mobsenses:voice", x, y, z, range);
             }
         } catch (Throwable t) {
@@ -246,18 +301,24 @@ public final class MobSenses {
             if (preset == Preset.OFF) {
                 return;
             }
-            NOISE.record(System.currentTimeMillis());
+            long now = System.currentTimeMillis();
             NoiseModel.Kind kind = NoiseModel.classifyEvent(event);
             if (kind == null || (kind.requiresPlayerSource() && !playerInvolved)) {
                 return;
             }
             double base = NoiseModel.baseRange(event, posture, material, blockId) * Math.max(0.0, envMultiplier);
             double range = NoiseModel.effectiveRange(base, preset, settings.hearing());
+            if (range >= NoiseModel.MIN_AUDIBLE_RANGE && settings.soundCoverEnabled()) {
+                double covered = COALESCER.applySoundCover(world, kind, x, y, z, range, now);
+                COALESCER.registerSoundCover(world, kind, x, y, z, range, now);
+                range = covered;
+            }
             if (range >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                NOISE.record(now);
                 COALESCER.record(world, kind, event, x, y, z, range);
                 java.util.UUID localId = localPlayerId;
                 if (playerInvolved && (localId == null || (sourcePlayerId != null && localId.equals(sourcePlayerId)))) {
-                    HUD.onLocalNoise(range, System.currentTimeMillis());
+                    HUD.onLocalNoise(range, now);
                 }
             }
         } catch (Throwable t) {

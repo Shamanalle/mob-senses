@@ -5,6 +5,30 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-14
+
+### English
+
+#### Added
+- **Thrown-item decoys (`Q`), sound masking & expanded block acoustics.** Dropping an item (`Q`) now creates a material-scaled impact sound where it lands — bells and metal gear clatter far, stone and glass clink, and wool or feathers land softly — so you can distract guards and pull mobs away. Loud ambient and combat noises (thunder, explosions, bells, gunshots) dynamically mask quieter steps and block actions, wading in water or walking on rain-soaked ground amplifies footsteps, and 1,000+ vanilla and modded blocks now map across 11 acoustic materials.
+- **Two-stage suspicion, hazard-safe pathing, horde fan-out & ambush reactions.** Unaware mobs hearing a faint sound near the outer edge of range pause and glance toward the source first (`?`) before advancing on a second cue; investigating mobs avoid stepping into lava, fire, magma, powder snow or open trapdoor/fence-gate drops; rallied allies fan out in a ring instead of stacking on one block (with `horde_alert_range` now defaulting to `8` blocks); and unseen long-range or dark ambushes make healthy mobs sweep in your direction while badly wounded mobs scramble for cover instead of snapping onto your exact coordinates. All four tactical behaviors can be toggled live on the *Senses & World* tab (`sound_cover_enabled`, `decoy_throw_enabled`, `safe_goal_filter`, `suspicion_enabled`).
+- **Live HUD alert indicator.** The Stealth HUD now shows `[?]` (*Suspicious*) and `[!]` (*Searching*) badges whenever your actions alert nearby mobs, and computes exposure and status from whichever HUD meters you keep enabled.
+
+#### Fixed
+- **Scorched Guns 2 air guns & suppressed weapons.** Air and pneumatic weapons (*Scorched Guns 2* `IAirGun` and quiet guns), integrally suppressed firearms (*VSS Vintorez*, *AS Val*, *MP5SD*, *Honey Badger*, *Welrod*, *De Lisle*, *VSSK*), *Superb Warfare* suppressors/`bocek`/`taser`, and offhand firearms held while throwing items or shooting bows are now classified accurately instead of counting as loud unsilenced gunshots.
+- **Cross-version & Folia stability (`1.16.5 – 26.3`).** Fixed command source resolution on `1.21 – 1.21.1`, `fallDistance` lookup on `1.21 – 1.21.4`, Forge `1.16.5` SRG client/tag lookups, Forge `1.21` and `1.21.6–1.21.7` HUD overlay fallback, Paper `1.21.3 – 26.3` `Biome` linkage in weather checks, and Folia region-thread safety.
+
+### Русский
+
+#### Добавлено
+- **Приманки броском предмета (`Q`), маскировка звуков и расширенная акустика блоков.** Брошенный клавишей `Q` предмет создаёт звук при падении, зависящий от материала (колокола и металл гремят далеко, камень и стекло слышны средне, шерсть и перья падают тихо), позволяя отвлекать мобов и уводить их в сторону. Громкие звуки поблизости (гром, взрывы, колокол, выстрелы) маскируют тихие шаги и действия с блоками, ходьба в воде или по мокрой под дождём земле звучит отчётливее, а более 1000 ванильных и модовых блоков теперь распределены по 11 акустическим материалам.
+- **Двухфазная настороженность, безопасные маршруты, рассредоточение орды и реакция на засаду.** Незнающие об игроке мобы на границе слышимости сначала замирают и оборачиваются на слабый звук (`?`), а идут на проверку при повторном шуме; на пути к цели мобы не заходят в лаву, огонь, магму, рыхлый снег или открытые люки; позванные союзники распределяются по кругу вместо толпы в одной точке (`horde_alert_range` по умолчанию теперь `8` блоков); а при скрытой атаке издалека или из темноты здоровые мобы прочёсывают сторону выстрела, тогда как тяжело раненые отступают вместо мгновенного наведения на точные координаты. Все четыре тактические механики включаются и выключаются на вкладке *Senses & World* (`sound_cover_enabled`, `decoy_throw_enabled`, `safe_goal_filter`, `suspicion_enabled`).
+- **Индикатор тревоги на HUD.** На Stealth HUD теперь отображаются метки `[?]` (*Подозрение*) и `[!]` (*Поиск*), когда ваши действия встревожили мобов поблизости, а общий уровень заметности и статус рассчитываются только по включённым полоскам.
+
+#### Исправлено
+- **Пневматика Scorched Guns 2 и бесшумное оружие.** Пневматическое оружие (*Scorched Guns 2* `IAirGun` и тихие стволы), оружие с интегрированным глушителем (*ВСС «Винторез»*, *АС «Вал»*, *MP5SD*, *Honey Badger*, *Welrod*, *De Lisle*, *VSSK*), глушители и тихое оружие *Superb Warfare* (`bocek`, `taser`), а также огнестрел во второй руке при броске предметов или стрельбе из лука теперь распознаются корректно и не засчитываются как громкие выстрелы.
+- **Стабильность между версиями и на Folia (`1.16.5 – 26.3`).** Исправлено разрешение команд на `1.21 – 1.21.1`, чтение `fallDistance` на `1.21 – 1.21.4`, SRG-имена на Forge `1.16.5`, запасной рендер HUD на Forge `1.21` и `1.21.6–1.21.7`, совместимость с `Biome` на Paper `1.21.3 – 26.3` при проверке погоды и потокобезопасность регионов на Folia.
+
 ## [1.5.0] - 2026-11-11
 
 ### English

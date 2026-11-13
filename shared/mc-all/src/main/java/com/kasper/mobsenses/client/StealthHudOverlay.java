@@ -4,6 +4,9 @@ import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.ClientSettings;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.NoiseModel;
+import com.kasper.mobsenses.Preset;
+import com.kasper.mobsenses.ServerLink;
+import com.kasper.mobsenses.ServerSettings;
 import com.kasper.mobsenses.SightModel;
 import com.kasper.mobsenses.StealthHudState;
 import com.kasper.mobsenses.server.BlockAcoustics;
@@ -14,6 +17,7 @@ import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
@@ -21,6 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 /**
  * Updates and renders the client-side Stealth & Noise HUD in {@code tactical} or {@code minimal}
@@ -54,6 +59,10 @@ public final class StealthHudOverlay {
     private static final int COLOR_VOICE = 0xFFFB7185;
     private static final int COLOR_WHISPER = 0xFF38BDF8;
     private static final int COLOR_GLINT = 0xFFFFF5F5;
+    private static final int ALERT_PILL_BG = 0x99121622;
+    private static final int COLOR_ALERT_SUSPICIOUS = 0xFFE8B84B;
+    private static final int COLOR_ALERT_SEARCHING = 0xFFF28B30;
+    private static final int COLOR_ALERT_HUNTED = 0xFFE84855;
 
     // 9x7 procedural stealth eye glyphs ('.' = empty, '#' = lid/frame, 'o' = iris, '*' = bright pupil)
     private static final String[] EYE_HIDDEN = {
@@ -84,8 +93,9 @@ public final class StealthHudOverlay {
             "..#####.."
     };
 
-    private static final Field OPTIONS_HIDE_GUI = findBooleanField(Options.class, "hideGui", "field_1842", "f_92062_");
-    private static final Field OPTIONS_RENDER_DEBUG = findBooleanField(Options.class, "renderDebug", "field_1866", "f_92063_");
+    private static final Field OPTIONS_HIDE_GUI = findBooleanField(Options.class, "hideGui", "field_1842", "f_92062_", "field_74319_N");
+    private static final Field OPTIONS_RENDER_DEBUG = findBooleanField(Options.class, "renderDebug", "field_1866", "f_92063_", "field_74330_P");
+    private static final Field ENTITY_FALL_DISTANCE = findFallDistanceField();
     private static final Method MC_GET_DEBUG_OVERLAY = findNoArgMethod(Minecraft.class, "getDebugOverlay", "method_53526", "m_293199_");
     private static final Method DEBUG_SHOW_SCREEN = MC_GET_DEBUG_OVERLAY != null
             ? findNoArgMethod(MC_GET_DEBUG_OVERLAY.getReturnType(), "showDebugScreen", "method_53536", "m_294539_")
@@ -94,10 +104,19 @@ public final class StealthHudOverlay {
     // Client-side tracking for dedicated servers (landing & firearm impulses)
     private static boolean wasOnGround = true;
     private static double airborneFallDist;
+    private static double lastPlayerY = Double.NaN;
     private static String lastClientGunKey = "";
     private static int lastClientAmmo = -1;
 
     private StealthHudOverlay() {
+    }
+
+    public static void resetClientTracking() {
+        wasOnGround = true;
+        airborneFallDist = 0.0;
+        lastPlayerY = Double.NaN;
+        lastClientGunKey = "";
+        lastClientAmmo = -1;
     }
 
     private static Field findBooleanField(Class<?> owner, String... names) {
@@ -111,6 +130,54 @@ public final class StealthHudOverlay {
             }
         }
         return null;
+    }
+
+    private static Field findFallDistanceField() {
+        String[] names = {"fallDistance", "field_6017", "f_19789_", "field_70143_R"};
+        for (String name : names) {
+            try {
+                Field f = Entity.class.getField(name);
+                Class<?> t = f.getType();
+                if (!Modifier.isStatic(f.getModifiers()) && (t == double.class || t == float.class)) {
+                    return f;
+                }
+            } catch (Throwable ignored) {
+            }
+            try {
+                Field f = Entity.class.getDeclaredField(name);
+                Class<?> t = f.getType();
+                if (!Modifier.isStatic(f.getModifiers()) && (t == double.class || t == float.class)) {
+                    f.setAccessible(true);
+                    return f;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static double readFallDistance(LocalPlayer player, boolean onGround) {
+        double y = player.getY();
+        if (ENTITY_FALL_DISTANCE != null) {
+            try {
+                double val = ENTITY_FALL_DISTANCE.getType() == float.class
+                        ? (double) ENTITY_FALL_DISTANCE.getFloat(player)
+                        : ENTITY_FALL_DISTANCE.getDouble(player);
+                lastPlayerY = y;
+                return Math.max(0.0, val);
+            } catch (Throwable ignored) {
+            }
+        }
+        if (onGround) {
+            lastPlayerY = y;
+            return 0.0;
+        }
+        double next = airborneFallDist;
+        if (!Double.isNaN(lastPlayerY) && y < lastPlayerY) {
+            next += (lastPlayerY - y);
+        }
+        lastPlayerY = y;
+        return Math.max(0.0, next);
     }
 
     private static Method findNoArgMethod(Class<?> owner, String... names) {
@@ -197,12 +264,16 @@ public final class StealthHudOverlay {
 
     public static void samplePlayer(LocalPlayer player, Level level, StealthHudState hud, boolean remoteServer) {
         long now = System.currentTimeMillis();
+        ServerLink link = MobSenses.serverLink();
+        ServerSettings srv = link.effectiveSettings();
+        Preset activePreset = link.activePreset();
+
         BlockPos pos = player.blockPosition();
         int blockLight = level.getBrightness(LightLayer.BLOCK, pos);
         int skyLight = Math.max(0, level.getBrightness(LightLayer.SKY, pos) - level.getSkyDarken());
         String mainHandId = ServerHearing.itemId(player.getMainHandItem());
         String offHandId = ServerHearing.itemId(player.getOffhandItem());
-        int heldLight = MobSenses.settings().heldLightEnabled()
+        int heldLight = srv.heldLightEnabled()
                 ? Math.max(SightModel.heldItemLight(mainHandId), SightModel.heldItemLight(offHandId))
                 : 0;
         boolean sneaking = player.isShiftKeyDown() || player.isCrouching();
@@ -216,46 +287,57 @@ public final class StealthHudOverlay {
         BlockState stateBelow = level.getBlockState(below);
         String blockId = BlockAcoustics.blockId(stateBelow);
         AcousticMaterial mat = BlockAcoustics.material(stateBelow, blockId);
-        double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
+        double envMult = srv.weatherMultiplier(level.isRaining(), level.isThundering());
         boolean stealthGear = ServerHearing.hasStealthEnchant(player);
         double stepGearMult = stealthGear
-                ? Math.max(0.0, 1.0 - MobSenses.settings().featherFallingMuffling())
+                ? Math.max(0.0, 1.0 - srv.featherFallingMuffling())
                 : 1.0;
-        double surfaceFactor = NoiseModel.surfaceStepFactor(mat, blockId) * envMult * stepGearMult;
+        double rawSurfaceFactor = NoiseModel.surfaceStepFactor(mat, blockId);
+        double envGearMult = envMult * stepGearMult;
 
         if (remoteServer) {
-            sampleRemoteClientImpulses(player, onGround, envMult, stepGearMult, surfaceFactor, hud, now);
+            sampleRemoteClientImpulses(player, onGround, envMult, rawSurfaceFactor, envGearMult, srv, activePreset, hud, now);
         } else {
             wasOnGround = onGround;
-            airborneFallDist = onGround ? 0.0 : Math.max(airborneFallDist, player.fallDistance);
+            airborneFallDist = onGround ? 0.0 : Math.max(airborneFallDist, readFallDistance(player, onGround));
         }
 
         double voiceLevel = MobSenses.voice().clientVoiceLevel(now);
         double voiceRange = MobSenses.voice().clientVoiceRangeBlocks(now);
         boolean whispering = MobSenses.voice().clientWhispering(now);
+        boolean inWater = player.isInWater() || BlockAcoustics.isWaterAt(level, pos);
+        boolean inRain = !inWater && level.isRainingAt(pos.above());
         hud.update(
                 blockLight, skyLight, heldLight,
                 sneaking, sprinting, moving,
-                surfaceFactor,
+                rawSurfaceFactor,
                 player.getHealth(), player.getMaxHealth(),
                 voiceLevel, now,
-                player.isInvisible(), whispering, voiceRange);
+                player.isInvisible(), whispering, voiceRange,
+                inWater, inRain,
+                envGearMult);
     }
 
     private static void sampleRemoteClientImpulses(
             LocalPlayer player,
             boolean onGround,
             double envMult,
-            double stepGearMult,
-            double surfaceFactor,
+            double rawSurfaceFactor,
+            double envGearMult,
+            ServerSettings srv,
+            Preset activePreset,
             StealthHudState hud,
             long now) {
-        double currentFall = player.fallDistance;
+        double currentFall = readFallDistance(player, onGround);
         if (!onGround) {
             airborneFallDist = Math.max(airborneFallDist, currentFall);
         } else if (!wasOnGround && airborneFallDist > 1.25) {
-            double landRange = Math.min(22.0, (5.5 + airborneFallDist * 2.1) * Math.max(0.35, surfaceFactor));
-            hud.onLocalNoise(landRange, now);
+            double landSurface = srv.surfaceSoundScaling() ? Math.max(0.35, rawSurfaceFactor) : 1.0;
+            double baseLand = Math.min(22.0, (5.5 + airborneFallDist * 2.1) * landSurface * envGearMult);
+            double landRange = NoiseModel.effectiveRange(baseLand, activePreset, srv.hearing());
+            if (landRange >= NoiseModel.MIN_AUDIBLE_RANGE) {
+                hud.onLocalNoise(landRange, now);
+            }
             airborneFallDist = 0.0;
         } else {
             airborneFallDist = 0.0;
@@ -273,11 +355,10 @@ public final class StealthHudOverlay {
         String gunKey = fId + "|" + ServerHearing.extractGunId(tag);
         int ammo = ServerHearing.extractFirearmAmmo(tag);
         if (gunKey.equals(lastClientGunKey) && lastClientAmmo >= 0 && ammo >= 0 && ammo < lastClientAmmo) {
-            boolean silenced = NoiseModel.isSilencedFirearm(fId, tag);
-            double shotRange = (silenced
-                    ? MobSenses.settings().gunshotSilencedRange()
-                    : MobSenses.settings().gunshotRange()) * envMult;
-            if (shotRange > 0.0) {
+            boolean silenced = ServerHearing.isSilencedFirearmStack(gun);
+            double baseShot = srv.gunRangeFor(fId + " " + tag, silenced) * envMult;
+            double shotRange = NoiseModel.effectiveRange(baseShot, activePreset, srv.hearing());
+            if (shotRange >= NoiseModel.MIN_AUDIBLE_RANGE) {
                 hud.onLocalNoise(shotRange, now);
             }
         }
@@ -287,11 +368,11 @@ public final class StealthHudOverlay {
 
     private static ItemStack findClientFirearm(LocalPlayer player) {
         ItemStack main = player.getMainHandItem();
-        if (NoiseModel.isFirearmItem(ServerHearing.itemId(main))) {
+        if (ServerHearing.isFirearmStack(main)) {
             return main;
         }
         ItemStack off = player.getOffhandItem();
-        if (NoiseModel.isFirearmItem(ServerHearing.itemId(off))) {
+        if (ServerHearing.isFirearmStack(off)) {
             return off;
         }
         return null;
@@ -361,7 +442,7 @@ public final class StealthHudOverlay {
 
             @Override
             public void text(Component text, int x, int y, int argb) {
-                if (x >= 1 && y >= 1 && y + 8 <= boxH - 1) {
+                if (x >= 1 && y >= 1 && x + textWidth(text) <= boxW - 1 && y + 8 <= boxH - 1) {
                     parent.text(text, boxX + x, boxY + y, argb);
                 }
             }
@@ -385,23 +466,23 @@ public final class StealthHudOverlay {
         }
         int screenW = canvas.width();
         int ox = cfg.x() / 5;
-        int base;
+        int rawX;
         switch (cfg.position()) {
             case TOP_RIGHT:
             case BOTTOM_RIGHT:
-                base = screenW - panelWidth - 6;
+                rawX = screenW - panelWidth - 6 - ox;
                 break;
             case TOP_CENTER:
             case HOTBAR:
-                base = (screenW - panelWidth) / 2;
+                rawX = (screenW - panelWidth) / 2 + ox;
                 break;
             case TOP_LEFT:
             case BOTTOM_LEFT:
             default:
-                base = 6;
+                rawX = 6 + ox;
                 break;
         }
-        return Math.max(4, Math.min(Math.max(4, screenW - panelWidth - 4), base + ox));
+        return Math.max(4, Math.min(Math.max(4, screenW - panelWidth - 4), rawX));
     }
 
     private static int resolveY(Canvas canvas, ClientSettings cfg, int panelHeight) {
@@ -410,23 +491,23 @@ public final class StealthHudOverlay {
         }
         int screenH = canvas.height();
         int oy = cfg.y() / 5;
-        int base;
+        int rawY;
         switch (cfg.position()) {
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT:
-                base = screenH - panelHeight - 5;
+                rawY = screenH - panelHeight - 5 - oy;
                 break;
             case HOTBAR:
-                base = screenH - panelHeight - 9;
+                rawY = screenH - panelHeight - 9 - oy;
                 break;
             case TOP_CENTER:
             case TOP_LEFT:
             case TOP_RIGHT:
             default:
-                base = 5;
+                rawY = 5 + oy;
                 break;
         }
-        return Math.max(3, Math.min(Math.max(3, screenH - panelHeight - 3), base + oy));
+        return Math.max(3, Math.min(Math.max(3, screenH - panelHeight - 3), rawY));
     }
 
     private static void drawTacticalHud(Canvas canvas, StealthHudState hud, ClientSettings cfg, double fade) {
@@ -434,12 +515,21 @@ public final class StealthHudOverlay {
         boolean drawNoise = !compact && cfg.showNoise();
         boolean drawLight = !compact && cfg.showLight();
         boolean drawScent = !compact && cfg.showScent() && hud.scentActive();
+        boolean anyBarEnabled = cfg.showNoise() || cfg.showLight() || cfg.showScent();
+        boolean incNoise = !anyBarEnabled || cfg.showNoise();
+        boolean incLight = !anyBarEnabled || cfg.showLight();
+        boolean incScent = !anyBarEnabled || cfg.showScent();
 
-        int exposure = hud.overallExposure();
+        int exposure = hud.overallExposure(incNoise, incLight, incScent);
         int statePrimary = exposure >= 65 ? COLOR_EXPOSED : (exposure >= 30 ? COLOR_CAUTION : COLOR_HIDDEN);
 
-        Component statusText = Worlds.translatable(hud.statusKey());
+        Component statusText = Worlds.translatable(hud.statusKey(incNoise, incLight, incScent));
         int statusW = canvas.textWidth(statusText);
+
+        int alertLevel = hud.mobAlertLevel();
+        boolean showAlertBadge = alertLevel > StealthHudState.ALERT_CALM;
+        Component alertText = showAlertBadge ? Worlds.translatable(hud.alertKey()) : null;
+        int alertBadgeW = alertText != null ? canvas.textWidth(alertText) + 7 : 0;
 
         boolean showVoiceBadge = hud.voiceActive() && cfg.showVoice();
         Component voiceText = showVoiceBadge
@@ -471,6 +561,7 @@ public final class StealthHudOverlay {
         int headerWidth = 19 + statusW
                 + (rangeW > 0 ? rangeW + 6 : 0)
                 + (voiceBadgeW > 0 ? voiceBadgeW + 5 : 0)
+                + (alertBadgeW > 0 ? alertBadgeW + 5 : 0)
                 + 6;
         int rows = (drawNoise ? 1 : 0) + (drawLight ? 1 : 0) + (drawScent ? 1 : 0);
         int minBodyWidth = rows > 0 ? (7 + labelColW + 64 + 6) : 0;
@@ -480,13 +571,24 @@ public final class StealthHudOverlay {
         int x = resolveX(canvas, cfg, panelWidth);
         int y = resolveY(canvas, cfg, panelHeight);
 
-        drawChamferedPanel(canvas, cfg, fade, x, y, panelWidth, panelHeight, statePrimary);
+        int spineColor = alertLevel >= StealthHudState.ALERT_HUNTED ? COLOR_ALERT_HUNTED : statePrimary;
+        drawChamferedPanel(canvas, cfg, fade, x, y, panelWidth, panelHeight, spineColor);
 
-        // Header: procedural Stealth Eye glyph + status title + optional ~Xm range & [Voice]/[Whisper] pill
-        drawStealthEye(canvas, cfg, fade, x + 6, y + 5, exposure);
+        // Header: procedural Stealth Eye glyph + status title + optional ~Xm range & [Voice]/[Alert] pills
+        drawStealthEye(canvas, cfg, fade, x + 6, y + 5,
+                alertLevel >= StealthHudState.ALERT_HUNTED ? Math.max(exposure, 80) : exposure);
         canvas.text(statusText, x + 18, y + 5, col(cfg, statePrimary, fade));
 
         int rightCursor = x + panelWidth - 5;
+        if (alertText != null) {
+            int pillX1 = rightCursor - alertBadgeW;
+            int pillY1 = y + 3;
+            int aColor = alertColor(alertLevel);
+            canvas.fill(pillX1, pillY1, rightCursor, pillY1 + 11, col(cfg, ALERT_PILL_BG, fade));
+            canvas.fill(pillX1, pillY1, pillX1 + 2, pillY1 + 11, col(cfg, aColor, fade));
+            canvas.text(alertText, pillX1 + 4, y + 5, col(cfg, aColor, fade));
+            rightCursor = pillX1 - 5;
+        }
         if (voiceText != null) {
             int pillX1 = rightCursor - voiceBadgeW;
             int pillY1 = y + 3;
@@ -533,13 +635,19 @@ public final class StealthHudOverlay {
     }
 
     private static void drawMinimalHud(Canvas canvas, StealthHudState hud, ClientSettings cfg, double fade) {
-        int exposure = hud.overallExposure();
+        boolean anyBarEnabled = cfg.showNoise() || cfg.showLight() || cfg.showScent();
+        boolean incNoise = !anyBarEnabled || cfg.showNoise();
+        boolean incLight = !anyBarEnabled || cfg.showLight();
+        boolean incScent = !anyBarEnabled || cfg.showScent();
+        int exposure = hud.overallExposure(incNoise, incLight, incScent);
         int primary = exposure >= 65 ? COLOR_EXPOSED : (exposure >= 30 ? COLOR_CAUTION : COLOR_HIDDEN);
         int shade = exposure >= 65 ? COLOR_EXPOSED_SHADE : (exposure >= 30 ? COLOR_CAUTION_SHADE : COLOR_HIDDEN_SHADE);
 
         boolean showScentPip = cfg.showScent() && hud.scentActive();
         boolean showVoicePip = cfg.showVoice() && hud.voiceActive();
-        int extraPipsW = (showScentPip ? 5 : 0) + (showVoicePip ? 5 : 0);
+        int alertLevel = hud.mobAlertLevel();
+        boolean showAlertPip = alertLevel > StealthHudState.ALERT_CALM;
+        int extraPipsW = (showScentPip ? 5 : 0) + (showVoicePip ? 5 : 0) + (showAlertPip ? 5 : 0);
 
         int barW = 64;
         int panelWidth = 18 + barW + extraPipsW + 5;
@@ -548,12 +656,15 @@ public final class StealthHudOverlay {
         int x = resolveX(canvas, cfg, panelWidth);
         int y = resolveY(canvas, cfg, panelHeight);
 
-        drawChamferedPanel(canvas, cfg, fade, x, y, panelWidth, panelHeight, primary);
-        drawStealthEye(canvas, cfg, fade, x + 5, y + 3, exposure);
+        int spine = alertLevel >= StealthHudState.ALERT_HUNTED ? COLOR_ALERT_HUNTED : primary;
+        drawChamferedPanel(canvas, cfg, fade, x, y, panelWidth, panelHeight, spine);
+        drawStealthEye(canvas, cfg, fade, x + 5, y + 3,
+                alertLevel >= StealthHudState.ALERT_HUNTED ? Math.max(exposure, 80) : exposure);
 
         int barX = x + 17;
         int barY = y + 4;
-        drawBarTrack(canvas, cfg, fade, barX, barY, barW, 5, exposure, hud.peakHoldPercent(), primary, shade, true);
+        drawBarTrack(canvas, cfg, fade, barX, barY, barW, 5, exposure,
+                incNoise ? hud.peakHoldPercent() : 0, primary, shade, true);
 
         int pipX = barX + barW + 3;
         if (showScentPip) {
@@ -563,6 +674,23 @@ public final class StealthHudOverlay {
         if (showVoicePip) {
             int vCol = hud.whispering() ? COLOR_WHISPER : COLOR_VOICE;
             canvas.fill(pipX, y + 4, pipX + 3, y + 9, col(cfg, vCol, fade));
+            pipX += 5;
+        }
+        if (showAlertPip) {
+            canvas.fill(pipX, y + 4, pipX + 3, y + 9, col(cfg, alertColor(alertLevel), fade));
+        }
+    }
+
+    private static int alertColor(int alertLevel) {
+        switch (alertLevel) {
+            case StealthHudState.ALERT_HUNTED:
+                return COLOR_ALERT_HUNTED;
+            case StealthHudState.ALERT_SEARCHING:
+                return COLOR_ALERT_SEARCHING;
+            case StealthHudState.ALERT_SUSPICIOUS:
+                return COLOR_ALERT_SUSPICIOUS;
+            default:
+                return COLOR_HIDDEN;
         }
     }
 

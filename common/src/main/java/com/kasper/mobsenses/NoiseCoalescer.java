@@ -33,6 +33,16 @@ public final class NoiseCoalescer {
                                  double x, double y, double z, double range, int mergedCount) {
     }
 
+    /** Temporary loud sound source that masks quieter nearby noises (explosions, bells, note blocks, loud gunfire). */
+    @com.github.bsideup.jabel.Desugar
+    public record SoundCover(String world, double x, double y, double z,
+                             double radius, double coverPower, long expiresAtMs) {
+    }
+
+    private static final int MAX_COVERS_PER_WORLD = 32;
+    private static final long MIN_COVER_TTL_MS = 1800L;
+    private static final long MAX_COVER_TTL_MS = 3500L;
+
     /** A candidate listener mob with its position (feet and eye Y). */
     @com.github.bsideup.jabel.Desugar
     public record Candidate<M>(M mob, double x, double y, double z, double eyeY) {
@@ -62,6 +72,7 @@ public final class NoiseCoalescer {
 
     /** Per-world map of chunk key -> loudest noise in that chunk during the current tick. */
     private final Map<String, Map<Long, CoalescedNoise>> byWorld = new HashMap<>();
+    private final Map<String, java.util.List<SoundCover>> coversByWorld = new HashMap<>();
 
     public NoiseCoalescer() {
         this(DEFAULT_MAX_EVENTS_PER_TICK, DEFAULT_MAX_TRACES_PER_EVENT, DEFAULT_MAX_TRACES_PER_TICK, false);
@@ -153,8 +164,116 @@ public final class NoiseCoalescer {
     }
 
     /** Clears all queued noises without processing them. */
+    /**
+     * Registers a loud sound event as temporary acoustic cover that muffles quieter nearby noises.
+     */
+    public synchronized void registerSoundCover(String world, NoiseModel.Kind kind,
+                                                double x, double y, double z,
+                                                double range, long nowMs) {
+        if (world == null || kind == null || !(range >= 18.0)) {
+            return;
+        }
+        boolean loudSource = kind == NoiseModel.Kind.EXPLOSION
+                || kind == NoiseModel.Kind.BELL
+                || kind == NoiseModel.Kind.NOTE_BLOCK
+                || (kind == NoiseModel.Kind.GUNSHOT && range >= 20.0);
+        if (!loudSource) {
+            return;
+        }
+        long ttl = Math.max(MIN_COVER_TTL_MS, Math.min(MAX_COVER_TTL_MS, Math.round(range * 65.0)));
+        double coverRadius = Math.max(10.0, range * 0.65);
+        long nextExpiry = nowMs + ttl;
+        java.util.List<SoundCover> list = coversByWorld.computeIfAbsent(world, k -> new java.util.ArrayList<>());
+        pruneCoversLocked(list, nowMs);
+        for (int i = 0; i < list.size(); i++) {
+            SoundCover existing = list.get(i);
+            if (distSq(x, y, z, existing.x(), existing.y(), existing.z()) <= 16.0) {
+                list.set(i, new SoundCover(
+                        world,
+                        x, y, z,
+                        Math.max(existing.radius(), coverRadius),
+                        Math.max(existing.coverPower(), range),
+                        Math.max(existing.expiresAtMs(), nextExpiry)));
+                return;
+            }
+        }
+        if (list.size() >= MAX_COVERS_PER_WORLD) {
+            list.remove(0);
+        }
+        list.add(new SoundCover(world, x, y, z, coverRadius, range, nextExpiry));
+    }
+
+    /**
+     * Applies acoustic masking from recent louder sounds in {@code world}. Returns the muffled range,
+     * or {@code 0.0} when completely drowned out by nearby noise cover.
+     */
+    public synchronized double applySoundCover(String world, NoiseModel.Kind kind,
+                                                double x, double y, double z,
+                                                double range, long nowMs) {
+        if (world == null || kind == null || !(range > 0.0)) {
+            return range;
+        }
+        if (!isMaskableKind(kind)) {
+            return range;
+        }
+        java.util.List<SoundCover> list = coversByWorld.get(world);
+        if (list == null || list.isEmpty()) {
+            return range;
+        }
+        pruneCoversLocked(list, nowMs);
+        if (list.isEmpty()) {
+            return range;
+        }
+        double bestFactor = 1.0;
+        for (int i = 0; i < list.size(); i++) {
+            SoundCover c = list.get(i);
+            if (range >= c.coverPower() * 0.85) {
+                continue;
+            }
+            double dx = x - c.x();
+            double dy = y - c.y();
+            double dz = z - c.z();
+            double rSq = c.radius() * c.radius();
+            double dSq = dx * dx + dy * dy + dz * dz;
+            if (dSq > rSq) {
+                continue;
+            }
+            double ratio = Math.sqrt(dSq) / c.radius();
+            double factor = 0.25 + 0.50 * ratio;
+            if (factor < bestFactor) {
+                bestFactor = factor;
+            }
+        }
+        double covered = range * bestFactor;
+        return covered < NoiseModel.MIN_AUDIBLE_RANGE ? 0.0 : covered;
+    }
+
+    private static boolean isMaskableKind(NoiseModel.Kind kind) {
+        switch (kind) {
+            case STEP:
+            case BLOCK_BREAK:
+            case BLOCK_PLACE:
+            case DOOR:
+            case CONTAINER:
+            case PROJECTILE:
+            case EAT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static void pruneCoversLocked(java.util.List<SoundCover> list, long nowMs) {
+        for (int i = list.size() - 1; i >= 0; i--) {
+            if (nowMs >= list.get(i).expiresAtMs()) {
+                list.remove(i);
+            }
+        }
+    }
+
     public synchronized void clear() {
         byWorld.clear();
+        coversByWorld.clear();
     }
 
     /**

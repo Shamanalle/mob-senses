@@ -2,7 +2,7 @@ package com.kasper.mobsenses.neoforge;
 
 import com.kasper.mobsenses.LinkProtocol;
 import com.kasper.mobsenses.client.ClientLink;
-import com.kasper.mobsenses.server.AdminPermission;
+import com.kasper.mobsenses.server.CommandSources;
 import com.kasper.mobsenses.server.ServerBridge;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
@@ -95,7 +95,7 @@ public final class NeoNetworking {
     }
 
     static boolean isAdmin(ServerPlayer player) {
-        return player != null && AdminPermission.isAdmin(player.createCommandSourceStack());
+        return CommandSources.isAdmin(player);
     }
 
     static void sendState(ServerPlayer player, String raw) {

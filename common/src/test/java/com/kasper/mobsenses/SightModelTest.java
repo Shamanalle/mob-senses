@@ -64,4 +64,38 @@ class SightModelTest {
             MobSenses.settings().setOption("darkness_stealth_enabled", "true");
         }
     }
+
+    @Test
+    void highHeldLightAndSprintingScaleAboveLegacyCeiling() {
+        assertTrue(SightModel.MAX_VISIBILITY_FACTOR >= 3.75,
+                "MAX_VISIBILITY_FACTOR must allow held light + sprint scaling up to 3.75x");
+        ServerSettings s = MobSenses.settings();
+        String prevHeldBonus = s.getOption("held_light_bonus");
+        String prevSprintMult = s.getOption("sprint_sight_multiplier");
+        try {
+            assertTrue(s.setOption("held_light_bonus", "2.0"));
+            assertTrue(s.setOption("sprint_sight_multiplier", "1.5"));
+
+            int lanternLight = SightModel.heldItemLight("minecraft:lantern");
+            double walkFactor = SightModel.visibilityFactor(0, 15, lanternLight, false, false, s);
+            double sprintFactor = SightModel.visibilityFactor(0, 15, lanternLight, false, true, s);
+
+            assertTrue(walkFactor > 1.85,
+                    "Daylight + lantern + held_light_bonus=2.0 must exceed legacy 1.85x cap, was " + walkFactor);
+            assertTrue(sprintFactor > walkFactor && sprintFactor <= SightModel.MAX_VISIBILITY_FACTOR,
+                    "Sprinting must amplify visibility above walking without exceeding MAX_VISIBILITY_FACTOR, was "
+                            + sprintFactor);
+
+            double sprintRange = SightModel.effectiveSightRange(16.0, 0, 15, lanternLight, false, true, Preset.DEFAULT);
+            assertTrue(sprintRange > 16.0 * 1.85,
+                    "Sprinting with lantern must extend effective sight beyond 1.85x base range, was " + sprintRange);
+        } finally {
+            if (prevHeldBonus != null) {
+                s.setOption("held_light_bonus", prevHeldBonus);
+            }
+            if (prevSprintMult != null) {
+                s.setOption("sprint_sight_multiplier", prevSprintMult);
+            }
+        }
+    }
 }

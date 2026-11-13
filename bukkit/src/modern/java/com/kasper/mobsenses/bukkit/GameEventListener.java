@@ -17,6 +17,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.world.GenericGameEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.util.UUID;
+
 /**
  * Game events (the ones sculk sensors hear) on Bukkit 1.17+. Loaded only where {@code GenericGameEvent}
  * exists. On Folia it fires on the thread of the event's region, which the shared code allows.
@@ -40,36 +42,46 @@ public final class GameEventListener implements Listener {
                 return;
             }
             Entity source = e.getEntity();
-            Player player = null;
+            Player localPlayer = null;
+            UUID playerId = null;
             if (source instanceof Player) {
                 Player p = (Player) source;
-                if (BukkitSenses.isBypassed(p)) {
-                    return;
+                playerId = p.getUniqueId();
+                if (BukkitSenses.ownsPlayer(p)) {
+                    if (BukkitSenses.isBypassed(p)) {
+                        return;
+                    }
+                    localPlayer = p;
                 }
-                player = p;
             } else if (source instanceof Projectile && ((Projectile) source).getShooter() instanceof Player) {
                 Player p = (Player) ((Projectile) source).getShooter();
-                if (BukkitSenses.isBypassed(p)) {
-                    return;
+                playerId = p.getUniqueId();
+                if (BukkitSenses.ownsPlayer(p)) {
+                    if (BukkitSenses.isBypassed(p)) {
+                        return;
+                    }
+                    localPlayer = p;
                 }
-                player = p;
             }
-            boolean playerInvolved = player != null || !kind.requiresPlayerSource();
+            boolean playerInvolved = playerId != null || !kind.requiresPlayerSource();
             if (!playerInvolved) {
                 return;
             }
-            NoiseModel.Posture posture = BukkitSenses.posture(player);
+            NoiseModel.Posture posture = localPlayer != null ? BukkitSenses.posture(localPlayer) : NoiseModel.Posture.WALKING;
             Block block = at.getBlock();
             if (block.getType().isAir()) {
                 block = at.clone().subtract(0.0, 0.2, 0.0).getBlock();
+                if (block.getType().isAir()) {
+                    block = at.getBlock().getRelative(0, -1, 0);
+                }
             }
             AcousticMaterial mat = BukkitAcoustics.material(block);
             String blockId = BukkitAcoustics.blockId(block);
-            double envMult = BukkitSenses.envMultiplier(at.getWorld(), player, kind);
+            double envMult = BukkitSenses.envMultiplier(at.getWorld(), localPlayer, kind);
             MobSenses.gameEvent(eventId, at.getWorld().getName(),
                     at.getX(), at.getY(), at.getZ(),
-                    posture, mat, blockId, player != null, envMult,
-                    player != null ? player.getUniqueId() : null);
+                    posture, mat, blockId, playerId != null, envMult,
+                    playerId);
         } catch (Throwable t) {
             ModLog.failure("Reading a game event", t);
         }

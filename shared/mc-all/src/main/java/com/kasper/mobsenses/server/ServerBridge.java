@@ -26,7 +26,7 @@ import java.util.function.Predicate;
  */
 public final class ServerBridge {
 
-    private static final int STATE_CHECK_TICKS = 20;
+    private static final int STATE_CHECK_TICKS = 10;
     private static final int TELEMETRY_PUSH_TICKS = 100;
 
     /** Online modded players who sent {@code mobsenses:hello} (UUID -> client language). */
@@ -54,15 +54,17 @@ public final class ServerBridge {
         if (playerId != null) {
             MODDED_PLAYERS.remove(playerId);
             FINGERPRINTS.remove(playerId);
+            MobSenses.clearPlayerAlert(playerId);
         }
     }
 
-    /** Clears all tracked client sessions when a server stops. */
+    /** Clears all tracked client sessions and server-side entity caches when a server starts/stops. */
     public static void clear() {
         MODDED_PLAYERS.clear();
         FINGERPRINTS.clear();
         dirty = false;
         tickCounter = 0;
+        ServerHearing.clear();
     }
 
     public static void onHello(
@@ -94,7 +96,10 @@ public final class ServerBridge {
         if (reqProps == null) {
             return;
         }
-        CommandSourceStack source = player.createCommandSourceStack();
+        CommandSourceStack source = CommandSources.of(player);
+        if (source == null) {
+            return;
+        }
         MinecraftServer server = source.getServer();
         final String world = Worlds.id(source.getLevel());
         final List<String> worlds = server != null ? Worlds.ids(server) : Collections.singletonList(world);
@@ -203,16 +208,22 @@ public final class ServerBridge {
         }
         String world;
         try {
-            world = Worlds.id(player.createCommandSourceStack().getLevel());
+            CommandSourceStack source = CommandSources.of(player);
+            if (source == null) {
+                return;
+            }
+            world = Worlds.id(source.getLevel());
         } catch (Throwable t) {
             return;
         }
+        int alert = MobSenses.playerAlertLevel(player.getUUID(), System.currentTimeMillis());
         String fp = world + '|' + admin + '|' + MobSenses.debug()
                 + '|' + MobSenses.settings().allowClientHud()
-                + '|' + MobSenses.settings().presetOf(world).id();
+                + '|' + MobSenses.settings().presetOf(world).id()
+                + '|' + alert;
         String prev = FINGERPRINTS.put(player.getUUID(), fp);
         if (force || !fp.equals(prev)) {
-            Properties stateProps = LinkProtocol.buildState(MobSenses.settings(), world, admin);
+            Properties stateProps = LinkProtocol.buildState(MobSenses.settings(), world, admin, alert);
             stateSender.accept(player, LinkProtocol.writeProperties(stateProps));
         }
     }

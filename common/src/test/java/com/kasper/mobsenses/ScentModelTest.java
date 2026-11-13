@@ -55,4 +55,27 @@ class ScentModelTest {
         assertEquals(2, scent.activePlayerCrumbs(world, alice, 2000L).size());
         assertEquals(1, scent.activePlayerCrumbs(world, bob, 2000L).size());
     }
+
+    @Test
+    void waterWashesOffBloodTrailAndRainWeakensScentRange() {
+        ScentModel scent = new ScentModel();
+        UUID player = UUID.randomUUID();
+        String world = "minecraft:overworld";
+
+        double dryRange = scent.recordPlayer(world, player, 0.0, 64.0, 0.0, 4.0, 20.0, Preset.DEFAULT, 1000L, false, false);
+        assertTrue(dryRange > 0.0);
+        assertEquals(1, scent.activePlayerCrumbs(world, player, 1100L).size());
+
+        // Rain dampens scent range
+        UUID rainPlayer = UUID.randomUUID();
+        double rainRange = scent.recordPlayer(world, rainPlayer, 20.0, 64.0, 0.0, 4.0, 20.0, Preset.DEFAULT, 1000L, false, true);
+        assertTrue(rainRange > 0.0 && rainRange < dryRange);
+
+        // Swimming suppresses new crumbs and rapidly washes away existing trail
+        assertEquals(0.0, scent.recordPlayer(world, player, 1.0, 64.0, 0.0, 4.0, 20.0, Preset.DEFAULT, 1500L, true, false));
+        for (int i = 0; i < 12; i++) {
+            scent.recordPlayer(world, player, 1.0, 64.0, 0.0, 4.0, 20.0, Preset.DEFAULT, 2000L + i * 500L, true, false);
+        }
+        assertTrue(scent.activePlayerCrumbs(world, player, 7500L).isEmpty(), "Swimming must wash away trail");
+    }
 }

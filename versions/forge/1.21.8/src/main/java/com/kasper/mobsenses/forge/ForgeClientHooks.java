@@ -1,13 +1,16 @@
 package com.kasper.mobsenses.forge;
 
+import com.kasper.mobsenses.GuiCanvas;
 import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.MobSensesScreen;
 import com.kasper.mobsenses.client.ClientHudCommand;
 import com.kasper.mobsenses.client.ClientLink;
 import com.kasper.mobsenses.client.SettingsKey;
+import com.kasper.mobsenses.client.StealthHudOverlay;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.client.event.CustomizeGuiOverlayEvent;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
@@ -42,7 +45,13 @@ final class ForgeClientHooks {
             try {
                 ForgeHudLayer.register(modBus);
             } catch (LinkageError ignored) {
-                // Forge 1.21.6 - 1.21.7 had no AddGuiOverlayLayersEvent yet; everything else still loads cleanly.
+                // Forge 1.21.6 - 1.21.7 had no AddGuiOverlayLayersEvent yet; fall back to CustomizeGuiOverlayEvent.Chat.
+                CustomizeGuiOverlayEvent.Chat.BUS.addListener(e -> {
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc != null && mc.font != null && !mc.options.hideGui) {
+                        StealthHudOverlay.render(new GuiCanvas(e.getGuiGraphics(), mc.font));
+                    }
+                });
             }
         }
         TickEvent.ClientTickEvent.Post.BUS.addListener(e ->

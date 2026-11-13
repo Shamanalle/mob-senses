@@ -49,7 +49,7 @@ public final class VoiceTracker {
         private double pendingRange;
         private long lastDispatchMs = Long.MIN_VALUE / 2;
 
-        synchronized double recordFrame(double db, boolean whispering) {
+        synchronized double recordFrame(double db, boolean whispering, ServerSettings s) {
             if (!whispering) {
                 window[writeIndex] = db;
                 writeIndex = (writeIndex + 1) % WINDOW_FRAMES;
@@ -65,7 +65,6 @@ public final class VoiceTracker {
                     cachedMedian = Math.max(-44.0, Math.min(-8.0, raw));
                 }
             }
-            ServerSettings s = MobSenses.settings();
             double baseVoice = s != null ? s.voiceRange() : BASE_VOICE_RANGE;
             double whisperMult = s != null ? s.voiceWhisperMultiplier() : WHISPER_FACTOR;
             double scale = volumeScale(db, cachedMedian, whispering, whisperMult);
@@ -161,7 +160,7 @@ public final class VoiceTracker {
             return 0.0;
         }
         PlayerMicState state = players.computeIfAbsent(playerId, k -> new PlayerMicState());
-        return state.recordFrame(db, whispering);
+        return state.recordFrame(db, whispering, MobSenses.settings());
     }
 
     /**
@@ -187,10 +186,27 @@ public final class VoiceTracker {
         if (db < MIN_SPEECH_DB) {
             return;
         }
-        double range = clientSelf.recordFrame(db, whispering);
-        double level = Math.min(1.0, range / (BASE_VOICE_RANGE * 1.6));
+        ServerLink link = MobSenses.serverLink();
+        ServerSettings srv = link.effectiveSettings();
+        Preset preset = link.activePreset();
+        double rawRange = clientSelf.recordFrame(db, whispering, srv);
+        double effRange = (!srv.voice() || preset == Preset.OFF)
+                ? 0.0
+                : NoiseModel.effectiveRange(rawRange, preset, srv.hearing());
+        if (effRange < NoiseModel.MIN_AUDIBLE_RANGE) {
+            clientLevel01 = 0.0;
+            clientRangeBlocks = 0.0;
+            clientWhispering = false;
+            return;
+        }
+        long elapsed = nowMs - clientLastMs;
+        if (elapsed < 0L || elapsed >= CLIENT_VOICE_HOLD_MS) {
+            clientLevel01 = 0.0;
+            clientRangeBlocks = 0.0;
+        }
+        double level = Math.min(1.0, effRange / (BASE_VOICE_RANGE * 1.6));
         clientLevel01 = Math.max(clientLevel01, level);
-        clientRangeBlocks = Math.max(clientRangeBlocks, range);
+        clientRangeBlocks = Math.max(clientRangeBlocks, effRange);
         clientWhispering = whispering;
         clientLastMs = nowMs;
     }

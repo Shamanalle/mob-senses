@@ -272,9 +272,23 @@ public final class AdminCommands {
                     .add(Reply.Kind.HINT, ServerText.get(lang, "world.known", String.join(", ", ctx.worlds())));
         }
         String world = a[1].equalsIgnoreCase("here") && ctx.world() != null ? ctx.world() : a[1];
-        if (!ctx.worlds().isEmpty() && !ctx.worlds().contains(world) && !s.worlds().containsKey(world)) {
-            return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "world.unknown", world))
-                    .add(Reply.Kind.HINT, ServerText.get(lang, "world.known", String.join(", ", ctx.worlds())));
+        if (!ctx.worlds().isEmpty()) {
+            String canonical = null;
+            for (String known : ctx.worlds()) {
+                if (known.equals(world)) {
+                    canonical = known;
+                    break;
+                }
+                if (canonical == null && ServerSettings.sameWorld(known, world)) {
+                    canonical = known;
+                }
+            }
+            if (canonical != null) {
+                world = canonical;
+            } else if (s.worldOwnPreset(world) == null) {
+                return new Reply().add(Reply.Kind.ERROR, ServerText.get(lang, "world.unknown", world))
+                        .add(Reply.Kind.HINT, ServerText.get(lang, "world.known", String.join(", ", ctx.worlds())));
+            }
         }
         if (a[2].equalsIgnoreCase(INHERIT)) {
             s.setWorldPreset(world, null);
@@ -675,6 +689,10 @@ public final class AdminCommands {
             case "darkness_stealth_enabled":
             case "scent_enabled":
             case "blood_particles":
+            case "sound_cover_enabled":
+            case "decoy_throw_enabled":
+            case "safe_goal_filter":
+            case "suspicion_enabled":
             case "allow_client_hud":
                 return Jv.listOf("true", "false");
             case "gunshot_range":
@@ -697,6 +715,8 @@ public final class AdminCommands {
             case "thunder_muffling":
             case "feather_falling_muffling":
                 return Jv.listOf("0", "0.25", "0.45", "0.6");
+            case "language":
+                return java.util.Arrays.asList(ServerText.LANGUAGES);
             default: {
                 String cur = MobSenses.settings().getOption(key);
                 return cur != null && !cur.isEmpty() ? Jv.listOf(cur, "default") : Jv.listOf("default");
