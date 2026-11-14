@@ -23,7 +23,7 @@ Install it on the server, on your client, or on both. **Vanilla clients can join
 
 **🔦 Torchlight, darkness stealth & blood scent**
 - Holding a torch, lantern or glowstone exposes you from 50% farther away; sneaking in darkness or drinking an Invisibility potion (without held light) hides you and drops distant pursuit.
-- Badly wounded players (`≤ 50%` health) leave a fast in-memory scent trail with crimson blood droplets on the ground that zombies and spiders follow, and alerted mobs can optionally call nearby allies as a horde — with **zero dummy marker entities** spawned in the world.
+- Badly wounded players (`≤ 50%` health) leave a fast in-memory scent trail (muffled by solid walls) with crimson blood droplets on the ground that zombies and spiders follow, alerted mobs can optionally call nearby allies as a horde, and bosses are excluded automatically — with **zero dummy marker entities** spawned in the world.
 
 ![Senses & World tab: presets, wall occlusion, firearms and Simple Voice Chat](https://raw.githubusercontent.com/Shamanalle/mob-senses/main/docs/images/ui-hearing.png)
 
@@ -52,7 +52,7 @@ Install it on the server, on your client, or on both. **Vanilla clients can join
 | **Firearm mods & suppressors** | Native **TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare & JEG**: silencers, bullet wall-impact lures & per-gun ranges | Generic sound hook only (no suppressor or bullet impact logic) |
 | **Simple Voice Chat** | Built-in with per-player microphone auto-calibration (whisper vs. shout) | None |
 | **Darkness stealth & sight** | Held torches expose you from afar; sneaking in darkness or invisibility drops distant pursuit | Surface light lures only; no darkness stealth |
-| **Blood trails & server TPS** | Zero dummy entities spawned; fast in-memory trails with crimson blood droplets | Spawns invisible marker entities in the world |
+| **Blood trails & server TPS** | Zero dummy entities; wall-occluded in-memory trails with crimson blood droplets & boss exclusion | Spawns invisible marker entities in the world |
 | **Client HUD & settings GUI** | Tactical HUD, sleek 2-tab dark-slate GUI with live preview, client-server sync & clickable `/mobsenses` | Config file / basic options only; no client Stealth HUD |
 | **Dependencies & platforms** | **Zero dependencies** (no CoroUtil) · **1 universal jar** per loader across **1.16.5 – 26.3** + Paper/Folia | Requires **CoroUtil** · Separate jars per version · No Paper/Folia |
 
@@ -83,7 +83,7 @@ Before 1.20 the mod covers 1.16.5, 1.17.1, 1.18.2, 1.19.2 and 1.19.4 (Forge itse
 - **👂 Слух, приманки и преграды:** бег громкий, шаг в приседе тихий, шерсть и ковёр глушат шаги, а гравий, металл и мокрая под дождём земля выдают; брошенный предмет (`Q`) отвлекает мобов, а громкие звуки маскируют тихие шаги. Настороженные мобы сначала прислушиваются (`?`), обходят лаву и открытые люки, рассредотачиваются кольцом и прочёсывают или убегают от скрытой засады. Каменные стены (`×0.64`), шерсть (`×0.53`), дождь, гроза, ботинки с «Невесомостью» и поножи с «Проворством» глушат звук, а открытые двери пропускают его.
 - **🔫 Оружейные моды, глушители и пневматика:** нативная поддержка **TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns 2** (включая тихую пневматику), **Superb Warfare** и **Just Enough Guns** — выстрел без глушителя слышен на `44` блока, с глушителем или интегрированным глушителем (*ВСС*, *АС «Вал»*, *MP5SD*, пневматика) на `16` блоков, а попадание пули в далёкую стену (`20` блоков) выманивает и отвлекает мобов.
 - **🗣️ Голосовой чат** *(с [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat))* — крик разносится далеко, шёпот слышно только вблизи; громкость калибруется относительно обычного голоса каждого игрока.
-- **🔦 Свет, темнота и след крови:** факел или фонарь в руке выдаёт издалека (`+50%`), присед в темноте или невидимость сбрасывают далёкую погоню, а раненые игроки (`≤ 50%` здоровья) оставляют след с каплями крови без спавна лишних сущностей в мире.
+- **🔦 Свет, темнота и след крови:** факел или фонарь в руке выдаёт издалека (`+50%`), присед в темноте или невидимость сбрасывают далёкую погоню, раненые игроки (`≤ 50%` здоровья) оставляют след с каплями крови (ослабляемый сплошными стенами) без спавна лишних сущностей в мире, а боссы пропускаются автоматически.
 
 ## Для игроков и серверов
 

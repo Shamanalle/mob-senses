@@ -6,6 +6,7 @@ import com.destroystokyo.paper.entity.ai.GoalKey;
 import com.destroystokyo.paper.entity.ai.GoalType;
 import com.destroystokyo.paper.entity.ai.MobGoals;
 import com.kasper.mobsenses.MobSenses;
+import com.kasper.mobsenses.TacticalTargets;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -59,10 +60,15 @@ public final class PaperPathfinder {
     }
 
     public static boolean moveTo(Plugin plugin, Mob mob, Location target, double speed) {
-        return moveTo(plugin, mob, target, speed, false);
+        return moveTo(plugin, mob, target, speed, false, false);
     }
 
     public static boolean moveTo(Plugin plugin, Mob mob, Location target, double speed, boolean bypassCooldown) {
+        return moveTo(plugin, mob, target, speed, bypassCooldown, false);
+    }
+
+    public static boolean moveTo(Plugin plugin, Mob mob, Location target, double speed,
+                                 boolean bypassCooldown, boolean forceRetarget) {
         if (mob == null || target == null || !mob.isValid() || mob.getTarget() != null) {
             return false;
         }
@@ -77,12 +83,13 @@ public final class PaperPathfinder {
                     GoalKey<Mob> key = GoalKey.of(Mob.class, new NamespacedKey(plugin, "investigate"));
                     Goal<Mob> existing = goals.getGoal(mob, key);
                     if (existing instanceof InvestigateMobGoal) {
-                        return ((InvestigateMobGoal) existing).trigger(target, speed, bypassCooldown);
+                        return ((InvestigateMobGoal) existing).trigger(target, speed, bypassCooldown, forceRetarget);
                     }
                     if (existing != null) {
                         goals.removeGoal(mob, existing);
                     }
-                    InvestigateMobGoal created = new InvestigateMobGoal(key, mob, target, speed);
+                    InvestigateMobGoal created = new InvestigateMobGoal(
+                            key, mob, target, speed, bypassCooldown, forceRetarget);
                     goals.addGoal(mob, PRIORITY, created);
                     return true;
                 }
@@ -183,13 +190,18 @@ public final class PaperPathfinder {
             this.mob = mob;
         }
 
-        InvestigateMobGoal(GoalKey<Mob> key, Mob mob, Location target, double speed) {
+        InvestigateMobGoal(GoalKey<Mob> key, Mob mob, Location target, double speed,
+                           boolean bypassCooldown, boolean forceRetarget) {
             this.key = key;
             this.mob = mob;
-            trigger(target, speed, false);
+            trigger(target, speed, bypassCooldown, forceRetarget);
         }
 
         boolean trigger(Location nextTarget, double nextSpeed, boolean bypassCooldown) {
+            return trigger(nextTarget, nextSpeed, bypassCooldown, false);
+        }
+
+        boolean trigger(Location nextTarget, double nextSpeed, boolean bypassCooldown, boolean forceRetarget) {
             long now = System.currentTimeMillis();
             long cooldown = MobSenses.settings().alertCooldownMs();
             Location mobLoc = mob.getLocation();
@@ -203,12 +215,15 @@ public final class PaperPathfinder {
                 if ((now - lastAlertMs) < cooldown && sameSpotSq < 4.0 && nextSpeed <= this.speed) {
                     return false;
                 }
-                if (lookTicks == 0 && mobLoc.getWorld() == nextTarget.getWorld() && nextSpeed <= this.speed) {
-                    double curDistSq = mobLoc.distanceSquared(this.target);
-                    double nextDistSq = mobLoc.distanceSquared(nextTarget);
-                    if (curDistSq < nextDistSq * 0.72) {
-                        return false;
-                    }
+            }
+            if (ticksRemaining > 0 && this.target != null && mobLoc.getWorld() == this.target.getWorld()
+                    && mobLoc.getWorld() == nextTarget.getWorld()) {
+                double curDistSq = mobLoc.distanceSquared(this.target);
+                double nextDistSq = mobLoc.distanceSquared(nextTarget);
+                if (TacticalTargets.shouldKeepCloserTarget(
+                        lookTicks, this.speed, nextSpeed, curDistSq, nextDistSq,
+                        upgradingFromSuspicion || bypassCooldown || forceRetarget)) {
+                    return false;
                 }
             }
             double chosenSpeed = nextSpeed;

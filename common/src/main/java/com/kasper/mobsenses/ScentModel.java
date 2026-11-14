@@ -44,6 +44,20 @@ public final class ScentModel {
     /** Minimum scent crumb age acceleration per check when submerged in water (ms). */
     public static final long WATER_WASH_AGE_STEP_MS = 2_500L;
 
+    /** Exponential attenuation rate per stone-equivalent block of wall thickness for blood scent. */
+    public static final double SCENT_WALL_DECAY_RATE = 0.55;
+
+    /** Scaled acoustic wall thickness at or above which blood scent cannot penetrate a sealed barrier. */
+    public static final double MAX_SCENT_WALL_THICKNESS = 3.5;
+
+    private static final int MAX_SCENT_RAY_CHECKS = 8;
+
+    /** Computes wall thickness (in stone-equivalent blocks) between a scent crumb and a mob's eyes. */
+    @FunctionalInterface
+    public interface WallOccluder {
+        double wallThickness(double fromX, double fromY, double fromZ, double toX, double toY, double toZ);
+    }
+
     /** A point along a wounded player's scent trail. */
     @com.github.bsideup.jabel.Desugar
     public record Crumb(UUID playerId, double x, double y, double z, double range, long timestampMs) {
@@ -241,10 +255,37 @@ public final class ScentModel {
     }
 
     /**
+     * Effective blood scent range after wall attenuation for the given stone-equivalent {@code wallThickness}
+     * and {@code scentWallMuffling} multiplier.
+     */
+    public static double scentRangeThroughWalls(double baseRange, double wallThickness, double scentWallMuffling) {
+        if (baseRange <= 0.0) {
+            return 0.0;
+        }
+        if (!(scentWallMuffling > 0.0) || !(wallThickness > 0.0)) {
+            return baseRange;
+        }
+        double scaled = wallThickness * scentWallMuffling;
+        if (scaled >= MAX_SCENT_WALL_THICKNESS) {
+            return 0.0;
+        }
+        return baseRange * Math.exp(-SCENT_WALL_DECAY_RATE * scaled);
+    }
+
+    /**
      * Finds the freshest reachable scent crumb within range of {@code (mobX, mobY, mobZ)} in {@code world},
      * or {@code null} if none is in range.
      */
     public Crumb findNearestScent(String world, double mobX, double mobY, double mobZ, long nowMs) {
+        return findNearestScent(world, mobX, mobY, mobZ, mobY + 1.5, nowMs, null);
+    }
+
+    /**
+     * Finds the freshest reachable scent crumb within range of {@code (mobX, mobY, mobZ)} in {@code world},
+     * attenuating through solid walls using {@code occluder} (invoked strictly outside the crumb lock).
+     */
+    public Crumb findNearestScent(String world, double mobX, double mobY, double mobZ,
+                                  double mobEyeY, long nowMs, WallOccluder occluder) {
         if (world == null) {
             return null;
         }
@@ -252,26 +293,65 @@ public final class ScentModel {
         if (crumbs == null) {
             return null;
         }
-        Crumb best = null;
-        double bestScore = -1.0;
+        long lifeMs;
+        List<Crumb> candidates = null;
         synchronized (crumbs) {
             pruneExpired(crumbs, nowMs);
+            lifeMs = crumbLifetimeMs();
             for (Crumb c : crumbs) {
                 double dx = c.x() - mobX;
                 double dy = c.y() - mobY;
                 double dz = c.z() - mobZ;
                 double distSq = dx * dx + dy * dy + dz * dz;
                 double r = c.range();
-                if (distSq > r * r) {
+                if (distSq <= r * r) {
+                    if (candidates == null) {
+                        candidates = new ArrayList<>();
+                    }
+                    candidates.add(c);
+                }
+            }
+        }
+        if (candidates == null) {
+            return null;
+        }
+        ServerSettings s = MobSenses.settings();
+        double muffling = s != null ? s.scentWallMuffling() : ServerSettings.DEFAULT_SCENT_WALL_MUFFLING;
+        Crumb best = null;
+        double bestScore = -1.0;
+        int rayChecks = 0;
+        for (int i = candidates.size() - 1; i >= 0; i--) {
+            Crumb c = candidates.get(i);
+            double dx = c.x() - mobX;
+            double dy = c.y() - mobY;
+            double dz = c.z() - mobZ;
+            double distSq = dx * dx + dy * dy + dz * dz;
+            double dist = Math.sqrt(distSq);
+            double baseR = c.range();
+            double ageMs = Math.max(0.0, (double) (nowMs - c.timestampMs()));
+            double freshness = 1.0 - Math.min(1.0, ageMs / (double) Math.max(1L, lifeMs));
+            double openCloseness = 1.0 - Math.min(1.0, dist / Math.max(1.0, baseR));
+            double optimisticScore = freshness * 0.6 + openCloseness * 0.4;
+            if (optimisticScore <= bestScore) {
+                continue;
+            }
+            double effectiveR = baseR;
+            if (occluder != null && muffling > 0.0) {
+                if (rayChecks >= MAX_SCENT_RAY_CHECKS) {
                     continue;
                 }
-                double freshness = 1.0 - Math.min(1.0, (double) (nowMs - c.timestampMs()) / (double) crumbLifetimeMs());
-                double closeness = 1.0 - Math.sqrt(distSq) / Math.max(1.0, r);
-                double score = freshness * 0.6 + closeness * 0.4;
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = c;
+                rayChecks++;
+                double thickness = occluder.wallThickness(c.x(), c.y() + 0.5, c.z(), mobX, mobEyeY, mobZ);
+                effectiveR = scentRangeThroughWalls(baseR, thickness, muffling);
+                if (distSq > effectiveR * effectiveR) {
+                    continue;
                 }
+            }
+            double closeness = 1.0 - Math.min(1.0, dist / Math.max(1.0, effectiveR));
+            double score = freshness * 0.6 + closeness * 0.4;
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
             }
         }
         return best;

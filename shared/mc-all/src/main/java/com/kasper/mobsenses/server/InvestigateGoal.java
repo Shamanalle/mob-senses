@@ -1,6 +1,7 @@
 package com.kasper.mobsenses.server;
 
 import com.kasper.mobsenses.MobSenses;
+import com.kasper.mobsenses.TacticalTargets;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
@@ -67,6 +68,15 @@ public final class InvestigateGoal extends Goal {
      * (used for darkness escape Last Known Position and stealth ambush sweeps).
      */
     public static boolean alert(Mob mob, double x, double y, double z, double speed, boolean bypassCooldown) {
+        return alert(mob, x, y, z, speed, bypassCooldown, false);
+    }
+
+    /**
+     * Directs {@code mob} to investigate {@code (x, y, z)}, optionally bypassing cooldown and/or overriding
+     * the close-target lock (used for intentional decoys and tactical bullet impacts).
+     */
+    public static boolean alert(Mob mob, double x, double y, double z, double speed,
+                                boolean bypassCooldown, boolean forceRetarget) {
         if (mob == null || !mob.isAlive() || mob.isNoAi() || mob.getTarget() != null) {
             return false;
         }
@@ -77,7 +87,7 @@ public final class InvestigateGoal extends Goal {
             mob.getLookControl().setLookAt(x, y + 0.5, z);
             return true;
         }
-        return goal.triggerNow(x, y, z, speed, bypassCooldown);
+        return goal.triggerNow(x, y, z, speed, bypassCooldown, forceRetarget);
     }
 
     /**
@@ -137,6 +147,11 @@ public final class InvestigateGoal extends Goal {
     }
 
     public boolean triggerNow(double x, double y, double z, double speed, boolean bypassCooldown) {
+        return triggerNow(x, y, z, speed, bypassCooldown, false);
+    }
+
+    public boolean triggerNow(double x, double y, double z, double speed,
+                              boolean bypassCooldown, boolean forceRetarget) {
         long now = System.currentTimeMillis();
         long cooldown = MobSenses.settings().alertCooldownMs();
         boolean upgradingFromSuspicion = this.suspicionTicks > 0 || now < this.suspiciousUntilMs;
@@ -147,6 +162,17 @@ public final class InvestigateGoal extends Goal {
         if (!bypassCooldown && !upgradingFromSuspicion && isInvestigating()
                 && now - lastAlertMs < cooldown && sameSpotDistSq < 4.0 && speed <= this.speedModifier) {
             return false;
+        }
+        if (isInvestigating()) {
+            double curDistSq = (this.targetX - mob.getX()) * (this.targetX - mob.getX())
+                    + (this.targetZ - mob.getZ()) * (this.targetZ - mob.getZ());
+            double nextDistSq = (x - mob.getX()) * (x - mob.getX())
+                    + (z - mob.getZ()) * (z - mob.getZ());
+            if (TacticalTargets.shouldKeepCloserTarget(
+                    this.lookTicks, this.speedModifier, speed, curDistSq, nextDistSq,
+                    upgradingFromSuspicion || bypassCooldown || forceRetarget)) {
+                return false;
+            }
         }
         double nextSpeed = speed;
         if (!upgradingFromSuspicion && isInvestigating() && this.lookTicks == 0) {

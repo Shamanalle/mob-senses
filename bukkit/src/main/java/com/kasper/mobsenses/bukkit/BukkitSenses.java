@@ -8,6 +8,7 @@ import com.kasper.mobsenses.NoiseCoalescer;
 import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.ScentModel;
+import com.kasper.mobsenses.ServerSettings;
 import com.kasper.mobsenses.SightModel;
 import com.kasper.mobsenses.StealthHudState;
 import com.kasper.mobsenses.TacticalTargets;
@@ -19,6 +20,7 @@ import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Boss;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
@@ -461,7 +463,8 @@ public final class BukkitSenses {
                 }
                 continue;
             }
-            if (investigate(mob, goalLoc, speed, false)) {
+            boolean lure = TacticalTargets.isIntentionalLure(noise.eventId());
+            if (investigate(mob, goalLoc, speed, false, lure)) {
                 alerted++;
                 LAST_ALERT_MS.put(mob.getUniqueId(), now);
                 MobSenses.alerted().record(now);
@@ -620,7 +623,8 @@ public final class BukkitSenses {
                 }
                 Location mloc = mob.getLocation();
                 ScentModel.Crumb crumb = MobSenses.scent().findNearestScent(
-                        worldName, mloc.getX(), mloc.getY(), mloc.getZ(), now);
+                        worldName, mloc.getX(), mloc.getY(), mloc.getZ(), mob.getEyeLocation().getY(), now,
+                        (fx, fy, fz, tx, ty, tz) -> BukkitAcoustics.traceBundle(world, fx, fy, fz, tx, ty, tz));
                 if (crumb != null) {
                     TacticalTargets.Point3 safeCrumb = TacticalTargets.resolveSafeGoal(
                             hazardWorld, safeFilter, crumb.x(), crumb.y(), crumb.z(),
@@ -757,16 +761,21 @@ public final class BukkitSenses {
      * and falls back to {@link #spigotFallbackMove} on pure Spigot.
      */
     public static boolean investigate(Mob mob, Location target, double speed) {
-        return investigate(mob, target, speed, false);
+        return investigate(mob, target, speed, false, false);
     }
 
     public static boolean investigate(Mob mob, Location target, double speed, boolean bypassCooldown) {
+        return investigate(mob, target, speed, bypassCooldown, false);
+    }
+
+    public static boolean investigate(Mob mob, Location target, double speed,
+                                      boolean bypassCooldown, boolean forceRetarget) {
         if (mob == null || target == null || !mob.isValid() || mob.getTarget() != null) {
             return false;
         }
         if (HAS_PAPER_PATHFINDER) {
             try {
-                if (PaperPathfinder.moveTo(activePlugin, mob, target, speed, bypassCooldown)) {
+                if (PaperPathfinder.moveTo(activePlugin, mob, target, speed, bypassCooldown, forceRetarget)) {
                     return true;
                 }
             } catch (Throwable ignored) {
@@ -775,7 +784,7 @@ public final class BukkitSenses {
         long now = System.currentTimeMillis();
         long cooldown = MobSenses.settings().alertCooldownMs();
         Long prev = LAST_ALERT_MS.get(mob.getUniqueId());
-        if (!bypassCooldown && prev != null && (now - prev) < cooldown) {
+        if (!bypassCooldown && !forceRetarget && prev != null && (now - prev) < cooldown) {
             return false;
         }
         return spigotFallbackMove(mob, target, speed);
@@ -1049,6 +1058,9 @@ public final class BukkitSenses {
             LAST_DIRECT_HURT_MS.put(mob.getUniqueId(), new DirectHurt(attacker.getUniqueId(), now));
             return;
         }
+        if (!MobSenses.settings().ambushReactionEnabled()) {
+            return;
+        }
 
         UNSEEN_TARGET_SUPPRESS.put(mob.getUniqueId(), new TargetSuppress(attacker.getUniqueId(), now + 900L));
         PENDING_AMBUSHES.put(mob.getUniqueId(), new AmbushTrack(
@@ -1159,18 +1171,22 @@ public final class BukkitSenses {
         if (found == null || !found.isValid()) {
             return;
         }
+        if (!MobSenses.settings().ambushReactionEnabled()) {
+            return;
+        }
         UNSEEN_TARGET_SUPPRESS.put(found.getUniqueId(), new TargetSuppress(track.attackerId, now + 900L));
         clearMobCombatTarget(found);
         LEGITIMATE_PURSUIT.remove(found.getUniqueId());
         Location mloc = found.getLocation();
         double normalSpeed = MobSenses.settings().investigateSpeed();
         double urgentSpeed = MobSenses.settings().urgentInvestigateSpeed();
+        double fleeRatio = MobSenses.settings().ambushFleeHealthThreshold() / 100.0;
         double seedUnit = ((Math.abs(found.getEntityId() * 37) + (int) (track.hurtAtMs & 0xFF)) & 0xFF) / 255.0;
         TacticalTargets.AmbushPlan plan = TacticalTargets.planAmbushReaction(
                 mloc.getX(), mloc.getY(), mloc.getZ(),
                 track.attackerLoc.getX(), track.attackerLoc.getY(), track.attackerLoc.getZ(),
                 found.getHealth(), maxHealth(found),
-                normalSpeed, urgentSpeed, seedUnit);
+                normalSpeed, urgentSpeed, seedUnit, fleeRatio);
         TacticalTargets.HazardWorld hazardWorld = BukkitAcoustics.hazardWorld(world);
         boolean safeFilter = MobSenses.settings().safeGoalFilter();
         TacticalTargets.Point3 goal = TacticalTargets.resolveSafeGoal(
@@ -1226,6 +1242,9 @@ public final class BukkitSenses {
         if (MobSenses.settings().isExtraListener(type)) {
             return true;
         }
+        if (MobSenses.settings().ignoreBosses() && isBossMob(mob, type)) {
+            return false;
+        }
         if (type.contains("warden")) {
             return false;
         }
@@ -1233,11 +1252,22 @@ public final class BukkitSenses {
     }
 
     private static boolean isScentTracker(Mob mob) {
+        if (mob == null) {
+            return false;
+        }
         String type = mob.getType().name().toLowerCase(Locale.ROOT);
         if (MobSenses.settings().isIgnoredMob(type)) {
             return false;
         }
+        if (MobSenses.settings().ignoreBosses() && !MobSenses.settings().isExtraListener(type)
+                && isBossMob(mob, type)) {
+            return false;
+        }
         return ScentModel.isScentTracker(type);
+    }
+
+    private static boolean isBossMob(Mob mob, String type) {
+        return mob instanceof Boss || ServerSettings.isKnownBossId(type);
     }
 
     private static String itemId(ItemStack stack) {

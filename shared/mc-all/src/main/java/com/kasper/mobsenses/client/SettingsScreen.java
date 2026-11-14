@@ -6,6 +6,7 @@ import com.kasper.mobsenses.MobSenses;
 import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.Reply;
+import com.kasper.mobsenses.ScentModel;
 import com.kasper.mobsenses.ServerLink;
 import com.kasper.mobsenses.ServerSettings;
 import com.kasper.mobsenses.SightModel;
@@ -555,29 +556,63 @@ public abstract class SettingsScreen extends BaseScreen {
 
         addServerToggle(x, y, colW, "gui.mobsenses.sight.darkness_stealth", "gui.mobsenses.sight.darkness_stealth.tip",
                 s.darknessStealthEnabled(), "darkness_stealth_enabled", editable);
-        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.torchlight_penalty", "gui.mobsenses.sight.torchlight_penalty.tip",
-                s.heldLightEnabled(), "held_light_enabled", editable);
+        addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.min_darkness", "gui.mobsenses.sight.min_darkness.tip",
+                s.darknessMinVisibility(), 0.05, 1.00, 0.05, SettingsScreen::fmtPct01, "darkness_min_visibility", editable);
         y += 21;
 
-        addServerToggle(x, y, colW, "gui.mobsenses.sight.blood_scent", "gui.mobsenses.sight.blood_scent.tip",
+        addServerToggle(x, y, colW, "gui.mobsenses.sight.torchlight_penalty", "gui.mobsenses.sight.torchlight_penalty.tip",
+                s.heldLightEnabled(), "held_light_enabled", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.blood_scent", "gui.mobsenses.sight.blood_scent.tip",
                 s.scentEnabled(), "scent_enabled", editable);
+        y += 21;
+
+        addServerSlider(x, y, colW, "gui.mobsenses.sight.blood_threshold", "gui.mobsenses.sight.blood_threshold.tip",
+                s.scentHealthThreshold(), 5.0, 100.0, 5.0, SettingsScreen::fmtPct100, "scent_health_threshold", editable);
+        addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.blood_range", "gui.mobsenses.sight.blood_range.tip",
+                s.scentRange(), 0.0, 48.0, 1.0, SettingsScreen::fmtBlocks, "scent_range", editable);
+        y += 21;
+
+        addServerSlider(x, y, colW, "gui.mobsenses.sight.scent_wall_muffling", "gui.mobsenses.sight.scent_wall_muffling.tip",
+                s.scentWallMuffling(), 0.0, 3.0, 0.05, SettingsScreen::fmtMult, "scent_wall_muffling", editable);
         addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.blood_particles", "gui.mobsenses.sight.blood_particles.tip",
                 s.bloodParticles(), "blood_particles", editable);
+        y += 23;
+
+        // 4. Mob AI, Horde & Ambush
+        sectionHeaders.add(new SectionHeader(y + 1, Txt.translatable("gui.mobsenses.section.ai")));
+        y += 13;
+
+        addServerSlider(x, y, colW, "gui.mobsenses.sight.investigate_speed", "gui.mobsenses.sight.investigate_speed.tip",
+                s.investigateSpeed(), 0.5, 2.5, 0.05, SettingsScreen::fmtMult, "investigate_speed", editable);
+        addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.investigate_duration", "gui.mobsenses.sight.investigate_duration.tip",
+                s.investigationSeconds(), 2.0, 30.0, 1.0, SettingsScreen::fmtSeconds, "investigation_seconds", editable);
         y += 21;
 
-        addServerSlider(x, y, colW, "gui.mobsenses.sight.blood_range", "gui.mobsenses.sight.blood_range.tip",
-                s.scentRange(), 0.0, 48.0, 1.0, SettingsScreen::fmtBlocks, "scent_range", editable);
+        addServerSlider(x, y, colW, "gui.mobsenses.sight.max_alerted", "gui.mobsenses.sight.max_alerted.tip",
+                s.maxAlertedMobs(), 1.0, 32.0, 1.0, SettingsScreen::fmtInt, "max_alerted_mobs", editable);
         addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.horde_range", "gui.mobsenses.sight.horde_range.tip",
                 s.hordeAlertRange(), 0.0, 32.0, 1.0, SettingsScreen::fmtBlocks, "horde_alert_range", editable);
         y += 21;
 
-        addServerToggle(x, y, colW, "gui.mobsenses.sight.safe_goal_filter", "gui.mobsenses.sight.safe_goal_filter.tip",
+        addServerSlider(x, y, colW, "gui.mobsenses.sight.horde_allies", "gui.mobsenses.sight.horde_allies.tip",
+                s.hordeMaxAllies(), 0.0, 16.0, 1.0, SettingsScreen::fmtInt, "horde_max_allies", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.safe_goal_filter", "gui.mobsenses.sight.safe_goal_filter.tip",
                 s.safeGoalFilter(), "safe_goal_filter", editable);
-        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.suspicion", "gui.mobsenses.sight.suspicion.tip",
+        y += 21;
+
+        addServerToggle(x, y, colW, "gui.mobsenses.sight.suspicion", "gui.mobsenses.sight.suspicion.tip",
                 s.suspicionEnabled(), "suspicion_enabled", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.ai.ignore_bosses", "gui.mobsenses.ai.ignore_bosses.tip",
+                s.ignoreBosses(), "ignore_bosses", editable);
+        y += 21;
+
+        addServerToggle(x, y, colW, "gui.mobsenses.ai.ambush_reaction", "gui.mobsenses.ai.ambush_reaction.tip",
+                s.ambushReactionEnabled(), "ambush_reaction_enabled", editable);
+        addServerSlider(rightX, y, rightW, "gui.mobsenses.ai.ambush_flee_threshold", "gui.mobsenses.ai.ambush_flee_threshold.tip",
+                s.ambushFleeHealthThreshold(), 0.0, 100.0, 5.0, SettingsScreen::fmtFleePct, "ambush_flee_health_threshold", editable);
         y += 23;
 
-        // 4. World & Server
+        // 5. World & Server
         sectionHeaders.add(new SectionHeader(y + 1, Txt.translatable("gui.mobsenses.tab.server")));
         y += 13;
 
@@ -1047,11 +1082,12 @@ public abstract class SettingsScreen extends BaseScreen {
         double dayWalk = computeSightPreview(s, p, baseSight, 0, 15, 0, false);
         double darkSneak = computeSightPreview(s, p, baseSight, 0, 0, 0, true);
         double bloodR = (p == Preset.OFF || !s.scentEnabled()) ? 0.0 : (s.scentRange() * p.hearing());
+        double bloodStoneR = ScentModel.scentRangeThroughWalls(bloodR, 1.0, s.scentWallMuffling());
         double sightScaleMax = Math.max(32.0, Math.max(dayWalk, bloodR));
 
         drawSingleRangeRow(canvas, x + 6, y + 82, w - 12, "Daylight", dayWalk, sightScaleMax, Palette.AMBER);
         drawSingleRangeRow(canvas, x + 6, y + 92, w - 12, "Dark Sneak", darkSneak, sightScaleMax, Palette.ACCENT);
-        drawSingleRangeRow(canvas, x + 6, y + 102, w - 12, "Blood Trail", bloodR, sightScaleMax, Palette.CORAL);
+        drawScentRangeRow(canvas, x + 6, y + 102, w - 12, "Blood Trail", bloodR, bloodStoneR, sightScaleMax);
     }
 
     private static void drawAttenuationRow(
@@ -1114,6 +1150,22 @@ public abstract class SettingsScreen extends BaseScreen {
         canvas.right(Txt.literal(String.format(Locale.ROOT, "%.1fm", meters)), x + totalW, y, Palette.TEXT_PRIMARY);
     }
 
+    private static void drawScentRangeRow(
+            Canvas canvas, int x, int y, int totalW,
+            String label, double airMeters, double wallMeters, double scaleMax) {
+        int labelW = 64;
+        int readoutW = 46;
+        int trackX = x + labelW;
+        int trackW = Math.max(32, totalW - labelW - readoutW - 4);
+
+        canvas.text(Txt.literal(label), x, y, Palette.TEXT_SECONDARY);
+        canvas.fill(trackX, y + 2, trackX + trackW, y + 6, 0xFF0A0E15);
+        fillBarFraction(canvas, trackX, y + 2, trackW, 4, airMeters / scaleMax, 0x88FB7185);
+        fillBarFraction(canvas, trackX, y + 2, trackW, 4, wallMeters / scaleMax, Palette.CORAL);
+        String nums = Math.round(airMeters) + "/" + Math.round(wallMeters) + "m";
+        canvas.right(Txt.literal(nums), x + totalW, y, Palette.TEXT_PRIMARY);
+    }
+
     private static void fillBarFraction(Canvas canvas, int x, int y, int trackW, int h, double frac, int argb) {
         if (!(frac > 0.0)) {
             return;
@@ -1148,6 +1200,23 @@ public abstract class SettingsScreen extends BaseScreen {
 
     private static String fmtPct01(double v) {
         return Math.round(v * 100.0) + "%";
+    }
+
+    private static String fmtPct100(double v) {
+        return Math.round(v) + "%";
+    }
+
+    private static String fmtFleePct(double v) {
+        long pct = Math.round(v);
+        return pct <= 0 ? "0% (Off)" : (pct + "%");
+    }
+
+    private static String fmtSeconds(double v) {
+        return Math.round(v) + " s";
+    }
+
+    private static String fmtInt(double v) {
+        return String.valueOf(Math.round(v));
     }
 
     @Override

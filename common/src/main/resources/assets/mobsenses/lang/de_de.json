@@ -208,5 +208,14 @@
   "gui.mobsenses.sight.safe_goal_filter": "Sichere Untersuchungsziele",
   "gui.mobsenses.sight.safe_goal_filter.tip": "Verhindert, dass untersuchende Mobs direkt auf Lava, Feuer, Lagerfeuer oder Magma zulaufen.",
   "gui.mobsenses.sight.suspicion": "Zweistufiger Verdacht",
-  "gui.mobsenses.sight.suspicion.tip": "Bei einzelnen fernen Geräuschen halten Mobs kurz inne und blicken hin; ein zweites Geräusch löst die Suche aus."
+  "gui.mobsenses.sight.suspicion.tip": "Bei einzelnen fernen Geräuschen halten Mobs kurz inne und blicken hin; ein zweites Geräusch löst die Suche aus.",
+  "gui.mobsenses.sight.scent_wall_muffling": "Geruch durch Wand",
+  "gui.mobsenses.sight.scent_wall_muffling.tip": "Wie stark massive Wände die Blutwitterung dämpfen (0.0 ignoriert Wände, 1.0 Standard, 3.0 schirmt Witterung stark ab).",
+  "gui.mobsenses.section.ai": "Mob-KI, Horde & Hinterhalt",
+  "gui.mobsenses.ai.ignore_bosses": "Bosse ignorieren",
+  "gui.mobsenses.ai.ignore_bosses.tip": "Schließt Vanilla- und getaggte Bosse (Wither, Enderdrache, Großer Wächter, Warden, Mod-Bosse) aus, außer über extra_listeners.",
+  "gui.mobsenses.ai.ambush_reaction": "Hinterhalt-Reakt.",
+  "gui.mobsenses.ai.ambush_reaction.tip": "Bei Treffern außerhalb der Sichtweite oder aus der Dunkelheit suchen gesunde Mobs den Sektor ab und verwundete fliehen statt X-Ray-Zielerfassung.",
+  "gui.mobsenses.ai.ambush_flee_threshold": "Flucht-HP-Limit",
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Lebensprozent, unterhalb dem ein aus dem Hinterhalt getroffener Mob flieht (0% = nie fliehen, immer Angriffsrichtung absuchen)."
 }

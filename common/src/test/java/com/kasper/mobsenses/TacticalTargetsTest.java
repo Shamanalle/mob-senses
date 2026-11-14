@@ -140,4 +140,43 @@ class TacticalTargetsTest {
         assertEquals(64.0, keptBridge.y(), 1e-6);
         assertEquals(10.5, keptBridge.z(), 1e-6);
     }
+
+    @Test
+    void closeTargetLockHoldsAgainstAmbientNoiseButYieldsToIntentionalLures() {
+        assertTrue(TacticalTargets.isIntentionalLure("mobsenses:decoy_land"));
+        assertTrue(TacticalTargets.isIntentionalLure("mobsenses:bullet_impact"));
+        assertFalse(TacticalTargets.isIntentionalLure("minecraft:step"));
+        assertFalse(TacticalTargets.isIntentionalLure("mobsenses:gunshot"));
+        assertFalse(TacticalTargets.isIntentionalLure(null));
+
+        assertTrue(TacticalTargets.shouldKeepCloserTarget(0, 1.0, 1.0, 16.0, 100.0, false),
+                "Much closer active investigation (4m vs 10m) must reject equal-speed ambient noise");
+        assertFalse(TacticalTargets.shouldKeepCloserTarget(0, 1.0, 1.0, 80.0, 100.0, false),
+                "Comparable distance (>= 0.72 ratio) may update to newer target");
+        assertFalse(TacticalTargets.shouldKeepCloserTarget(5, 1.0, 1.0, 16.0, 100.0, false),
+                "Look-around phase releases distance lock");
+        assertFalse(TacticalTargets.shouldKeepCloserTarget(0, 1.0, 1.15, 16.0, 100.0, false),
+                "Higher-urgency sound overrides closer low-urgency target");
+        assertFalse(TacticalTargets.shouldKeepCloserTarget(
+                        0, 1.0, 1.0, 16.0, 100.0, TacticalTargets.isIntentionalLure("mobsenses:decoy_land")),
+                "Q-thrown decoy lure must pull guard off a close ambient sound");
+        assertFalse(TacticalTargets.shouldKeepCloserTarget(
+                        0, 1.0, 1.0, 16.0, 100.0, TacticalTargets.isIntentionalLure("mobsenses:bullet_impact")),
+                "Bullet wall-impact lure must pull guard off a close ambient sound");
+    }
+
+    @Test
+    void customAmbushFleeThresholdControlsRetreatVsSweep() {
+        TacticalTargets.AmbushPlan neverFlee = TacticalTargets.planAmbushReaction(
+                0.0, 64.0, 0.0, 24.0, 64.0, 0.0,
+                1.0, 20.0, 1.05, 1.32, 0.5, 0.0);
+        assertFalse(neverFlee.flee(), "0% flee threshold disables retreat even at 1 HP");
+        assertTrue(neverFlee.targetX() > 5.0);
+
+        TacticalTargets.AmbushPlan customHighThreshold = TacticalTargets.planAmbushReaction(
+                0.0, 64.0, 0.0, 24.0, 64.0, 0.0,
+                10.0, 20.0, 1.05, 1.32, 0.5, 0.60);
+        assertTrue(customHighThreshold.flee(), "50% HP must flee when threshold is raised to 60%");
+        assertTrue(customHighThreshold.targetX() < -5.0);
+    }
 }

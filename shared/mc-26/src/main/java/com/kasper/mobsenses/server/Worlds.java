@@ -25,6 +25,10 @@ public final class Worlds {
             Registries.ENTITY_TYPE,
             Identifier.fromNamespaceAndPath(MobSenses.MOD_ID, "listeners"));
 
+    public static final TagKey<EntityType<?>> BOSSES = TagKey.create(
+            Registries.ENTITY_TYPE,
+            Identifier.fromNamespaceAndPath(MobSenses.MOD_ID, "bosses"));
+
     private Worlds() {
     }
 
@@ -42,6 +46,10 @@ public final class Worlds {
 
     public static boolean isTaggedListener(EntityType<?> type) {
         return type != null && type.builtInRegistryHolder().is(LISTENERS);
+    }
+
+    public static boolean isTaggedBoss(EntityType<?> type) {
+        return type != null && type.builtInRegistryHolder().is(BOSSES);
     }
 
     public static String blockId(BlockState state) {

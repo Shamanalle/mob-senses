@@ -21,7 +21,7 @@ public final class AdminCommands {
             "status", "preset", "hearing", "sight", "voice", "world",
             "set", "get", "reset", "hud", "debug", "reload", "help");
     private static final List<String> CATEGORIES = Jv.listOf(
-            "core", "server", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "all");
+            "core", "server", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "ai", "ambush", "all");
     private static final List<String> HUD_MODES = Jv.listOf(
             "on", "off", "tactical", "minimal", "compact", "full", "auto_hide", "range", "style",
             "opacity", "offset", "bar", "reset",
@@ -693,6 +693,8 @@ public final class AdminCommands {
             case "decoy_throw_enabled":
             case "safe_goal_filter":
             case "suspicion_enabled":
+            case "ambush_reaction_enabled":
+            case "ignore_bosses":
             case "allow_client_hud":
                 return Jv.listOf("true", "false");
             case "gunshot_range":
@@ -701,6 +703,10 @@ public final class AdminCommands {
                 return Jv.listOf("0", "8", "12", "16", "24", "default");
             case "bullet_impact_range":
                 return Jv.listOf("0", "12", "20", "32", "default");
+            case "scent_wall_muffling":
+                return Jv.listOf("0", "0.5", "1", "1.5", "2", "3");
+            case "ambush_flee_health_threshold":
+                return Jv.listOf("0", "25", "35", "50", "75");
             case "wall_muffling":
             case "hearing":
             case "sight":

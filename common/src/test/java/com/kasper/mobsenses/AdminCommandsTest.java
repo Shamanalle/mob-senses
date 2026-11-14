@@ -221,4 +221,38 @@ class AdminCommandsTest {
         assertEquals("Preset is now Hardcore (hardcore).", presetReply.lines().get(0).text());
         assertTrue(presetReply.lines().get(0).hasSpans());
     }
+
+    @Test
+    void suggestAndSetV161TacticalOptions() {
+        List<String> keys = AdminCommands.suggestions("set ", CONSOLE);
+        assertTrue(keys.contains("scent_wall_muffling"));
+        assertTrue(keys.contains("ambush_reaction_enabled"));
+        assertTrue(keys.contains("ambush_flee_health_threshold"));
+        assertTrue(keys.contains("ignore_bosses"));
+
+        assertEquals(List.of("true", "false"), AdminCommands.suggestions("set ignore_bosses ", CONSOLE));
+        assertEquals(List.of("true", "false"), AdminCommands.suggestions("set ambush_reaction_enabled ", CONSOLE));
+        assertTrue(AdminCommands.suggestions("set scent_wall_muffling ", CONSOLE).containsAll(List.of("0", "1", "3")));
+        assertTrue(AdminCommands.suggestions("set ambush_flee_health_threshold ", CONSOLE)
+                .containsAll(List.of("0", "35", "75")));
+
+        assertFalse(AdminCommands.execute("set scent_wall_muffling 2.25", CONSOLE).refused());
+        assertFalse(AdminCommands.execute("set ambush_reaction_enabled false", CONSOLE).refused());
+        assertFalse(AdminCommands.execute("set ambush_flee_health_threshold 0", CONSOLE).refused());
+        assertFalse(AdminCommands.execute("set ignore_bosses false", CONSOLE).refused());
+
+        assertEquals(2.25, MobSenses.settings().scentWallMuffling(), 1e-6);
+        assertFalse(MobSenses.settings().ambushReactionEnabled());
+        assertEquals(0.0, MobSenses.settings().ambushFleeHealthThreshold(), 1e-6);
+        assertFalse(MobSenses.settings().ignoreBosses());
+
+        String aiCategory = AdminCommands.execute("get ai", CONSOLE).toString();
+        assertTrue(aiCategory.contains("ignore_bosses"), aiCategory);
+        assertTrue(aiCategory.contains("ambush_reaction_enabled"), aiCategory);
+        assertTrue(aiCategory.contains("ambush_flee_health_threshold"), aiCategory);
+        assertTrue(AdminCommands.suggestions("get a", CONSOLE).containsAll(List.of("ai", "ambush", "all")));
+
+        assertFalse(AdminCommands.execute("reset ignore_bosses", CONSOLE).refused());
+        assertTrue(MobSenses.settings().ignoreBosses());
+    }
 }

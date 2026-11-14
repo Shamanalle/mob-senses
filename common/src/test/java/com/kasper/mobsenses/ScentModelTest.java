@@ -78,4 +78,41 @@ class ScentModelTest {
         }
         assertTrue(scent.activePlayerCrumbs(world, player, 7500L).isEmpty(), "Swimming must wash away trail");
     }
+
+    @Test
+    void scentWallMufflingAttenuatesBlockedTrailsAndPrefersOpenPaths() {
+        assertEquals(14.0, ScentModel.scentRangeThroughWalls(14.0, 0.0, 1.0), 1e-6);
+        assertEquals(14.0, ScentModel.scentRangeThroughWalls(14.0, 2.0, 0.0), 1e-6);
+        double oneWall = ScentModel.scentRangeThroughWalls(14.0, 1.0, 1.0);
+        assertTrue(oneWall > 4.0 && oneWall < 14.0, "One stone wall should partially muffle blood scent: " + oneWall);
+        assertEquals(0.0, ScentModel.scentRangeThroughWalls(14.0, 3.5, 1.0), 1e-6);
+
+        ScentModel scent = new ScentModel();
+        UUID blockedPlayer = UUID.randomUUID();
+        UUID openPlayer = UUID.randomUUID();
+        String world = "minecraft:overworld";
+        long now = 5000L;
+
+        try {
+            MobSenses.settings().resetAll();
+            scent.recordPlayer(world, blockedPlayer, 6.0, 64.0, 0.0, 4.0, 20.0, Preset.DEFAULT, now);
+            scent.recordPlayer(world, openPlayer, 10.0, 64.0, 0.0, 4.0, 20.0, Preset.DEFAULT, now);
+
+            ScentModel.WallOccluder sealedWallBetween = (fx, fy, fz, tx, ty, tz) -> fx < 8.0 ? 4.0 : 0.0;
+
+            MobSenses.settings().setScentWallMuffling(1.0);
+            ScentModel.Crumb chosen = scent.findNearestScent(world, 0.0, 64.0, 0.0, 65.5, now, sealedWallBetween);
+            assertNotNull(chosen);
+            assertEquals(openPlayer, chosen.playerId(),
+                    "Mob must pick reachable open-air crumb over closer crumb sealed behind thick walls");
+
+            MobSenses.settings().setScentWallMuffling(0.0);
+            ScentModel.Crumb unfiltered = scent.findNearestScent(world, 0.0, 64.0, 0.0, 65.5, now, sealedWallBetween);
+            assertNotNull(unfiltered);
+            assertEquals(blockedPlayer, unfiltered.playerId(),
+                    "When scent_wall_muffling=0, closer crumb wins regardless of intervening walls");
+        } finally {
+            MobSenses.settings().resetAll();
+        }
+    }
 }

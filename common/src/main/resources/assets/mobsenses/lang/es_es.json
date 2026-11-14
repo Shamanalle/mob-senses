@@ -208,5 +208,14 @@
   "gui.mobsenses.sight.safe_goal_filter": "Rutas de investigación seguras",
   "gui.mobsenses.sight.safe_goal_filter.tip": "Evita que los mobs que investigan caminen directamente hacia lava, fuego, hogueras o magma.",
   "gui.mobsenses.sight.suspicion": "Sospecha en dos etapas",
-  "gui.mobsenses.sight.suspicion.tip": "Un ruido lejano aislado hace que el mob se detenga y mire primero; un segundo ruido inicia la búsqueda."
+  "gui.mobsenses.sight.suspicion.tip": "Un ruido lejano aislado hace que el mob se detenga y mire primero; un segundo ruido inicia la búsqueda.",
+  "gui.mobsenses.sight.scent_wall_muffling": "Olor tras muros",
+  "gui.mobsenses.sight.scent_wall_muffling.tip": "Cuánta atenuación aplican los muros sólidos al rastro de sangre (0.0 ignora muros, 1.0 por defecto, 3.0 bloquea casi todo).",
+  "gui.mobsenses.section.ai": "IA, Horda y Emboscadas",
+  "gui.mobsenses.ai.ignore_bosses": "Ignorar jefes",
+  "gui.mobsenses.ai.ignore_bosses.tip": "Excluye jefes vanilla y etiquetados (Wither, Dragón del End, Guardián Anciano, Warden, jefes de mods) salvo en extra_listeners.",
+  "gui.mobsenses.ai.ambush_reaction": "Reacción emboscada",
+  "gui.mobsenses.ai.ambush_reaction.tip": "Al recibir disparos ocultos o desde la oscuridad, los mobs sanos registran el sector y los heridos huyen en lugar de fijar objetivo al instante.",
+  "gui.mobsenses.ai.ambush_flee_threshold": "Huida por HP <",
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Porcentaje de vida bajo el cual un mob emboscado huye del disparo (0% = nunca huir, siempre registrar hacia el atacante)."
 }

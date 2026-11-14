@@ -208,5 +208,14 @@
   "gui.mobsenses.sight.safe_goal_filter": "安全侦查落点过滤",
   "gui.mobsenses.sight.safe_goal_filter.tip": "防止怪物在循声或追踪血迹时直接走入岩浆、火焰、营火或岩浆块。",
   "gui.mobsenses.sight.suspicion": "两阶段警觉系统",
-  "gui.mobsenses.sight.suspicion.tip": "较远处的单次声响会让怪物先停下张望；再次发出声响或巨响才会触发搜寻移动。"
+  "gui.mobsenses.sight.suspicion.tip": "较远处的单次声响会让怪物先停下张望；再次发出声响或巨响才会触发搜寻移动。",
+  "gui.mobsenses.sight.scent_wall_muffling": "隔墙血迹嗅觉衰减",
+  "gui.mobsenses.sight.scent_wall_muffling.tip": "实体墙体对血迹嗅觉探测距离的衰减强度（0.0 穿墙，1.0 默认，3.0 严密隔绝墙后气味）。",
+  "gui.mobsenses.section.ai": "怪物 AI、尸潮与伏击应对",
+  "gui.mobsenses.ai.ignore_bosses": "忽略 Boss 首领",
+  "gui.mobsenses.ai.ignore_bosses.tip": "默认排除原版与带标签的 Boss（凋灵、末影龙、远古守卫者、监守者及模组 Boss），除非已加入 extra_listeners。",
+  "gui.mobsenses.ai.ambush_reaction": "远程伏击反制",
+  "gui.mobsenses.ai.ambush_reaction.tip": "从视野外或黑暗中遭到偷袭时，健康怪物会向来袭方向搜索，重伤怪物则会撤退，而非瞬间透视锁敌。",
+  "gui.mobsenses.ai.ambush_flee_threshold": "残血撤退阈值",
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "遭到伏击时触发撤退的生命值百分比阈值（0% 表示永不逃跑，始终朝袭击方向搜索）。"
 }

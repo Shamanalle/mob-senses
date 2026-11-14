@@ -38,6 +38,10 @@ public final class Worlds {
         return false;
     }
 
+    public static boolean isTaggedBoss(EntityType<?> type) {
+        return false;
+    }
+
     public static String blockId(BlockState state) {
         try {
             return String.valueOf(Registry.BLOCK.getKey(state.getBlock()));

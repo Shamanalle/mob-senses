@@ -208,5 +208,14 @@
   "gui.mobsenses.sight.safe_goal_filter": "Rotas seguras de investigação",
   "gui.mobsenses.sight.safe_goal_filter.tip": "Impede que mobs investigando caminhem diretamente para lava, fogo, fogueiras ou magma.",
   "gui.mobsenses.sight.suspicion": "Suspeita em dois estágios",
-  "gui.mobsenses.sight.suspicion.tip": "Um ruído distante isolado faz o mob parar e olhar primeiro; um segundo ruído inicia a investigação."
+  "gui.mobsenses.sight.suspicion.tip": "Um ruído distante isolado faz o mob parar e olhar primeiro; um segundo ruído inicia a investigação.",
+  "gui.mobsenses.sight.scent_wall_muffling": "Cheiro por paredes",
+  "gui.mobsenses.sight.scent_wall_muffling.tip": "Quanto paredes sólidas atenuam o rastro de sangue (0.0 ignora paredes, 1.0 padrão, 3.0 bloqueia o cheiro atrás de paredes).",
+  "gui.mobsenses.section.ai": "IA, Horda e Emboscadas",
+  "gui.mobsenses.ai.ignore_bosses": "Ignorar chefes",
+  "gui.mobsenses.ai.ignore_bosses.tip": "Exclui chefes vanilla e com tag (Wither, Dragão do End, Guardião Ancião, Warden, chefes de mods), salvo em extra_listeners.",
+  "gui.mobsenses.ai.ambush_reaction": "Reação a emboscada",
+  "gui.mobsenses.ai.ambush_reaction.tip": "Ao levar tiro de fora da visão ou da escuridão, mobs saudáveis vasculham a direção e feridos recuam em vez de travar mira instantânea.",
+  "gui.mobsenses.ai.ambush_flee_threshold": "Fuga por HP <",
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Porcentagem de vida abaixo da qual um mob emboscado foge do tiro (0% = nunca fugir, sempre vasculhar a direção)."
 }

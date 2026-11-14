@@ -327,4 +327,64 @@ class ServerSettingsTest {
         assertEquals("0.75", ServerSettings.format(0.75));
         assertEquals("1.2", ServerSettings.format(1.20));
     }
+
+    @Test
+    void v161SettingsAutoUpgradeWireSyncBossIdsAndAliases() throws Exception {
+        assertEquals("scent_wall_muffling", ServerSettings.canonicalOptionKey("scent_muffling"));
+        assertEquals("scent_wall_muffling", ServerSettings.canonicalOptionKey("blood_wall_muffling"));
+        assertEquals("ambush_reaction_enabled", ServerSettings.canonicalOptionKey("ambush_reaction"));
+        assertEquals("ambush_flee_health_threshold", ServerSettings.canonicalOptionKey("ambush_flee_hp"));
+        assertEquals("ignore_bosses", ServerSettings.canonicalOptionKey("boss_immunity"));
+
+        assertTrue(ServerSettings.isKnownBossId("minecraft:wither"));
+        assertTrue(ServerSettings.isKnownBossId("ENDER_DRAGON"));
+        assertTrue(ServerSettings.isKnownBossId("minecraft:elder_guardian"));
+        assertTrue(ServerSettings.isKnownBossId("minecraft:warden"));
+        assertTrue(ServerSettings.isKnownBossId("cataclysm:ignis_boss"));
+        assertTrue(ServerSettings.isKnownBossId("twilightforest:boss_hydra"));
+        assertFalse(ServerSettings.isKnownBossId("minecraft:zombie"));
+        assertFalse(ServerSettings.isKnownBossId(""));
+        assertFalse(ServerSettings.isKnownBossId(null));
+
+        // Auto-upgrade legacy 1.6.0 properties while keeping user values intact
+        Path file = dir.resolve("upgrade-160.properties");
+        Files.writeString(file, "preset=hardcore\nhearing=1.35\n", StandardCharsets.UTF_8);
+        ServerSettings s = new ServerSettings(file);
+        s.load();
+        assertEquals(Preset.HARDCORE, s.preset());
+        assertEquals(1.35, s.hearing(), 1e-6);
+        assertEquals(1.0, s.scentWallMuffling(), 1e-6);
+        assertTrue(s.ambushReactionEnabled());
+        assertEquals(35.0, s.ambushFleeHealthThreshold(), 1e-6);
+        assertTrue(s.ignoreBosses());
+
+        String upgraded = Files.readString(file, StandardCharsets.UTF_8);
+        assertTrue(upgraded.contains("scent_wall_muffling=1"), upgraded);
+        assertTrue(upgraded.contains("ambush_reaction_enabled=true"), upgraded);
+        assertTrue(upgraded.contains("ambush_flee_health_threshold=35"), upgraded);
+        assertTrue(upgraded.contains("ignore_bosses=true"), upgraded);
+
+        assertFalse(s.setOption("scent_wall_muffling", "5"));
+        assertFalse(s.setOption("ambush_flee_health_threshold", "120"));
+        assertTrue(s.setOption("scent_wall_muffling", "2.25"));
+        assertTrue(s.setOption("ambush_reaction_enabled", "false"));
+        assertTrue(s.setOption("ambush_flee_health_threshold", "0"));
+        assertTrue(s.setOption("ignore_bosses", "false"));
+        s.save();
+
+        java.util.Properties wire = new java.util.Properties();
+        s.writeState(wire, "minecraft:overworld");
+        ServerSettings clientCopy = new ServerSettings(null);
+        clientCopy.readState(wire);
+        assertEquals(2.25, clientCopy.scentWallMuffling(), 1e-6);
+        assertFalse(clientCopy.ambushReactionEnabled());
+        assertEquals(0.0, clientCopy.ambushFleeHealthThreshold(), 1e-6);
+        assertFalse(clientCopy.ignoreBosses());
+
+        s.resetAll();
+        assertEquals(1.0, s.scentWallMuffling(), 1e-6);
+        assertTrue(s.ambushReactionEnabled());
+        assertEquals(35.0, s.ambushFleeHealthThreshold(), 1e-6);
+        assertTrue(s.ignoreBosses());
+    }
 }

@@ -208,5 +208,14 @@
   "gui.mobsenses.sight.safe_goal_filter": "Safe Investigation Paths",
   "gui.mobsenses.sight.safe_goal_filter.tip": "Prevents investigating mobs from walking directly into lava, fire, campfires, or magma.",
   "gui.mobsenses.sight.suspicion": "Two-Stage Suspicion",
-  "gui.mobsenses.sight.suspicion.tip": "Distant single noises make mobs pause and glance toward the sound first; a second noise triggers full investigation."
+  "gui.mobsenses.sight.suspicion.tip": "Distant single noises make mobs pause and glance toward the sound first; a second noise triggers full investigation.",
+  "gui.mobsenses.sight.scent_wall_muffling": "Scent Wall Muffle",
+  "gui.mobsenses.sight.scent_wall_muffling.tip": "How strongly solid walls attenuate blood scent detection (0.0 ignores walls, 1.0 is default, 3.0 seals scent behind walls).",
+  "gui.mobsenses.section.ai": "Mob AI, Horde & Ambush",
+  "gui.mobsenses.ai.ignore_bosses": "Ignore Bosses",
+  "gui.mobsenses.ai.ignore_bosses.tip": "Excludes vanilla and tagged bosses (Wither, Ender Dragon, Elder Guardian, Warden, modded bosses) unless added to extra_listeners.",
+  "gui.mobsenses.ai.ambush_reaction": "Ambush Reaction",
+  "gui.mobsenses.ai.ambush_reaction.tip": "When shot from outside sight range or darkness, healthy mobs sweep your direction and wounded mobs retreat instead of X-ray locking.",
+  "gui.mobsenses.ai.ambush_flee_threshold": "Ambush Flee HP",
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Health percentage below which an ambushed mob retreats away from the shot (0% = never flee, always sweep toward the attacker)."
 }

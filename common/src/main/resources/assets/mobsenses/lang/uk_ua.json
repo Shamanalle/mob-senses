@@ -208,5 +208,14 @@
   "gui.mobsenses.sight.safe_goal_filter": "Безпечні цілі огляду",
   "gui.mobsenses.sight.safe_goal_filter.tip": "Не дозволяє мобам під час перевірки шуму та слідів прямувати в лаву, вогонь, багаття чи магму.",
   "gui.mobsenses.sight.suspicion": "Двоетапна підозрілість",
-  "gui.mobsenses.sight.suspicion.tip": "При поодинокому далекому шумі моби спершу завмирають і оглядаються на джерело; повторний шум запускає пошук."
+  "gui.mobsenses.sight.suspicion.tip": "При поодинокому далекому шумі моби спершу завмирають і оглядаються на джерело; повторний шум запускає пошук.",
+  "gui.mobsenses.sight.scent_wall_muffling": "Запах крізь стіни",
+  "gui.mobsenses.sight.scent_wall_muffling.tip": "Наскільки сильно суцільні стіни глушать запах крові (0.0 — ігнорувати стіни, 1.0 — стандартно, 3.0 — майже повністю блокують слід).",
+  "gui.mobsenses.section.ai": "ШІ мобів, орда й засідка",
+  "gui.mobsenses.ai.ignore_bosses": "Пропуск босів",
+  "gui.mobsenses.ai.ignore_bosses.tip": "Виключає ванільних і тегових босів (Візера, Дракона Краю, Стародавнього вартового, Наглядача тощо), якщо не вказані в extra_listeners.",
+  "gui.mobsenses.ai.ambush_reaction": "Реакція на засідку",
+  "gui.mobsenses.ai.ambush_reaction.tip": "При пострілі здалеку або з темряви здорові моби прочісують напрямок атаки, а поранені відступають замість миттєвого наведення.",
+  "gui.mobsenses.ai.ambush_flee_threshold": "Втеча при HP <",
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Поріг здоров'я у відсотках, нижче якого атакований із засідки моб відступає від пострілу (0% — ніколи не тікати, завжди шукати)."
 }

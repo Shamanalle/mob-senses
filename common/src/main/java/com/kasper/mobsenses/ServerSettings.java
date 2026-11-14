@@ -38,6 +38,11 @@ public final class ServerSettings {
     public static final double MIN_RANGE = 0.0;
     public static final double MAX_RANGE = 256.0;
 
+    public static final double DEFAULT_SCENT_WALL_MUFFLING = 1.0;
+    public static final boolean DEFAULT_AMBUSH_REACTION_ENABLED = true;
+    public static final double DEFAULT_AMBUSH_FLEE_HEALTH_THRESHOLD = 35.0;
+    public static final boolean DEFAULT_IGNORE_BOSSES = true;
+
     private static final List<String> OPTION_KEYS = Jv.listOf(
             "preset", "hearing", "sight", "wall_muffling", "through_wall_hearing", "surface_sound_scaling",
             "gunshot_range", "gunshot_silenced_range", "bullet_impact_range",
@@ -51,10 +56,11 @@ public final class ServerSettings {
             "darkness_stealth_enabled", "darkness_min_visibility",
             "sneak_sight_multiplier", "sprint_sight_multiplier",
             "scent_enabled", "scent_health_threshold", "scent_range", "scent_max_range",
-            "scent_duration_seconds", "blood_particles", "scent_mobs",
+            "scent_wall_muffling", "scent_duration_seconds", "blood_particles", "scent_mobs",
             "investigate_speed", "urgent_investigate_speed", "investigation_seconds",
             "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
             "sound_cover_enabled", "decoy_throw_enabled", "safe_goal_filter", "suspicion_enabled",
+            "ambush_reaction_enabled", "ambush_flee_health_threshold", "ignore_bosses",
             "extra_listeners", "ignored_mobs",
             "allow_client_hud", "language");
 
@@ -117,6 +123,7 @@ public final class ServerSettings {
     private volatile double scentHealthThreshold = 50.0;
     private volatile double scentRange = 14.0;
     private volatile double scentMaxRange = 24.0;
+    private volatile double scentWallMuffling = DEFAULT_SCENT_WALL_MUFFLING;
     private volatile double scentDurationSeconds = 15.0;
     private volatile boolean bloodParticles = true;
     private volatile Set<String> scentMobs = Collections.emptySet();
@@ -133,6 +140,9 @@ public final class ServerSettings {
     private volatile boolean decoyThrowEnabled = true;
     private volatile boolean safeGoalFilter = true;
     private volatile boolean suspicionEnabled = true;
+    private volatile boolean ambushReactionEnabled = DEFAULT_AMBUSH_REACTION_ENABLED;
+    private volatile double ambushFleeHealthThreshold = DEFAULT_AMBUSH_FLEE_HEALTH_THRESHOLD;
+    private volatile boolean ignoreBosses = DEFAULT_IGNORE_BOSSES;
     private volatile Set<String> extraListeners = Collections.emptySet();
     private volatile Set<String> ignoredMobs = Collections.emptySet();
 
@@ -174,9 +184,47 @@ public final class ServerSettings {
                 return "blood_particles";
             case "investigate_duration_sec":
                 return "investigation_seconds";
+            case "scent_muffling":
+            case "blood_wall_muffling":
+                return "scent_wall_muffling";
+            case "ambush_reaction":
+            case "ambush_enabled":
+                return "ambush_reaction_enabled";
+            case "ambush_flee_threshold":
+            case "flee_health_threshold":
+            case "ambush_flee_hp":
+                return "ambush_flee_health_threshold";
+            case "boss_immunity":
+                return "ignore_bosses";
             default:
                 return key;
         }
+    }
+
+    /**
+     * Whether {@code entityId} (namespaced registry ID or lowercase Bukkit enum name) identifies a
+     * known boss entity excluded when {@link #ignoreBosses()} is enabled.
+     */
+    public static boolean isKnownBossId(String entityId) {
+        if (entityId == null || entityId.isEmpty()) {
+            return false;
+        }
+        String norm = entityId.trim().toLowerCase(Locale.ROOT);
+        int colon = norm.indexOf(':');
+        String path = colon >= 0 ? norm.substring(colon + 1) : norm;
+        if (path.isEmpty()) {
+            return false;
+        }
+        if ("wither".equals(path)
+                || "ender_dragon".equals(path)
+                || "elder_guardian".equals(path)
+                || "warden".equals(path)) {
+            return true;
+        }
+        return "boss".equals(path)
+                || path.startsWith("boss_")
+                || path.endsWith("_boss")
+                || path.contains("_boss_");
     }
 
     public Path file() {
@@ -434,6 +482,10 @@ public final class ServerSettings {
         return scentMaxRange;
     }
 
+    public double scentWallMuffling() {
+        return scentWallMuffling;
+    }
+
     public double scentDurationSeconds() {
         return scentDurationSeconds;
     }
@@ -488,6 +540,18 @@ public final class ServerSettings {
 
     public boolean suspicionEnabled() {
         return suspicionEnabled;
+    }
+
+    public boolean ambushReactionEnabled() {
+        return ambushReactionEnabled;
+    }
+
+    public double ambushFleeHealthThreshold() {
+        return ambushFleeHealthThreshold;
+    }
+
+    public boolean ignoreBosses() {
+        return ignoreBosses;
     }
 
     public Set<String> extraListeners() {
@@ -784,6 +848,10 @@ public final class ServerSettings {
         this.scentMaxRange = checkRange("scent_max_range", scentMaxRange);
     }
 
+    public void setScentWallMuffling(double scentWallMuffling) {
+        this.scentWallMuffling = checkBounded("scent_wall_muffling", scentWallMuffling, 0.0, 3.0);
+    }
+
     public void setScentDurationSeconds(double scentDurationSeconds) {
         this.scentDurationSeconds = checkBounded("scent_duration_seconds", scentDurationSeconds, 2.0, 120.0);
     }
@@ -847,6 +915,19 @@ public final class ServerSettings {
 
     public void setSuspicionEnabled(boolean suspicionEnabled) {
         this.suspicionEnabled = suspicionEnabled;
+    }
+
+    public void setAmbushReactionEnabled(boolean ambushReactionEnabled) {
+        this.ambushReactionEnabled = ambushReactionEnabled;
+    }
+
+    public void setAmbushFleeHealthThreshold(double ambushFleeHealthThreshold) {
+        this.ambushFleeHealthThreshold = checkBounded(
+                "ambush_flee_health_threshold", ambushFleeHealthThreshold, 0.0, 100.0);
+    }
+
+    public void setIgnoreBosses(boolean ignoreBosses) {
+        this.ignoreBosses = ignoreBosses;
     }
 
     public void setExtraListeners(Set<String> ids) {
@@ -978,6 +1059,8 @@ public final class ServerSettings {
                 return format(scentMaxRange);
             case "scent_duration_seconds":
                 return format(scentDurationSeconds);
+            case "scent_wall_muffling":
+                return format(scentWallMuffling);
             case "blood_particles":
                 return String.valueOf(bloodParticles);
             case "scent_mobs":
@@ -1004,6 +1087,12 @@ public final class ServerSettings {
                 return String.valueOf(safeGoalFilter);
             case "suspicion_enabled":
                 return String.valueOf(suspicionEnabled);
+            case "ambush_reaction_enabled":
+                return String.valueOf(ambushReactionEnabled);
+            case "ambush_flee_health_threshold":
+                return format(ambushFleeHealthThreshold);
+            case "ignore_bosses":
+                return String.valueOf(ignoreBosses);
             case "extra_listeners":
                 return String.join(",", extraListeners);
             case "ignored_mobs":
@@ -1059,13 +1148,17 @@ public final class ServerSettings {
             case "scent":
             case "blood":
                 return Jv.listOf("scent_enabled", "scent_health_threshold", "scent_range",
-                        "scent_max_range", "scent_duration_seconds", "blood_particles", "scent_mobs");
+                        "scent_max_range", "scent_duration_seconds", "scent_wall_muffling",
+                        "blood_particles", "scent_mobs");
+            case "ambush":
+                return Jv.listOf("ambush_reaction_enabled", "ambush_flee_health_threshold");
             case "mobs":
             case "horde":
             case "ai":
                 return Jv.listOf("investigate_speed", "urgent_investigate_speed", "investigation_seconds",
                         "max_alerted_mobs", "horde_alert_range", "horde_max_allies", "alert_cooldown_ms",
                         "safe_goal_filter", "suspicion_enabled",
+                        "ambush_reaction_enabled", "ambush_flee_health_threshold", "ignore_bosses",
                         "extra_listeners", "ignored_mobs");
             case "all":
                 return OPTION_KEYS;
@@ -1233,6 +1326,9 @@ public final class ServerSettings {
             case "scent_max_range":
                 scentMaxRange = 24.0;
                 return true;
+            case "scent_wall_muffling":
+                scentWallMuffling = DEFAULT_SCENT_WALL_MUFFLING;
+                return true;
             case "scent_duration_seconds":
                 scentDurationSeconds = 15.0;
                 return true;
@@ -1274,6 +1370,15 @@ public final class ServerSettings {
                 return true;
             case "suspicion_enabled":
                 suspicionEnabled = true;
+                return true;
+            case "ambush_reaction_enabled":
+                ambushReactionEnabled = DEFAULT_AMBUSH_REACTION_ENABLED;
+                return true;
+            case "ambush_flee_health_threshold":
+                ambushFleeHealthThreshold = DEFAULT_AMBUSH_FLEE_HEALTH_THRESHOLD;
+                return true;
+            case "ignore_bosses":
+                ignoreBosses = DEFAULT_IGNORE_BOSSES;
                 return true;
             case "extra_listeners":
                 extraListeners = Collections.emptySet();
@@ -1460,6 +1565,9 @@ public final class ServerSettings {
                 case "scent_max_range":
                     setScentMaxRange(parseDouble(val));
                     return true;
+                case "scent_wall_muffling":
+                    setScentWallMuffling(parseDouble(val));
+                    return true;
                 case "scent_duration_seconds":
                     setScentDurationSeconds(parseDouble(val));
                     return true;
@@ -1503,6 +1611,15 @@ public final class ServerSettings {
                     return true;
                 case "suspicion_enabled":
                     setSuspicionEnabled(parseStrictBool(val));
+                    return true;
+                case "ambush_reaction_enabled":
+                    setAmbushReactionEnabled(parseStrictBool(val));
+                    return true;
+                case "ambush_flee_health_threshold":
+                    setAmbushFleeHealthThreshold(parseDouble(val));
+                    return true;
+                case "ignore_bosses":
+                    setIgnoreBosses(parseStrictBool(val));
                     return true;
                 case "extra_listeners":
                     setExtraListeners("none".equalsIgnoreCase(val) || "clear".equalsIgnoreCase(val)
@@ -1589,10 +1706,13 @@ public final class ServerSettings {
             read(text);
             if (!text.contains("gunshot_range=") || !text.contains("rain_muffling=")
                     || !text.contains("through_wall_hearing=") || !text.contains("scent_max_range=")
-                    || !text.contains("allow_client_hud=") || !text.contains("safe_goal_filter=")
-                    || !text.contains("suspicion_enabled=") || !text.contains("sound_cover_enabled=")
-                    || !text.contains("decoy_throw_enabled=") || !text.contains("horde_max_allies=")
-                    || !text.contains("urgent_investigate_speed=")) {
+                    || !text.contains("scent_wall_muffling=") || !text.contains("allow_client_hud=")
+                    || !text.contains("safe_goal_filter=") || !text.contains("suspicion_enabled=")
+                    || !text.contains("sound_cover_enabled=") || !text.contains("decoy_throw_enabled=")
+                    || !text.contains("horde_max_allies=") || !text.contains("urgent_investigate_speed=")
+                    || !text.contains("ambush_reaction_enabled=")
+                    || !text.contains("ambush_flee_health_threshold=")
+                    || !text.contains("ignore_bosses=")) {
                 save();
             }
         } catch (IOException | RuntimeException e) {
@@ -1732,6 +1852,7 @@ public final class ServerSettings {
         scentHealthThreshold = boundedNumberWithAlias(p, "scent_health_threshold", "blood_health_threshold", 5.0, 100.0, 50.0);
         scentRange = boundedNumberWithAlias(p, "scent_range", "blood_scent_range", MIN_RANGE, MAX_RANGE, 14.0);
         scentMaxRange = boundedNumber(p, "scent_max_range", MIN_RANGE, MAX_RANGE, 24.0);
+        scentWallMuffling = boundedNumber(p, "scent_wall_muffling", 0.0, 3.0, DEFAULT_SCENT_WALL_MUFFLING);
         scentDurationSeconds = boundedNumber(p, "scent_duration_seconds", 2.0, 120.0, 15.0);
         bloodParticles = boolWithAlias(p, "blood_particles", "blood_trail_particles", true);
         scentMobs = parseCsvSet(p.getProperty("scent_mobs"));
@@ -1747,6 +1868,10 @@ public final class ServerSettings {
         decoyThrowEnabled = bool(p, "decoy_throw_enabled", true);
         safeGoalFilter = bool(p, "safe_goal_filter", true);
         suspicionEnabled = bool(p, "suspicion_enabled", true);
+        ambushReactionEnabled = bool(p, "ambush_reaction_enabled", DEFAULT_AMBUSH_REACTION_ENABLED);
+        ambushFleeHealthThreshold = boundedNumber(
+                p, "ambush_flee_health_threshold", 0.0, 100.0, DEFAULT_AMBUSH_FLEE_HEALTH_THRESHOLD);
+        ignoreBosses = bool(p, "ignore_bosses", DEFAULT_IGNORE_BOSSES);
         extraListeners = parseCsvSet(p.getProperty("extra_listeners"));
         ignoredMobs = parseCsvSet(p.getProperty("ignored_mobs"));
 
@@ -2010,6 +2135,9 @@ public final class ServerSettings {
         lines.add("scent_range=" + format(scentRange));
         lines.add("scent_max_range=" + format(scentMaxRange));
         lines.add("scent_duration_seconds=" + format(scentDurationSeconds));
+        lines.add("# How strongly solid walls muffle blood scent tracking (0 = ignore walls, 1 = default attenuation, 3 = sealed tight behind walls).");
+        lines.add("# Сила ослабления запаха крови сплошными стенами (0 = сквозь стены как раньше, 1 = по умолчанию, 3 = стены почти полностью блокируют запах).");
+        lines.add("scent_wall_muffling=" + format(scentWallMuffling));
         lines.add("blood_particles=" + bloodParticles);
         lines.add("scent_mobs=" + String.join(",", scentMobs));
         lines.add("");
@@ -2034,6 +2162,13 @@ public final class ServerSettings {
         lines.add("decoy_throw_enabled=" + decoyThrowEnabled);
         lines.add("safe_goal_filter=" + safeGoalFilter);
         lines.add("suspicion_enabled=" + suspicionEnabled);
+        lines.add("# Tactical ambush reaction when hit from stealth: sweep toward the attacker or flee below ambush_flee_health_threshold% HP (0 = never flee).");
+        lines.add("# Реакция на скрытую засаду при попадании издалека: прочёсывание направления выстрела или побег при HP ниже ambush_flee_health_threshold% (0 = не убегать).");
+        lines.add("ambush_reaction_enabled=" + ambushReactionEnabled);
+        lines.add("ambush_flee_health_threshold=" + format(ambushFleeHealthThreshold));
+        lines.add("# Skip vanilla/tagged bosses (Wither, Ender Dragon, Elder Guardian, Warden, modded bosses) unless explicitly added to extra_listeners.");
+        lines.add("# Игнорировать ванильных и теговых боссов (Визер, Дракон Края, Древний страж, Хранитель и т.д.), если не добавлены в extra_listeners.");
+        lines.add("ignore_bosses=" + ignoreBosses);
         lines.add("");
         lines.add("# Comma-separated mob IDs or mod namespaces to add as listeners or to ignore completely.");
         lines.add("# Список ID мобов (или пространств имён модов) через запятую: дополнительные слушатели и игнорируемые мобы.");

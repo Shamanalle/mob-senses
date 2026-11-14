@@ -208,10 +208,11 @@
 | `rain_muffling`, `thunder_muffling`, `feather_falling_muffling` | `0.25`, `0.45`, `0.2` | Снижение шума в дождь (`25%`), в грозу (`45%`) и от ботинок с «Невесомостью» или поножей с «Проворством» (`20%`) |
 | `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Включение Simple Voice Chat, дальность громкой речи (`0` – `256` блоков) и множитель шёпота (`0` – `1`) |
 | `sight_range`, `held_light_enabled`, `held_light_bonus`, `darkness_stealth_enabled`, `darkness_min_visibility`, `sneak_sight_multiplier`, `sprint_sight_multiplier` | `16`, `true`, `0.5`, `true`, `0.2`, `0.6`, `1.15` | Базовая дальность зрения (`0` – `256`), бонус заметности от света в руке, порог скрытности в темноте и множители позы |
-| `scent_enabled`, `scent_health_threshold`, `scent_range`, `scent_max_range`, `scent_duration_seconds`, `blood_particles`, `scent_mobs` | `true`, `50`, `14`, `24`, `15`, `true`, — | Запах крови, порог здоровья (`5` – `100%`), базовый и максимальный радиус чутья (`0` – `256` блоков), время жизни следа (`с`), капли крови и дополнительные мобы-ищейки |
+| `scent_enabled`, `scent_health_threshold`, `scent_range`, `scent_max_range`, `scent_wall_muffling`, `scent_duration_seconds`, `blood_particles`, `scent_mobs` | `true`, `50`, `14`, `24`, `1`, `15`, `true`, — | Запах крови, порог здоровья (`5` – `100%`), базовый и максимальный радиус чутья (`0` – `256` блоков), ослабление стенами (`0` – `3`), время жизни следа (`с`), капли крови и дополнительные мобы-ищейки |
 | `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds` | `1`, `1.15`, `8` | Скорость хода мобов при проверке обычных и тревожных (`gunshot`, `explosion`, `bell`) звуков и длительность осмотра в секундах |
 | `max_alerted_mobs`, `horde_alert_range`, `horde_max_allies`, `alert_cooldown_ms` | `8`, `8`, `4`, `900` | Максимум мобов на одно событие (`1` – `64`), радиус призыва орды (`0` – `64`, `0` = выкл), максимум союзников на моба и кулдаун в `мс` |
 | `sound_cover_enabled`, `decoy_throw_enabled`, `safe_goal_filter`, `suspicion_enabled` | `true`, `true`, `true`, `true` | Маскировка тихих звуков громкими, отвлечение броском предмета (`Q`), фильтр опасных точек цели и двухфазная настороженность на границе слышимости |
+| `ambush_reaction_enabled`, `ambush_flee_health_threshold`, `ignore_bosses` | `true`, `35`, `true` | Реакция на скрытую атаку издалека, порог HP% для побега при засаде (`0` = никогда не убегать) и автоматический пропуск боссов |
 | `extra_listeners`, `ignored_mobs` | — | Списки ID мобов или масок `namespace:*` через запятую для добавления или исключения из Mob Senses |
 | `language` | `en_us` | Язык по умолчанию для консоли и игроков с неизвестной локалью |
 | `world.<id>.preset` | — | Пресет отдельного измерения (`world.minecraft\:the_nether.preset=off` на модах; `world.world_nether.preset=off` на Paper) |
@@ -240,7 +241,7 @@
 - **Ванильные клиенты:** свободно заходят на серверы с модом или плагином Paper/Folia; лёгкий канал синхронизации `mobsenses:*` включается только если у игрока тоже установлен Mob Senses.
 - **Оружейные моды:** нативная поддержка **TaCZ** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2**, **Superb Warfare** и **Just Enough Guns** (обычные выстрелы, глушители, попадание пуль в дальние стены и настройки `gun.<id>.*`).
 - **Голосовой чат и звук:** опциональная интеграция с [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat); полная совместимость с [Sound Physics Remastered](https://modrinth.com/mod/sound-physics-remastered) и **Voice Physics**.
-- **Свои мобы и мобы из модов:** поддерживаются датапак-теги сущностей (`#mobsenses:listeners`, `#mobsenses:scent_trackers`) и списки `extra_listeners` / `ignored_mobs` (включая маски `namespace:*`), совместимо с *In Control!*, *Enhanced AI*, *Improved Mobs* и многопоточной **Folia**.
+- **Свои мобы и мобы из модов:** поддерживаются датапак-теги сущностей (`#mobsenses:listeners`, `#mobsenses:scent_trackers`, `#mobsenses:bosses`) и списки `extra_listeners` / `ignored_mobs` (включая маски `namespace:*`), совместимо с *In Control!*, *Enhanced AI*, *Improved Mobs* и многопоточной **Folia**. Боссы (`#mobsenses:bosses` / `#c:bosses` / `#forge:bosses`) пропускаются по умолчанию (`ignore_bosses=true`).
 
 ### Чем Mob Senses лучше Zombie Awareness
 

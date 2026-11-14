@@ -10,6 +10,9 @@ public final class TacticalTargets {
     /** Ratio of mob health at or below which an unseen ambush triggers flight instead of a sweep. */
     public static final double AMBUSH_FLEE_HEALTH_RATIO = 0.35;
 
+    /** Squared-distance ratio keeping an actively investigating mob locked onto a much closer target. */
+    public static final double CLOSE_TARGET_LOCK_RATIO = 0.72;
+
     /** Outer fringe fraction of audible range beyond which a single non-urgent sound triggers Stage-1 suspicion. */
     public static final double SUSPICION_FRINGE_RATIO = 0.62;
 
@@ -87,6 +90,33 @@ public final class TacticalTargets {
         }
         double threshold = audibleRange * SUSPICION_FRINGE_RATIO;
         return distSq > threshold * threshold;
+    }
+
+    /**
+     * Whether {@code eventId} is an intentional distraction cue ({@code mobsenses:decoy_land} from
+     * a thrown item or {@code mobsenses:bullet_impact} from a distant shot) that should always pull
+     * nearby investigating mobs away from closer routine cues.
+     */
+    public static boolean isIntentionalLure(String eventId) {
+        if (eventId == null || eventId.isEmpty()) {
+            return false;
+        }
+        String norm = NoiseModel.normalizeEvent(eventId);
+        return "decoy_land".equals(norm) || "bullet_impact".equals(norm);
+    }
+
+    /**
+     * Whether an actively investigating mob ({@code lookTicks == 0}) should ignore a distant
+     * non-escalating sound cue because its current target is significantly closer.
+     */
+    public static boolean shouldKeepCloserTarget(int lookTicks, double currentSpeed, double nextSpeed,
+                                                 double currentDistSq, double nextDistSq, boolean forceRetarget) {
+        if (forceRetarget) {
+            return false;
+        }
+        return lookTicks == 0
+                && nextSpeed <= currentSpeed
+                && currentDistSq < nextDistSq * CLOSE_TARGET_LOCK_RATIO;
     }
 
     /**
@@ -192,22 +222,36 @@ public final class TacticalTargets {
     }
 
     /**
-     * Computes a reaction target when a mob is damaged by an unseen or unspotted attacker:
-     * low-HP mobs ({@code <= 35%}) flee away from the shot; healthier mobs sweep the incoming sector
-     * with angular scatter instead of getting unfair X-ray lock onto the sniper.
+     * Computes a reaction target when a mob is damaged by an unseen or unspotted attacker using the
+     * default {@link #AMBUSH_FLEE_HEALTH_RATIO} retreat threshold.
      */
     public static AmbushPlan planAmbushReaction(double mobX, double mobY, double mobZ,
                                                 double attackerX, double attackerY, double attackerZ,
                                                 double health, double maxHealth,
                                                 double normalSpeed, double urgentSpeed,
                                                 double seedUnit) {
+        return planAmbushReaction(
+                mobX, mobY, mobZ, attackerX, attackerY, attackerZ,
+                health, maxHealth, normalSpeed, urgentSpeed, seedUnit, AMBUSH_FLEE_HEALTH_RATIO);
+    }
+
+    /**
+     * Computes a reaction target when a mob is damaged by an unseen or unspotted attacker:
+     * low-HP mobs ({@code <= fleeHealthRatio}, when {@code > 0}) flee away from the shot;
+     * healthier mobs sweep the incoming sector with angular scatter instead of getting unfair X-ray lock.
+     */
+    public static AmbushPlan planAmbushReaction(double mobX, double mobY, double mobZ,
+                                                double attackerX, double attackerY, double attackerZ,
+                                                double health, double maxHealth,
+                                                double normalSpeed, double urgentSpeed,
+                                                double seedUnit, double fleeHealthRatio) {
         double unit = Double.isFinite(seedUnit) ? Math.max(0.0, Math.min(1.0, seedUnit)) : 0.5;
         double dx = attackerX - mobX;
         double dz = attackerZ - mobZ;
         double horiz = Math.hypot(dx, dz);
         double baseAngle = horiz >= 1e-4 ? Math.atan2(dz, dx) : (unit * Math.PI * 2.0);
         double speed = Math.max(urgentSpeed, normalSpeed);
-        boolean flee = maxHealth > 0.0 && health <= maxHealth * AMBUSH_FLEE_HEALTH_RATIO;
+        boolean flee = fleeHealthRatio > 0.0 && maxHealth > 0.0 && (health / maxHealth) <= fleeHealthRatio;
         if (flee) {
             double jitter = (unit - 0.5) * 2.0 * Math.toRadians(22.0);
             double fleeAngle = baseAngle + Math.PI + jitter;

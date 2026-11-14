@@ -6,6 +6,7 @@ import com.kasper.mobsenses.NoiseCoalescer;
 import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
 import com.kasper.mobsenses.ScentModel;
+import com.kasper.mobsenses.ServerSettings;
 import com.kasper.mobsenses.SightModel;
 import com.kasper.mobsenses.StealthHudState;
 import com.kasper.mobsenses.TacticalTargets;
@@ -18,6 +19,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -385,7 +388,8 @@ public final class ServerHearing {
                 }
                 continue;
             }
-            if (InvestigateGoal.alert(mob, safeGoal.x(), safeGoal.y(), safeGoal.z(), speed)) {
+            boolean lure = TacticalTargets.isIntentionalLure(noise.eventId());
+            if (InvestigateGoal.alert(mob, safeGoal.x(), safeGoal.y(), safeGoal.z(), speed, false, lure)) {
                 MobSenses.alerted().record(now);
                 notifyPlayersNearAlert(level, mob.getX(), mob.getY(), mob.getZ(),
                         StealthHudState.ALERT_SEARCHING, now);
@@ -566,7 +570,8 @@ public final class ServerHearing {
             int alertedCount = 0;
             for (Mob mob : trackers) {
                 ScentModel.Crumb crumb = MobSenses.scent().findNearestScent(
-                        worldId, mob.getX(), mob.getY(), mob.getZ(), now);
+                        worldId, mob.getX(), mob.getY(), mob.getZ(), mob.getEyeY(), now,
+                        (fx, fy, fz, tx, ty, tz) -> BlockAcoustics.traceBundle(level, fx, fy, fz, tx, ty, tz));
                 if (crumb == null) {
                     continue;
                 }
@@ -644,11 +649,23 @@ public final class ServerHearing {
         if (mob == null) {
             return false;
         }
-        String key = Worlds.entityTypeId(mob.getType());
+        EntityType<?> type = mob.getType();
+        String key = Worlds.entityTypeId(type);
         if (MobSenses.settings().isIgnoredMob(key)) {
             return false;
         }
+        if (MobSenses.settings().ignoreBosses() && !MobSenses.settings().isExtraListener(key)
+                && isBossMob(mob, type, key)) {
+            return false;
+        }
         return ScentModel.isScentTracker(key);
+    }
+
+    private static boolean isBossMob(Mob mob, EntityType<?> type, String key) {
+        return mob instanceof WitherBoss
+                || mob instanceof EnderDragon
+                || Worlds.isTaggedBoss(type)
+                || ServerSettings.isKnownBossId(key);
     }
 
     public static String itemId(ItemStack stack) {
@@ -1026,6 +1043,9 @@ public final class ServerHearing {
         if (MobSenses.settings().isExtraListener(key)) {
             return true;
         }
+        if (MobSenses.settings().ignoreBosses() && isBossMob(mob, type, key)) {
+            return false;
+        }
         if (Worlds.isTaggedListener(type)) {
             return true;
         }
@@ -1214,13 +1234,14 @@ public final class ServerHearing {
     }
 
     private static void tickAmbushReactions(ServerLevel level, Preset preset, long now) {
-        if (level.players().isEmpty()) {
+        if (level.players().isEmpty() || !MobSenses.settings().ambushReactionEnabled()) {
             return;
         }
         double sightMult = MobSenses.settings().sight();
         double configuredSight = MobSenses.settings().sightRange();
         double normalSpeed = MobSenses.settings().investigateSpeed();
         double urgentSpeed = MobSenses.settings().urgentInvestigateSpeed();
+        double fleeRatio = MobSenses.settings().ambushFleeHealthThreshold() / 100.0;
         TacticalTargets.HazardWorld hazardWorld = BlockAcoustics.hazardWorld(level);
         boolean safeFilter = MobSenses.settings().safeGoalFilter();
         Set<Integer> checked = new HashSet<>();
@@ -1275,7 +1296,7 @@ public final class ServerHearing {
                         mob.getX(), mob.getY(), mob.getZ(),
                         attacker.getX(), attacker.getY(), attacker.getZ(),
                         mob.getHealth(), mob.getMaxHealth(),
-                        normalSpeed, urgentSpeed, seedUnit);
+                        normalSpeed, urgentSpeed, seedUnit, fleeRatio);
                 TacticalTargets.Point3 goal = TacticalTargets.resolveSafeGoal(
                         hazardWorld, safeFilter, plan.targetX(), plan.targetY(), plan.targetZ(),
                         mob.getX(), mob.getY(), mob.getZ());

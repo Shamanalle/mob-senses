@@ -5,6 +5,32 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-14
+
+### English
+
+#### Added
+- **Full customization for blood scent walls, stealth ambushes & boss protection.** Four new settings are available in `mobsenses-server.properties`, `/mobsenses set|get|reset`, and the *Senses & World* settings screen (plus live sliders for darkness minimum visibility, injury threshold, investigation speed/duration, max alerted mobs, and max horde allies):
+  - `scent_wall_muffling` (`0.0` – `3.0`, default `1.0`): Solid walls now muffle and block blood scent trails just like sound (`0` ignores walls as before; sealed rooms contain blood scent). The live *Blood Trail* meter on *Senses & World* shows open-air vs. stone-wall range (`air/wall m`).
+  - `ambush_reaction_enabled` (`true` / `false`, default `true`) and `ambush_flee_health_threshold` (`0` – `100%`, default `35%`): Toggle whether unseen snipers trigger ambush sweep/retreat reactions, and adjust the low-HP retreat threshold (`0%` means mobs never flee and always sweep toward the shot).
+  - `ignore_bosses` (`true` / `false`, default `true`): Automatically excludes vanilla and modded bosses (Wither, Ender Dragon, Elder Guardian, Warden, `#mobsenses:bosses` / `#c:bosses` / `#forge:bosses`, and `*_boss` entities) unless explicitly allowed via `extra_listeners`.
+
+#### Improved & Fixed
+- **Investigation target-lock parity & intentional lure priority.** Alerted mobs across Fabric, Quilt, Forge, NeoForge, and Paper/Folia now share the same close-target focus lock so distant ambient noises cannot pull a guard away from a much closer disturbance right in front of it, while thrown `Q` item decoys and bullet wall impacts cleanly override that lock to distract guards on demand.
+- **Automatic config upgrade.** Existing `mobsenses-server.properties` files from earlier versions automatically gain the new `1.6.1` keys and bilingual comments on load without overwriting any of your saved values.
+
+### Русский
+
+#### Добавлено
+- **Удобная настройка запаха сквозь стены, реакции на засаду и защиты боссов.** Четыре новых параметра появились одновременно в `mobsenses-server.properties`, командах `/mobsenses set|get|reset` и на экране *Senses & World* (вместе с ранее скрытыми ползунками порога темноты, порога ранения, скорости/длительности осмотра, лимита мобов и союзников орды):
+  - `scent_wall_muffling` (`0.0` – `3.0`, по умолчанию `1.0`): сплошные стены теперь ослабляют и блокируют запах крови (при `0` работает как раньше сквозь стены; закрытые комнаты удерживают запах). В карточке *Blood Trail* на экране *Senses & World* теперь показывается дальность на открытом воздухе и за 1 каменной стеной (`воздух/стена м`).
+  - `ambush_reaction_enabled` (`true` / `false`, по умолчанию `true`) и `ambush_flee_health_threshold` (`0` – `100%`, по умолчанию `35%`): позволяют включать/отключать реакцию на скрытую атаку и настраивать процент HP, ниже которого раненый моб убегает от выстрела (`0%` — мобы не убегают и всегда идут прочёсывать сторону атаки).
+  - `ignore_bosses` (`true` / `false`, по умолчанию `true`): автоматически исключает ванильных и модовых боссов (Визера, Дракона Края, Древнего стража, Хранителя, теги `#mobsenses:bosses` / `#c:bosses` / `#forge:bosses` и сущности `*_boss`), если они не добавлены вручную в `extra_listeners`.
+
+#### Улучшено и исправлено
+- **Единый приоритет ближней цели и приманок на всех платформах.** На Fabric, Quilt, Forge, NeoForge и Paper/Folia мобы теперь одинаково не отвлекаются на слабый дальний фоновый шум, когда уже идут к гораздо более близкой цели, а брошенные клавишей `Q` предметы и попадания пуль в стену всегда перебивают этот замок, позволяя надёжно отводить стражу.
+- **Автообновление конфига.** Старые файлы `mobsenses-server.properties` автоматически дополняются новыми параметрами `1.6.1` и двуязычными комментариями при загрузке без потери ваших настроек.
+
 ## [1.6.0] - 2026-11-14
 
 ### English
