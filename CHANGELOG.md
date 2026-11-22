@@ -5,6 +5,26 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-23
+
+### English
+
+#### Added
+- **Native *Iron's Arms 'n Artifice* (`irons_artifice`) support.** All firearms (including *Flintlock*, *Musket*, *Blunderbuss*, *Blackpowder Revolver*, *Six-Shooter*, *Arquebus*, and *Clockwork Rifle*), attached *Suppressor* modifiers (`16` blocks suppressed vs `44` blocks unsuppressed), fast `irons_artifice:bullet` projectiles/wall-impact lures, magazine ammo tracking across Forge `1.20.1` NBT & NeoForge `1.21.1+` Data Components, and *Illificer* / *Gunslinger* enemies are now fully integrated — while gun modifiers, hats, blackpowder, and mechanical parts are excluded.
+- **Configurable Directional Mob Field of View (FOV & blind spot).** Optional forward sight cone with a stealth blind spot behind mobs' backs across Fabric, Quilt, Forge, NeoForge, Paper, Purpur, and Folia (disabled by default via `sight_fov_enabled=false` so servers keep vanilla `360°` vision until opted in, and configurable live on the *Senses & World* tab, via `/mobsenses set`, or in `mobsenses-server.properties`):
+  - `sight_fov_enabled` (`true` / `false`, default `false`): Limits unaware mobs to a forward cone instead of noticing stealth players directly behind them.
+  - `sight_fov_degrees` (`30° – 360°`, default `150°`): Horizontal vision cone width centered on the mob's head rotation (`360°` restores full awareness).
+  - `sight_back_sense_range` (`0 – 16` blocks, default `2` blocks): Close-range "sixth-sense" perimeter behind a mob's back (`0` creates a pure blind spot). Mobs actively engaged in combat or directly hurt retain full `360°` awareness.
+
+### Русский
+
+#### Добавлено
+- **Нативная поддержка *Iron's Arms 'n Artifice* (`irons_artifice`).** Все виды огнестрела (*Flintlock*, *Musket*, *Blunderbuss*, *Blackpowder Revolver*, *Six-Shooter*, *Arquebus*, *Clockwork Rifle*), модификатор глушителя *Suppressor* (`16` блоков с глушителем против `44` без него), быстрые пули `irons_artifice:bullet` и их отвлекающие попадания в стены, отслеживание патронов как через NBT на Forge `1.20.1`, так и через Data Components на NeoForge `1.21.1+`, а также враги *Illificer* и *Gunslinger* теперь полностью поддерживаются (при этом сами модификаторы, шляпы, порох и детали механизмов не считаются оружием).
+- **Настраиваемый угол зрения мобов (FOV и слепая зона за спиной).** Опциональный направленный конус обзора со слепой зоной за спиной на Fabric, Quilt, Forge, NeoForge, Paper, Purpur и Folia (по умолчанию выключен `sight_fov_enabled=false`, чтобы сохранялся привычный обзор `360°`, и легко включается на вкладке *Senses & World*, командой `/mobsenses set` или в `mobsenses-server.properties`):
+  - `sight_fov_enabled` (`true` / `false`, по умолчанию `false`): ограничивает зрение спокойных мобов передним конусом вместо обнаружения сквозь затылок.
+  - `sight_fov_degrees` (`30° – 360°`, по умолчанию `150°`): горизонтальная ширина конуса обзора от поворота головы моба (`360°` отключает слепую зону).
+  - `sight_back_sense_range` (`0 – 16` блоков, по умолчанию `2` блока): ближний радиус «шестого чутья» за спиной моба (`0` делает слепую зону полной). При открытом бое или получении прямого урона мобы сохраняют круговую внимательность `360°`.
+
 ## [1.6.1] - 2026-11-14
 
 ### English

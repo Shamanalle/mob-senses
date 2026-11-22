@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "Акустика поверхні",
   "gui.mobsenses.hearing.surface_scaling.tip": "Вовна приглушує кроки й стрибки, а метал, скло та гравій підсилюють їх.",
   "gui.mobsenses.hearing.gunshot_range": "Дальність пострілу",
-  "gui.mobsenses.hearing.gunshot_range.tip": "Базовий радіус чутності звичайного пострілу в блоках (TaCZ, Point Blank, Superb Warfare тощо).",
+  "gui.mobsenses.hearing.gunshot_range.tip": "Базовий радіус чутності звичайного пострілу в блоках (TaCZ, Point Blank, Superb Warfare, Iron's Arms 'n Artifice тощо).",
   "gui.mobsenses.hearing.gunshot_silenced_range": "Постріл із глушником",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "Базовий радіус чутності пострілу зі зброї з глушником.",
   "gui.mobsenses.hearing.bullet_impact_range": "Рикошет і влучання кулі",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "Реакція на засідку",
   "gui.mobsenses.ai.ambush_reaction.tip": "При пострілі здалеку або з темряви здорові моби прочісують напрямок атаки, а поранені відступають замість миттєвого наведення.",
   "gui.mobsenses.ai.ambush_flee_threshold": "Втеча при HP <",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Поріг здоров'я у відсотках, нижче якого атакований із засідки моб відступає від пострілу (0% — ніколи не тікати, завжди шукати)."
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Поріг здоров'я у відсотках, нижче якого атакований із засідки моб відступає від пострілу (0% — ніколи не тікати, завжди шукати).",
+  "gui.mobsenses.sight.fov_enabled": "Кут огляду",
+  "gui.mobsenses.sight.fov_enabled.tip": "Обмежує зір необізнаних мобів конусом спереду зі сліпою зоною за спиною (вимк. = ванільні 360°).",
+  "gui.mobsenses.sight.fov_degrees": "Ширина кута",
+  "gui.mobsenses.sight.fov_degrees.tip": "Горизонтальний кут огляду мобів у градусах за увімкненого кута огляду (60°–360°, 150° типово).",
+  "gui.mobsenses.sight.back_sense_range": "Чуття ззаду",
+  "gui.mobsenses.sight.back_sense_range.tip": "Ближній радіус «шостого чуття» за спиною моба, де надто близький підхід викриває гравця (0 м = повна сліпа зона)."
 }

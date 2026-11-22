@@ -21,7 +21,7 @@ public final class AdminCommands {
             "status", "preset", "hearing", "sight", "voice", "world",
             "set", "get", "reset", "hud", "debug", "reload", "help");
     private static final List<String> CATEGORIES = Jv.listOf(
-            "core", "server", "guns", "sounds", "stealth", "voice", "sight", "scent", "mobs", "ai", "ambush", "all");
+            "core", "server", "guns", "sounds", "stealth", "voice", "sight", "fov", "scent", "mobs", "ai", "ambush", "all");
     private static final List<String> HUD_MODES = Jv.listOf(
             "on", "off", "tactical", "minimal", "compact", "full", "auto_hide", "range", "style",
             "opacity", "offset", "bar", "reset",
@@ -685,6 +685,7 @@ public final class AdminCommands {
             case "voice":
             case "through_wall_hearing":
             case "surface_sound_scaling":
+            case "sight_fov_enabled":
             case "held_light_enabled":
             case "darkness_stealth_enabled":
             case "scent_enabled":
@@ -697,6 +698,10 @@ public final class AdminCommands {
             case "ignore_bosses":
             case "allow_client_hud":
                 return Jv.listOf("true", "false");
+            case "sight_fov_degrees":
+                return Jv.listOf("90", "120", "150", "180", "240", "360");
+            case "sight_back_sense_range":
+                return Jv.listOf("0", "1.5", "2", "3", "4");
             case "gunshot_range":
                 return Jv.listOf("32", "44", "64", "96", "128", "default");
             case "gunshot_silenced_range":

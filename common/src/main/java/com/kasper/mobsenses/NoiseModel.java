@@ -485,7 +485,12 @@ public final class NoiseModel {
                 || hasWordToken(name, "round") || hasWordToken(name, "rounds")
                 || hasWordToken(name, "vest") || hasWordToken(name, "hammer")
                 || hasWordToken(name, "part") || hasWordToken(name, "parts")
-                || hasWordToken(name, "scrap")) {
+                || hasWordToken(name, "scrap")
+                || name.endsWith("_modifier") || hasWordToken(name, "modifier")
+                || hasWordToken(name, "hat") || name.endsWith("_hat") || name.contains("tricorne")
+                || name.equals("blackpowder") || name.endsWith("_components") || name.endsWith("_component")
+                || hasWordToken(name, "coin")
+                || name.equals("repeater") || name.equals("comparator")) {
             return false;
         }
         if ((full.startsWith("tacz:") && name.contains("gun"))
@@ -493,6 +498,7 @@ public final class NoiseModel {
                 || full.startsWith("cgm:") || full.startsWith("scguns:")
                 || full.startsWith("superbwarfare:") || full.startsWith("sbw:")
                 || full.startsWith("jeg:")
+                || full.startsWith("irons_artifice:")
                 || full.startsWith("musketmod:") || full.startsWith("flansmod:")
                 || full.startsWith("ava:") || full.startsWith("techguns:")) {
             return true;
@@ -509,6 +515,17 @@ public final class NoiseModel {
                 || name.contains("carbine")
                 || name.contains("musket")
                 || name.contains("blunderbuss")
+                || name.contains("flintlock")
+                || name.contains("six_shooter")
+                || name.contains("sixshooter")
+                || name.contains("arquebus")
+                || name.contains("matchlock")
+                || name.contains("wheellock")
+                || name.contains("hand_cannon")
+                || name.contains("handcannon")
+                || name.contains("pepperbox")
+                || name.contains("derringer")
+                || name.contains("repeater_rifle")
                 || name.contains("minigun")
                 || name.contains("bazooka")
                 || name.contains("rocket_launcher")
@@ -737,7 +754,8 @@ public final class NoiseModel {
         if (full.startsWith("tacz:") || full.startsWith("pointblank:")
                 || full.startsWith("cgm:") || full.startsWith("scguns:")
                 || full.startsWith("superbwarfare:") || full.startsWith("sbw:")
-                || full.startsWith("jeg:") || full.startsWith("musketmod:")
+                || full.startsWith("jeg:") || full.startsWith("irons_artifice:")
+                || full.startsWith("musketmod:")
                 || full.startsWith("ava:") || full.startsWith("flansmod:")
                 || full.startsWith("techguns:")) {
             return name.contains("bullet") || name.contains("projectile")
@@ -758,5 +776,92 @@ public final class NoiseModel {
                 || name.endsWith("_pellet")
                 || name.equals("slug")
                 || name.endsWith("_slug");
+    }
+
+    /**
+     * Extracts the remaining loaded ammunition count from a serialized firearm NBT or data component
+     * summary (supporting TaCZ, CGM, SCGuns, JEG, Point Blank, Superb Warfare, and Iron's Arms 'n Artifice).
+     */
+    public static int extractFirearmAmmo(String tag) {
+        if (tag == null || tag.isEmpty()) {
+            return -1;
+        }
+        int val = parseTagInt(tag, "GunCurrentAmmoCount");
+        if (val >= 0) {
+            return val;
+        }
+        val = parseTagInt(tag, "AmmoCount");
+        if (val >= 0) {
+            return val;
+        }
+        val = parseTagInt(tag, "Ammo");
+        if (val >= 0) {
+            return val;
+        }
+        val = parseTagInt(tag, "ammo");
+        if (val >= 0) {
+            return val;
+        }
+        val = parseRecordInt(tag, "MagazineContents[count=");
+        if (val >= 0) {
+            return val;
+        }
+        return parseTagInt(tag, "irons_artifice:magazine");
+    }
+
+    private static int parseRecordInt(String tag, String prefix) {
+        int idx = tag.indexOf(prefix);
+        if (idx < 0) {
+            return -1;
+        }
+        int i = idx + prefix.length();
+        int start = i;
+        while (i < tag.length() && Character.isDigit(tag.charAt(i))) {
+            i++;
+        }
+        if (i > start) {
+            try {
+                return Integer.parseInt(tag.substring(start, i));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return -1;
+    }
+
+    private static int parseTagInt(String tag, String key) {
+        int from = 0;
+        while (true) {
+            int idx = tag.indexOf(key, from);
+            if (idx < 0) {
+                return -1;
+            }
+            int boundaryIdx = (idx > 0 && tag.charAt(idx - 1) == '"') ? idx - 1 : idx;
+            boolean leftBoundary = boundaryIdx == 0 || !Character.isLetterOrDigit(tag.charAt(boundaryIdx - 1));
+            int after = idx + key.length();
+            boolean rightBoundary = after < tag.length() && (tag.charAt(after) == '"' || tag.charAt(after) == ':'
+                    || tag.charAt(after) == '=' || tag.charAt(after) == ' ');
+            if (leftBoundary && rightBoundary) {
+                int i = after;
+                while (i < tag.length()) {
+                    char c = tag.charAt(i);
+                    if (c == ':' || c == '=' || c == ' ' || c == '"') {
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+                int start = i;
+                while (i < tag.length() && Character.isDigit(tag.charAt(i))) {
+                    i++;
+                }
+                if (i > start) {
+                    try {
+                        return Integer.parseInt(tag.substring(start, i));
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+            from = idx + 1;
+        }
     }
 }

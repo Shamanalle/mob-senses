@@ -23,9 +23,9 @@
 Hostile mobs in vanilla notice you only within a fixed radius. With **Mob Senses**, they use their senses:
 
 - **Hearing & wall occlusion.** Sprinting is loud, sneaking is quiet, wool and carpet muffle your steps while gravel and metal give you away. Breaking and placing blocks, doors, chests, fights, arrows, gunshots, explosions, bells, note blocks and eating make noise too. A mob that hears noise walks to **where the sound came from**, searches the spot and goes back to its business. Stone walls (`×0.64`), wool (`×0.53`), rain, thunderstorms, *Feather Falling* boots and *Swift Sneak* leggings muffle noise, glass and wood less, and an open door lets it through.
-- **Firearms & suppressors.** Native support for **TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns 2**, **Superb Warfare** and **Just Enough Guns**: unsuppressed gunshots carry far (`44` blocks), silencers and suppressors muffle shots to close range (`16` blocks), and distant bullet wall impacts (`20` blocks) draw mobs to the impact spot so you can lure hordes away.
+- **Firearms & suppressors.** Native support for **TaCZ**, **Vic's Point Blank**, **MrCrayfish's Gun Mod**, **Scorched Guns 2**, **Superb Warfare**, **Just Enough Guns** and **Iron's Arms 'n Artifice**: unsuppressed gunshots carry far (`44` blocks), silencers and suppressors muffle shots to close range (`16` blocks), and distant bullet wall impacts (`20` blocks) draw mobs to the impact spot so you can lure hordes away.
 - **Voice** *(with [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat))*. Mobs hear you talk. A shout carries far, a whisper only next to them; loudness is calibrated automatically against each player's own normal speaking voice, so a quiet microphone gives no free stealth.
-- **Light, darkness stealth & blood scent.** A torch or lantern in your hand makes you visible from afar (`+50%`), while darkness, sneaking and invisibility potions hide you and drop distant pursuit. A badly wounded player (at or below half health) leaves a blood trail with crimson droplets that zombies and spiders follow — with zero dummy entities spawned in the world.
+- **Light, darkness stealth, optional mob FOV & blood scent.** A torch or lantern in your hand makes you visible from afar (`+50%`), darkness, sneaking and invisibility potions hide you and drop distant pursuit, and an optional directional **Field of View (`sight_fov_enabled`)** lets you sneak into a mob's blind spot behind its back. A badly wounded player (at or below half health) leaves a blood trail with crimson droplets that zombies and spiders follow — with zero dummy entities spawned in the world.
 - **Stealth HUD & sleek 2-tab GUI.** Players with the client mod get a customizable Stealth & Noise HUD and a 2-tab dark-slate settings screen (*Stealth HUD* with live interactive preview + *Senses & World*), synced automatically with modded and Paper/Folia servers — while **vanilla clients join with nothing installed**.
 
 **A next-generation alternative to Zombie Awareness** — built with real wall occlusion, firearm and suppressor acoustics, **Simple Voice Chat** detection, darkness stealth, a client Stealth HUD & 2-tab GUI, and **zero library dependencies** (no CoroUtil needed) in three universal files covering **Minecraft 1.16.5 – 26.3** across **Fabric, Quilt, Forge, NeoForge, Paper and Folia**.
@@ -71,7 +71,7 @@ Hostile mobs in vanilla notice you only within a fixed radius. With **Mob Senses
 - **Tactical investigation AI:** unaware mobs hearing a faint cue near the edge of range pause and look toward it first (`suspicion_enabled`) before advancing on a second cue; investigating mobs avoid lava, fire, magma, powder snow and open trapdoor pitfalls (`safe_goal_filter`), walk to **the exact spot where the sound came from** (faster on urgent sounds like gunshots, bells and explosions), rally nearby allies in a ring (`horde_alert_range`) instead of stacking on one block, sweep/flee unseen long-range or dark ambushes instead of pinpointing you immediately, and search the area (`8 s` by default) before returning to normal. The goal yields immediately whenever a mob enters combat.
 
 ### Firearms, suppressors, air guns & bullet lures
-- Native acoustics for **[TaCZ](https://modrinth.com/mod/timeless-and-classics-zero)** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2** (including quiet air/pneumatic guns), **Superb Warfare** and **Just Enough Guns**.
+- Native acoustics for **[TaCZ](https://modrinth.com/mod/timeless-and-classics-zero)** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2** (including quiet air/pneumatic guns), **Superb Warfare**, **Just Enough Guns** and **Iron's Arms 'n Artifice** (including its *Suppressor* modifier).
 - **Unsuppressed shots** carry across the area (`44` blocks by default) and pull nearby mobs toward the shooter.
 - **Suppressors, silencers & air guns** are detected directly on the weapon (attached muzzles, integrally silenced firearms such as *VSS*, *AS Val*, *MP5SD*, *Honey Badger*, and air guns) and cut gunshot noise down to close range (`16` blocks).
 - **Tactical bullet wall-impact lures:** firing a silenced round into a distant wall creates noise where the bullet lands (`20` blocks), letting you distract or lure hordes away from a doorway.
@@ -82,9 +82,9 @@ Hostile mobs in vanilla notice you only within a fixed radius. With **Mob Senses
 - **Per-player auto-calibration:** loudness is measured against each player's own usual speaking level, so a quiet microphone gives no unfair stealth advantage while whispers stay quiet and shouts carry far.
 - Works cleanly alongside [Sound Physics Remastered](https://modrinth.com/mod/sound-physics-remastered).
 
-### Torchlight, darkness stealth & blood scent
+### Torchlight, darkness stealth, mob FOV & blood scent
 - **Held light:** holding a torch, soul torch, lantern, glowstone, shroomlight or blaze rod increases how far mobs spot you (`+50%` by default).
-- **Darkness stealth:** sneaking in low light or drinking an Invisibility potion (without holding a light source) shrinks mob sight distance down to `20%` and lets distant pursuers lose track of you.
+- **Darkness stealth & directional mob FOV:** sneaking in low light or drinking an Invisibility potion (without holding a light source) shrinks mob sight distance down to `20%` and lets distant pursuers lose track of you. Enable **Directional FOV** (`sight_fov_enabled=true`, `150°` cone + `2` block close back sense by default, keeping `360°` awareness in active combat) on the *Senses & World* tab to sneak past a guard's back.
 - **Blood scent & horde alerts:** badly wounded players (`≤ 50%` health) leave a fast in-memory scent trail (`14–24` blocks for `15 s`) with subtle crimson blood droplets on the ground that zombies and spiders track, and alerted mobs can optionally rally nearby allies (`horde_alert_range`) — spawning **zero dummy marker entities** in the world.
 
 ## For players
@@ -119,7 +119,7 @@ Available in the universal Fabric/Quilt and Forge/NeoForge mods and as a standal
 | Capability | Client only | Server only: mod | Server only: Paper/Folia plugin | Both (client + server) |
 |---|:---:|:---:|:---:|:---:|
 | Mob hearing, wall occlusion, sight, darkness stealth & blood trails | Singleplayer only | ✅ for all players (vanilla too) | ✅ for all players (vanilla too) | ✅ |
-| Firearm & suppressor acoustics (TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare, JEG) | Singleplayer only | ✅ | Bow/crossbow/explosion/combat hooks | ✅ |
+| Firearm & suppressor acoustics (TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare, JEG, Iron's Arms 'n Artifice) | Singleplayer only | ✅ | Bow/crossbow/explosion/combat hooks | ✅ |
 | Simple Voice Chat detection | Singleplayer only | ✅ (with SVC) | ✅ (with SVC plugin) | ✅ |
 | Stealth HUD & `/mshud` (`tactical` / `minimal`) | ✅ (local noise & light) | — | — | ✅ + synced preset, `[Voice]` & fair-play rule |
 | 2-tab Settings GUI (*Stealth HUD* + *Senses & World*) | ✅ (client + singleplayer) | — | — | ✅ + live OP sync on modded & Paper/Folia servers |
@@ -169,7 +169,7 @@ Available to **every player on any server without operator permissions** (in sin
 | `/mobsenses voice <on\|off>` | Enable or disable Simple Voice Chat detection |
 | `/mobsenses world <world\|here> <preset\|inherit>` | Set a per-dimension preset (`inherit` returns to the server preset) |
 | `/mobsenses set <option> [value\|default]` | View or change any setting from `mobsenses-server.properties` live with Tab-completion |
-| `/mobsenses get <option\|category>` | Inspect one setting or a category (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `scent`, `mobs`, `all`) |
+| `/mobsenses get <option\|category>` | Inspect one setting or a category (`core`, `guns`, `sounds`, `stealth`, `voice`, `sight`, `fov`, `scent`, `mobs`, `all`) |
 | `/mobsenses reset <option\|all>` | Reset one setting or the entire server configuration to defaults |
 | `/mobsenses debug [on\|off]` | Toggle operator particle traces showing sound, light and blood-scent paths to alerted mobs |
 | `/mobsenses reload` | Re-read `mobsenses-server.properties` from disk |
@@ -207,7 +207,8 @@ Configuration files are written with bilingual comments on first start and re-re
 | `block_break_range`, `block_place_range`, `door_range`, `container_range`, `combat_range`, `projectile_range`, `explosion_range`, `bell_range`, `note_block_range`, `eat_range` | `18`, `12`, `14`, `12`, `16`, `15`, `48`, `40`, `28`, `8` | Base hearing distance in blocks (`0` – `256`, `0` = disabled) for each sound category |
 | `rain_muffling`, `thunder_muffling`, `feather_falling_muffling` | `0.25`, `0.45`, `0.2` | Sound reduction in rain (`25%`), thunderstorms (`45%`), and footsteps with *Feather Falling* boots or *Swift Sneak* leggings (`20%`) |
 | `voice`, `voice_range`, `voice_whisper_multiplier` | `true`, `16`, `0.3` | Simple Voice Chat toggle, loud speaking range in blocks (`0` – `256`) and whisper multiplier (`0` – `1`) |
-| `sight_range`, `held_light_enabled`, `held_light_bonus`, `darkness_stealth_enabled`, `darkness_min_visibility`, `sneak_sight_multiplier`, `sprint_sight_multiplier` | `16`, `true`, `0.5`, `true`, `0.2`, `0.6`, `1.15` | Base sight distance (`0` – `256`), held-light visibility bonus, darkness stealth floor, and posture visibility multipliers |
+| `sight_range`, `sight_fov_enabled`, `sight_fov_degrees`, `sight_back_sense_range` | `16`, `false`, `150`, `2` | Base sight distance (`0` – `256`), optional forward vision cone (`30° – 360°`) & close rear sixth-sense radius (`0` – `16` blocks) |
+| `held_light_enabled`, `held_light_bonus`, `darkness_stealth_enabled`, `darkness_min_visibility`, `sneak_sight_multiplier`, `sprint_sight_multiplier` | `true`, `0.5`, `true`, `0.2`, `0.6`, `1.15` | Held-light visibility bonus, darkness stealth floor, and posture visibility multipliers |
 | `scent_enabled`, `scent_health_threshold`, `scent_range`, `scent_max_range`, `scent_wall_muffling`, `scent_duration_seconds`, `blood_particles`, `scent_mobs` | `true`, `50`, `14`, `24`, `1`, `15`, `true`, — | Blood scent toggle, health threshold (`5` – `100%`), base & critical range (`0` – `256` blocks), solid-wall scent muffling (`0` – `3`), trail duration (`s`), crimson droplets, and extra scent-tracking mob IDs |
 | `investigate_speed`, `urgent_investigate_speed`, `investigation_seconds` | `1`, `1.15`, `8` | Walk speed when investigating normal vs urgent sounds (`gunshot`, `explosion`, `bell`), and search duration in seconds |
 | `max_alerted_mobs`, `horde_alert_range`, `horde_max_allies`, `alert_cooldown_ms` | `8`, `8`, `4`, `900` | Max mobs alerted per event (`1` – `64`), horde chain-alert radius (`0` – `64`, `0` = off), max allies per mob, and per-mob cooldown in `ms` |
@@ -239,7 +240,7 @@ Configuration files are written with bilingual comments on first start and re-re
 
 - **Modpacks:** free to include in any modpack — **zero external library mods** (such as CoroUtil) required.
 - **Vanilla clients:** join modded or Paper/Folia servers with nothing installed; the lightweight `mobsenses:*` sync channel activates only when a client also has Mob Senses.
-- **Firearm mods:** native support for **TaCZ** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2**, **Superb Warfare** and **Just Enough Guns** (unsuppressed shots, attached suppressors/silencers, bullet wall impacts, and `gun.<id>.*` overrides).
+- **Firearm mods:** native support for **TaCZ** (*Timeless and Classics Zero*), **Vic's Point Blank**, **MrCrayfish's Gun Mod (CGM)**, **Scorched Guns 2**, **Superb Warfare**, **Just Enough Guns** and **Iron's Arms 'n Artifice** (unsuppressed shots, attached suppressors/silencers, bullet wall impacts, and `gun.<id>.*` overrides).
 - **Voice & sound mods:** optional [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) integration; compatible alongside [Sound Physics Remastered](https://modrinth.com/mod/sound-physics-remastered) and **Voice Physics**.
 - **Custom & modded mobs:** use data pack entity tags (`#mobsenses:listeners`, `#mobsenses:scent_trackers`, `#mobsenses:bosses`) or `extra_listeners` / `ignored_mobs` (`namespace:*` wildcards supported) alongside mods such as *In Control!*, *Enhanced AI*, *Improved Mobs* and region-threaded **Folia**. Bosses (`#mobsenses:bosses` / `#c:bosses` / `#forge:bosses`) are skipped by default (`ignore_bosses=true`).
 
@@ -248,7 +249,7 @@ Configuration files are written with bilingual comments on first start and re-re
 | Feature | Mob Senses | Zombie Awareness |
 |---|---|---|
 | **Walls & surface materials** | Raycasts through blocks: stone (`×0.64`) & wool (`×0.53`) muffle, open doors pass sound, rain & *Feather Falling* mask steps | Ignores walls (plain radius check) |
-| **Firearm mods & suppressors** | Native **TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare & JEG**: silencers, bullet wall-impact lures & per-gun ranges | Generic sound hook only (no suppressor or bullet impact logic) |
+| **Firearm mods & suppressors** | Native **TaCZ, Point Blank, CGM, Scorched Guns 2, Superb Warfare, JEG & Iron's Arms 'n Artifice**: silencers, bullet wall-impact lures & per-gun ranges | Generic sound hook only (no suppressor or bullet impact logic) |
 | **Simple Voice Chat** | Built-in with per-player microphone auto-calibration (whisper vs. shout) | None |
 | **Darkness stealth & sight** | Held torches expose you from afar; sneaking in darkness or invisibility hides you and drops distant pursuit | Surface light lures only; no darkness stealth |
 | **Blood trails & server TPS** | Zero dummy entities spawned in the world; fast in-memory scent trails with crimson blood droplets | Spawns invisible marker entities in the world |

@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "Surface Material Scaling",
   "gui.mobsenses.hearing.surface_scaling.tip": "Wool dampens footsteps and landings while metal, glass, and gravel amplify them.",
   "gui.mobsenses.hearing.gunshot_range": "Gunshot Range",
-  "gui.mobsenses.hearing.gunshot_range.tip": "Base range in blocks for unsuppressed firearm shots (TaCZ, Vic's Point Blank, Superb Warfare, etc.).",
+  "gui.mobsenses.hearing.gunshot_range.tip": "Base range in blocks for unsuppressed firearm shots (TaCZ, Point Blank, Superb Warfare, Iron's Arms 'n Artifice, etc.).",
   "gui.mobsenses.hearing.gunshot_silenced_range": "Suppressed Gunshot Range",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "Base range in blocks for silenced or suppressed firearm shots.",
   "gui.mobsenses.hearing.bullet_impact_range": "Bullet Impact Range",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "Ambush Reaction",
   "gui.mobsenses.ai.ambush_reaction.tip": "When shot from outside sight range or darkness, healthy mobs sweep your direction and wounded mobs retreat instead of X-ray locking.",
   "gui.mobsenses.ai.ambush_flee_threshold": "Ambush Flee HP",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Health percentage below which an ambushed mob retreats away from the shot (0% = never flee, always sweep toward the attacker)."
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Health percentage below which an ambushed mob retreats away from the shot (0% = never flee, always sweep toward the attacker).",
+  "gui.mobsenses.sight.fov_enabled": "Directional FOV",
+  "gui.mobsenses.sight.fov_enabled.tip": "Limits unaware mobs to a forward vision cone with a blind spot behind their back (off = vanilla 360° vision).",
+  "gui.mobsenses.sight.fov_degrees": "FOV Angle",
+  "gui.mobsenses.sight.fov_degrees.tip": "Total horizontal vision cone width in degrees when Directional FOV is enabled (60°–360°, 150° default).",
+  "gui.mobsenses.sight.back_sense_range": "Back Sense",
+  "gui.mobsenses.sight.back_sense_range.tip": "Close-range sixth-sense radius behind a mob's back where sneaking too tightly still gives you away (0 m = pure blind spot)."
 }

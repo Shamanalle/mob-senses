@@ -255,4 +255,33 @@ class AdminCommandsTest {
         assertFalse(AdminCommands.execute("reset ignore_bosses", CONSOLE).refused());
         assertTrue(MobSenses.settings().ignoreBosses());
     }
+
+    @Test
+    void suggestGetAndSetV170FovOptions() {
+        List<String> keys = AdminCommands.suggestions("set ", CONSOLE);
+        assertTrue(keys.contains("sight_fov_enabled"));
+        assertTrue(keys.contains("sight_fov_degrees"));
+        assertTrue(keys.contains("sight_back_sense_range"));
+
+        assertEquals(List.of("true", "false"), AdminCommands.suggestions("set sight_fov_enabled ", CONSOLE));
+        assertTrue(AdminCommands.suggestions("set sight_fov_degrees ", CONSOLE).containsAll(List.of("90", "150", "360")));
+        assertTrue(AdminCommands.suggestions("set sight_back_sense_range ", CONSOLE).containsAll(List.of("0", "2", "4")));
+        assertTrue(AdminCommands.suggestions("get f", CONSOLE).contains("fov"));
+
+        assertFalse(AdminCommands.execute("set sight_fov_enabled true", CONSOLE).refused());
+        assertFalse(AdminCommands.execute("set sight_fov_degrees 120", CONSOLE).refused());
+        assertFalse(AdminCommands.execute("set sight_back_sense_range 1.5", CONSOLE).refused());
+
+        assertTrue(MobSenses.settings().sightFovEnabled());
+        assertEquals(120.0, MobSenses.settings().sightFovDegrees(), 1e-6);
+        assertEquals(1.5, MobSenses.settings().sightBackSenseRange(), 1e-6);
+
+        String fovCat = AdminCommands.execute("get fov", CONSOLE).toString();
+        assertTrue(fovCat.contains("sight_fov_enabled"), fovCat);
+        assertTrue(fovCat.contains("sight_fov_degrees"), fovCat);
+        assertTrue(fovCat.contains("sight_back_sense_range"), fovCat);
+
+        assertFalse(AdminCommands.execute("reset sight_fov_enabled", CONSOLE).refused());
+        assertFalse(MobSenses.settings().sightFovEnabled());
+    }
 }

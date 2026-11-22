@@ -98,4 +98,33 @@ class SightModelTest {
             }
         }
     }
+
+    @Test
+    void directionalMobFovConeAndCloseBackSenseBehaveAccurately() {
+        // When FOV is disabled, mobs see 360 degrees even directly behind their back at distance
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 0.0f, 0, 65, -8, false, 150.0, 2.0));
+
+        // Mob facing South (yaw=0 -> +Z) with 150 deg cone (half-angle = 75 deg) and 2m back sixth-sense
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 0.0f, 0, 65, 10, true, 150.0, 2.0), "Directly ahead (+Z)");
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 0.0f, -8, 65, 3, true, 150.0, 2.0), "Inside left front (~69 deg)");
+        assertFalse(SightModel.isWithinFov(0, 65, 0, 0.0f, 8, 65, 1, true, 150.0, 2.0), "Outside right (~83 deg)");
+        assertFalse(SightModel.isWithinFov(0, 65, 0, 0.0f, 0, 65, -6, true, 150.0, 2.0), "Behind at 6m");
+
+        // All other cardinal head rotations: West (90 -> -X), East (-90 -> +X), North (180/-180 -> -Z)
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 90.0f, -6, 65, 0, true, 120.0, 2.0), "Facing West sees -X");
+        assertFalse(SightModel.isWithinFov(0, 65, 0, 90.0f, 6, 65, 0, true, 120.0, 2.0), "Facing West blind to +X");
+        assertTrue(SightModel.isWithinFov(0, 65, 0, -90.0f, 6, 65, 0, true, 120.0, 2.0), "Facing East sees +X");
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 180.0f, 0, 65, -6, true, 120.0, 2.0), "Facing North sees -Z");
+        assertTrue(SightModel.isWithinFov(0, 65, 0, -540.0f, 0, 65, -6, true, 120.0, 2.0), "Wrapped yaw normalized");
+
+        // Close rear sixth-sense perimeter vs pure blind spot (0m)
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 0.0f, 0, 65, -1.5, true, 150.0, 2.0),
+                "Touching within 2m back sense alerts mob");
+        assertFalse(SightModel.isWithinFov(0, 65, 0, 0.0f, 0, 65, -1.5, true, 150.0, 0.0),
+                "With 0m back sense, directly behind remains blind");
+
+        // 360 deg slider / NaN yaw safety
+        assertTrue(SightModel.isWithinFov(0, 65, 0, 0.0f, 0, 65, -10, true, 360.0, 0.0));
+        assertTrue(SightModel.isWithinFov(0, 65, 0, Float.NaN, 0, 65, -10, true, 120.0, 0.0));
+    }
 }

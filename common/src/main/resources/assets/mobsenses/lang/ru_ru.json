@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "Акустика поверхности",
   "gui.mobsenses.hearing.surface_scaling.tip": "Шерсть приглушает шаги и прыжки, а металл, стекло и гравий усиливают их.",
   "gui.mobsenses.hearing.gunshot_range": "Дальность выстрела",
-  "gui.mobsenses.hearing.gunshot_range.tip": "Базовый радиус слышимости обычного выстрела в блоках (TaCZ, Point Blank, Superb Warfare и др.).",
+  "gui.mobsenses.hearing.gunshot_range.tip": "Базовый радиус слышимости обычного выстрела в блоках (TaCZ, Point Blank, Superb Warfare, Iron's Arms 'n Artifice и др.).",
   "gui.mobsenses.hearing.gunshot_silenced_range": "Выстрел с глушителем",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "Базовый радиус слышимости выстрела из оружия с глушителем.",
   "gui.mobsenses.hearing.bullet_impact_range": "Рикошет и попадание пули",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "Реакция на засаду",
   "gui.mobsenses.ai.ambush_reaction.tip": "При скрытом выстреле издалека или из темноты здоровые мобы прочёсывают сектор атаки, а раненые отступают вместо мгновенного наведения.",
   "gui.mobsenses.ai.ambush_flee_threshold": "Побег при HP <",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Порог здоровья в процентах, ниже которого атакованный из скрытности моб отступает от выстрела (0% — никогда не убегать, всегда идти на поиск)."
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Порог здоровья в процентах, ниже которого атакованный из скрытности моб отступает от выстрела (0% — никогда не убегать, всегда идти на поиск).",
+  "gui.mobsenses.sight.fov_enabled": "Угол зрения",
+  "gui.mobsenses.sight.fov_enabled.tip": "Ограничивает зрение спокойных мобов конусом впереди со слепой зоной за спиной (выкл. = ванильный обзор 360°).",
+  "gui.mobsenses.sight.fov_degrees": "Ширина угла",
+  "gui.mobsenses.sight.fov_degrees.tip": "Горизонтальный угол обзора мобов в градусах при включённом угле зрения (60°–360°, по умолчанию 150°).",
+  "gui.mobsenses.sight.back_sense_range": "Чуйка сзади",
+  "gui.mobsenses.sight.back_sense_range.tip": "Радиус «шестого чутья» за спиной моба: при подходе вплотную со спины моб всё равно почует вас (0 м = полная слепая зона)."
 }

@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,6 +71,7 @@ public final class ServerHearing {
     private static final Method ITEM_GET_COMPONENTS;
     private static final List<Method> SILENCED_FIRE_HELPERS = findSilencedFireHelpers();
     private static final List<Field> ITEM_ENTITY_INT_FIELDS = findItemEntityIntFields();
+    private static final Map<Class<?>, Optional<Method>> MAGAZINE_CAPACITY_METHODS = new ConcurrentHashMap<>();
 
     private static final class DecoyTrack {
         final UUID ownerId;
@@ -441,24 +443,28 @@ public final class ServerHearing {
     }
 
     /**
-     * Suppresses vanilla X-ray target locks onto sneaking/dark-hidden players every tick. Only mobs that
-     * had recently pursued the player while visible transition into an urgent Last Known Position search;
+     * Suppresses vanilla X-ray target locks onto sneaking/dark-hidden players and out-of-FOV targets behind
+     * a mob's back every tick. Mobs that had recently pursued a player while visible transition into urgent
+     * Last Known Position search when darkness hides them and keep 360° awareness during active combat;
      * unaware mobs never leak the player's location or flash {@code ALERT_HUNTED}.
      */
     private static void tickDarknessStealth(ServerLevel level, Preset preset, long now) {
-        if (!MobSenses.settings().darknessStealthEnabled() || level.players().isEmpty()) {
+        ServerSettings cfg = MobSenses.settings();
+        boolean darknessOn = cfg.darknessStealthEnabled();
+        boolean fovOn = cfg.isFovActive();
+        if ((!darknessOn && !fovOn) || level.players().isEmpty()) {
             return;
         }
-        double sightMult = MobSenses.settings().sight();
-        double configuredSightRange = MobSenses.settings().sightRange();
+        double sightMult = cfg.sight();
+        double configuredSightRange = cfg.sightRange();
         if (!(sightMult > 0.0) || !(configuredSightRange > 0.0)) {
             return;
         }
         double baseSight = configuredSightRange * sightMult;
         double checkRadius = Math.max(40.0, Math.max(configuredSightRange, baseSight) + 12.0);
-        double lkpSpeed = MobSenses.settings().urgentInvestigateSpeed();
+        double lkpSpeed = cfg.urgentInvestigateSpeed();
         TacticalTargets.HazardWorld hazardWorld = BlockAcoustics.hazardWorld(level);
-        boolean safeFilter = MobSenses.settings().safeGoalFilter();
+        boolean safeFilter = cfg.safeGoalFilter();
 
         for (ServerPlayer player : level.players()) {
             if (!player.isAlive() || player.isSpectator()
@@ -469,6 +475,7 @@ public final class ServerHearing {
             double px = player.getX();
             double py = player.getY();
             double pz = player.getZ();
+            double eyeY = player.getEyeY();
             AABB box = new AABB(
                     px - checkRadius, py - 16.0, pz - checkRadius,
                     px + checkRadius, py + 16.0, pz + checkRadius);
@@ -478,7 +485,7 @@ public final class ServerHearing {
                 continue;
             }
             double effectiveSight = effectiveSightRangeFor(level, player, preset, baseSight);
-            boolean hiddenInDark = effectiveSight < baseSight * 0.78;
+            boolean hiddenInDark = darknessOn && effectiveSight < baseSight * 0.78;
             double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
             for (Mob mob : pursuers) {
                 int hurtStamp = mob.getLastHurtByMobTimestamp();
@@ -486,15 +493,38 @@ public final class ServerHearing {
                         && hurtStamp > 0
                         && mob.tickCount >= hurtStamp
                         && (mob.tickCount - hurtStamp) <= 100;
-                if (hiddenInDark && !directlyHurt && mob.distanceToSqr(player) > loseDistSq) {
+                PursuitStamp existing = LEGITIMATE_PURSUIT.get(mob.getId());
+                boolean hasLegitimatePursuit = existing != null
+                        && existing.playerId.equals(player.getUUID())
+                        && (now - existing.atMs) <= 8_000L;
+                boolean darknessLose = hiddenInDark && !directlyHurt && mob.distanceToSqr(player) > loseDistSq;
+                float preTickHeadYaw = mob.getViewYRot(0.0F);
+                boolean blindSpotSuppress = fovOn && !directlyHurt && !hasLegitimatePursuit
+                        && !SightModel.isWithinFov(
+                                mob.getX(), mob.getEyeY(), mob.getZ(), preTickHeadYaw,
+                                px, eyeY, pz, cfg);
+                if (darknessLose || blindSpotSuppress) {
                     InvestigateGoal.clearCombatTarget(mob, false);
-                    PursuitStamp stamp = LEGITIMATE_PURSUIT.remove(mob.getId());
-                    if (stamp != null && stamp.playerId.equals(player.getUUID())
-                            && (now - stamp.atMs) <= 8_000L) {
-                        TacticalTargets.Point3 lkp = TacticalTargets.resolveSafeGoal(
-                                hazardWorld, safeFilter, px, py, pz, mob.getX(), mob.getY(), mob.getZ());
-                        if (lkp != null && InvestigateGoal.alert(mob, lkp.x(), lkp.y(), lkp.z(), lkpSpeed, true)) {
-                            MobSenses.recordPlayerAlert(player.getUUID(), StealthHudState.ALERT_SEARCHING, now);
+                    if (blindSpotSuppress && !darknessLose) {
+                        mob.setYHeadRot(preTickHeadYaw);
+                        if (!InvestigateGoal.isActivelyControlling(mob)) {
+                            mob.getNavigation().stop();
+                            double rad = Math.toRadians(preTickHeadYaw);
+                            mob.getLookControl().setLookAt(
+                                    mob.getX() - Math.sin(rad) * 4.0,
+                                    mob.getEyeY(),
+                                    mob.getZ() + Math.cos(rad) * 4.0);
+                        }
+                    }
+                    if (darknessLose) {
+                        PursuitStamp stamp = LEGITIMATE_PURSUIT.remove(mob.getId());
+                        if (stamp != null && stamp.playerId.equals(player.getUUID())
+                                && (now - stamp.atMs) <= 8_000L) {
+                            TacticalTargets.Point3 lkp = TacticalTargets.resolveSafeGoal(
+                                    hazardWorld, safeFilter, px, py, pz, mob.getX(), mob.getY(), mob.getZ());
+                            if (lkp != null && InvestigateGoal.alert(mob, lkp.x(), lkp.y(), lkp.z(), lkpSpeed, true)) {
+                                MobSenses.recordPlayerAlert(player.getUUID(), StealthHudState.ALERT_SEARCHING, now);
+                            }
                         }
                     }
                 } else {
@@ -618,6 +648,11 @@ public final class ServerHearing {
                 if (dx * dx + dy * dy + dz * dz > effectiveSight * effectiveSight) {
                     continue;
                 }
+                if (!SightModel.isWithinFov(
+                        mob.getX(), mob.getEyeY(), mob.getZ(), mob.getYHeadRot(),
+                        px, player.getEyeY(), pz, MobSenses.settings())) {
+                    continue;
+                }
                 boolean lineOfSight = BlockAcoustics.traceSingleRay(
                         level,
                         new Vec3(mob.getX(), mob.getEyeY(), mob.getZ()),
@@ -712,7 +747,21 @@ public final class ServerHearing {
                 return false;
             }
         }
-        return NoiseModel.isFirearmItem(itemId(stack));
+        if (NoiseModel.isFirearmItem(itemId(stack))) {
+            return true;
+        }
+        if (!(item instanceof BlockItem)) {
+            for (Class<?> c = item.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+                String simple = c.getSimpleName();
+                if ("GunItem".equals(simple)
+                        || "AbstractGunItem".equals(simple)
+                        || "FirearmItem".equals(simple)
+                        || "ModernKineticGunItem".equals(simple)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -846,7 +895,7 @@ public final class ServerHearing {
         String fId = itemId(firearm);
         String tag = itemTagSummary(firearm);
         String gunKey = fId + "|" + extractGunId(tag);
-        int currentAmmo = extractFirearmAmmo(tag);
+        int currentAmmo = resolveFirearmAmmo(firearm, tag);
         String prevGunKey = LAST_FIREARM_KEY.put(player.getUUID(), gunKey);
         Integer prevAmmo = LAST_FIREARM_AMMO.put(player.getUUID(), currentAmmo);
         boolean ammoDecremented = gunKey.equals(prevGunKey)
@@ -858,7 +907,7 @@ public final class ServerHearing {
         double px = player.getX();
         double py = player.getEyeY();
         double pz = player.getZ();
-        AABB box = new AABB(px - 5.0, py - 3.5, pz - 5.0, px + 5.0, py + 3.5, pz + 5.0);
+        AABB box = new AABB(px - 28.0, py - 18.0, pz - 28.0, px + 28.0, py + 18.0, pz + 28.0);
         List<Entity> nearby = level.getEntitiesOfClass(Entity.class, box, e -> {
             if (e == null || e == player || e.tickCount > 2) {
                 return false;
@@ -868,9 +917,12 @@ public final class ServerHearing {
             }
             if (e instanceof Projectile proj) {
                 Entity owner = proj.getOwner();
+                if (e.distanceToSqr(player) > 25.0) {
+                    return owner == player;
+                }
                 return owner == null || owner == player;
             }
-            return true;
+            return e.distanceToSqr(player) <= 25.0;
         });
         boolean firedNewBullet = false;
         for (Entity bullet : nearby) {
@@ -941,59 +993,39 @@ public final class ServerHearing {
     }
 
     public static int extractFirearmAmmo(String tag) {
-        if (tag == null || tag.isEmpty()) {
-            return -1;
-        }
-        int val = parseTagInt(tag, "GunCurrentAmmoCount");
-        if (val >= 0) {
-            return val;
-        }
-        val = parseTagInt(tag, "AmmoCount");
-        if (val >= 0) {
-            return val;
-        }
-        val = parseTagInt(tag, "Ammo");
-        if (val >= 0) {
-            return val;
-        }
-        return parseTagInt(tag, "ammo");
+        return NoiseModel.extractFirearmAmmo(tag);
     }
 
-    private static int parseTagInt(String tag, String key) {
-        int from = 0;
-        while (true) {
-            int idx = tag.indexOf(key, from);
-            if (idx < 0) {
-                return -1;
-            }
-            int boundaryIdx = (idx > 0 && tag.charAt(idx - 1) == '"') ? idx - 1 : idx;
-            boolean leftBoundary = boundaryIdx == 0 || !Character.isLetterOrDigit(tag.charAt(boundaryIdx - 1));
-            int after = idx + key.length();
-            boolean rightBoundary = after < tag.length() && (tag.charAt(after) == '"' || tag.charAt(after) == ':'
-                    || tag.charAt(after) == '=' || tag.charAt(after) == ' ');
-            if (leftBoundary && rightBoundary) {
-                int i = after;
-                while (i < tag.length()) {
-                    char c = tag.charAt(i);
-                    if (c == ':' || c == '=' || c == ' ' || c == '"') {
-                        i++;
-                    } else {
-                        break;
-                    }
-                }
-                int start = i;
-                while (i < tag.length() && Character.isDigit(tag.charAt(i))) {
-                    i++;
-                }
-                if (i > start) {
-                    try {
-                        return Integer.parseInt(tag.substring(start, i));
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-            }
-            from = idx + 1;
+    private static int resolveFirearmAmmo(ItemStack stack, String tag) {
+        int parsed = NoiseModel.extractFirearmAmmo(tag);
+        if (parsed >= 0 || stack == null || stack.isEmpty()) {
+            return parsed;
         }
+        try {
+            Object item = stack.getItem();
+            Optional<Method> methodOpt = MAGAZINE_CAPACITY_METHODS.get(item.getClass());
+            if (methodOpt == null) {
+                Method found = null;
+                try {
+                    Method m = item.getClass().getMethod("magazineCapacity");
+                    if (m.getParameterCount() == 0 && (m.getReturnType() == int.class || m.getReturnType() == Integer.class)) {
+                        found = m;
+                    }
+                } catch (NoSuchMethodException ignored) {
+                }
+                methodOpt = Optional.ofNullable(found);
+                MAGAZINE_CAPACITY_METHODS.put(item.getClass(), methodOpt);
+            }
+            if (methodOpt.isPresent()) {
+                Object val = methodOpt.get().invoke(item);
+                if (val instanceof Number n) {
+                    int cap = n.intValue();
+                    return cap >= 0 ? cap : -1;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return -1;
     }
 
     public static boolean hasStealthEnchant(Player player) {
@@ -1285,7 +1317,10 @@ public final class ServerHearing {
                         level,
                         new Vec3(mob.getX(), mob.getEyeY(), mob.getZ()),
                         new Vec3(attacker.getX(), attacker.getEyeY(), attacker.getZ())) > 0.25;
-                if (distSq <= sightLimit * sightLimit && !blocked) {
+                boolean inFov = SightModel.isWithinFov(
+                        mob.getX(), mob.getEyeY(), mob.getZ(), mob.getViewYRot(0.0F),
+                        attacker.getX(), attacker.getEyeY(), attacker.getZ(), MobSenses.settings());
+                if (distSq <= sightLimit * sightLimit && !blocked && inFov) {
                     continue;
                 }
 

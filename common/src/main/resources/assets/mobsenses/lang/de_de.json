@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "Oberflächenakustik",
   "gui.mobsenses.hearing.surface_scaling.tip": "Wolle dämpft Schritte und Landungen, während Metall, Glas und Kies sie verstärken.",
   "gui.mobsenses.hearing.gunshot_range": "Schussreichweite",
-  "gui.mobsenses.hearing.gunshot_range.tip": "Basisreichweite in Blöcken für ungedämpfte Schüsse (TaCZ, Point Blank, Superb Warfare usw.).",
+  "gui.mobsenses.hearing.gunshot_range.tip": "Basisreichweite in Blöcken für ungedämpfte Schüsse (TaCZ, Point Blank, Superb Warfare, Iron's Arms 'n Artifice usw.).",
   "gui.mobsenses.hearing.gunshot_silenced_range": "Schalldämpfer-Reichweite",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "Basisreichweite in Blöcken für schallgedämpfte Schüsse.",
   "gui.mobsenses.hearing.bullet_impact_range": "Kugeleinschlag-Reichweite",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "Hinterhalt-Reakt.",
   "gui.mobsenses.ai.ambush_reaction.tip": "Bei Treffern außerhalb der Sichtweite oder aus der Dunkelheit suchen gesunde Mobs den Sektor ab und verwundete fliehen statt X-Ray-Zielerfassung.",
   "gui.mobsenses.ai.ambush_flee_threshold": "Flucht-HP-Limit",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Lebensprozent, unterhalb dem ein aus dem Hinterhalt getroffener Mob flieht (0% = nie fliehen, immer Angriffsrichtung absuchen)."
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Lebensprozent, unterhalb dem ein aus dem Hinterhalt getroffener Mob flieht (0% = nie fliehen, immer Angriffsrichtung absuchen).",
+  "gui.mobsenses.sight.fov_enabled": "Sichtkegel (FOV)",
+  "gui.mobsenses.sight.fov_enabled.tip": "Beschränkt unalarmierte Mobs auf einen Blickkegel nach vorn mit totem Winkel im Rücken (Aus = Vanilla 360°).",
+  "gui.mobsenses.sight.fov_degrees": "Sichtwinkel",
+  "gui.mobsenses.sight.fov_degrees.tip": "Horizontale Breite des Sichtfelds in Grad bei aktivem Sichtkegel (60°–360°, Standard 150°).",
+  "gui.mobsenses.sight.back_sense_range": "Rücken-Sinn",
+  "gui.mobsenses.sight.back_sense_range.tip": "Nahbereichs-Sechster-Sinn hinter einem Mob, ab dem man durch zu nahes Anschleichen entdeckt wird (0 m = Aus)."
 }

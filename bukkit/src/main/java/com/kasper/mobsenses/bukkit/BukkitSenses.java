@@ -510,12 +510,15 @@ public final class BukkitSenses {
                     new PlayerSightSnapshot(worldName, px, py, player.getEyeLocation().getY(), pz, effectiveSight, now));
         }
 
-        // Darkness stealth & LKP BEFORE ALERT_HUNTED check: clear X-ray locks; search LKP only if legitimately pursued
-        if (sightEnabled && MobSenses.settings().darknessStealthEnabled()) {
-            boolean hiddenInDark = effectiveSight < baseSight * 0.78;
+        // Darkness stealth, FOV blind spot & LKP BEFORE ALERT_HUNTED check: clear X-ray locks; search LKP on darkness break
+        if (sightEnabled && (MobSenses.settings().darknessStealthEnabled() || MobSenses.settings().isFovActive())) {
+            boolean darknessOn = MobSenses.settings().darknessStealthEnabled();
+            boolean fovOn = MobSenses.settings().isFovActive();
+            boolean hiddenInDark = darknessOn && effectiveSight < baseSight * 0.78;
             double checkRadius = Math.max(40.0, Math.max(configuredSightRange, baseSight) + 12.0);
             double loseDistSq = Math.max(4.0, effectiveSight) * Math.max(4.0, effectiveSight);
             double lkpSpeed = MobSenses.settings().urgentInvestigateSpeed();
+            Location pEye = player.getEyeLocation();
             Collection<Entity> nearbyPursuers = world.getNearbyEntities(ploc, checkRadius, 16.0, checkRadius);
             for (Entity entity : nearbyPursuers) {
                 if (!(entity instanceof Mob)) {
@@ -528,21 +531,34 @@ public final class BukkitSenses {
                         || !isListener(mob)) {
                     continue;
                 }
-                if (hiddenInDark
+                boolean recentlyHurt = wasRecentlyHurtDirectly(mob.getUniqueId(), player.getUniqueId(), now);
+                DirectHurt prev = LEGITIMATE_PURSUIT.get(mob.getUniqueId());
+                boolean hasLegitimatePursuit = prev != null && prev.attackerId.equals(player.getUniqueId())
+                        && (now - prev.atMs) <= 8_000L;
+                boolean darknessLose = hiddenInDark
                         && mob.getLocation().distanceSquared(ploc) > loseDistSq
-                        && !wasRecentlyHurtDirectly(mob.getUniqueId(), player.getUniqueId(), now)) {
+                        && !recentlyHurt;
+                Location mobEye = mob.getEyeLocation();
+                boolean blindSpotSuppress = fovOn
+                        && !recentlyHurt
+                        && !hasLegitimatePursuit
+                        && !SightModel.isWithinFov(
+                                mobEye.getX(), mobEye.getY(), mobEye.getZ(), mobEye.getYaw(),
+                                pEye.getX(), pEye.getY(), pEye.getZ(), MobSenses.settings());
+                if (darknessLose || blindSpotSuppress) {
                     UNSEEN_TARGET_SUPPRESS.put(mob.getUniqueId(), new TargetSuppress(player.getUniqueId(), now + 900L));
                     clearMobCombatTarget(mob);
-                    DirectHurt prev = LEGITIMATE_PURSUIT.remove(mob.getUniqueId());
-                    if (prev != null && prev.attackerId.equals(player.getUniqueId())
-                            && (now - prev.atMs) <= 8_000L) {
-                        Location mloc = mob.getLocation();
-                        TacticalTargets.Point3 lkp = TacticalTargets.resolveSafeGoal(
-                                hazardWorld, safeFilter, px, py, pz, mloc.getX(), mloc.getY(), mloc.getZ());
-                        if (lkp != null && investigate(
-                                mob, new Location(world, lkp.x(), lkp.y(), lkp.z()), lkpSpeed, true)) {
-                            LAST_ALERT_MS.put(mob.getUniqueId(), now);
-                            MobSenses.recordPlayerAlert(player.getUniqueId(), StealthHudState.ALERT_SEARCHING, now);
+                    if (darknessLose) {
+                        LEGITIMATE_PURSUIT.remove(mob.getUniqueId());
+                        if (hasLegitimatePursuit) {
+                            Location mloc = mob.getLocation();
+                            TacticalTargets.Point3 lkp = TacticalTargets.resolveSafeGoal(
+                                    hazardWorld, safeFilter, px, py, pz, mloc.getX(), mloc.getY(), mloc.getZ());
+                            if (lkp != null && investigate(
+                                    mob, new Location(world, lkp.x(), lkp.y(), lkp.z()), lkpSpeed, true)) {
+                                LAST_ALERT_MS.put(mob.getUniqueId(), now);
+                                MobSenses.recordPlayerAlert(player.getUniqueId(), StealthHudState.ALERT_SEARCHING, now);
+                            }
                         }
                     }
                 } else {
@@ -664,7 +680,12 @@ public final class BukkitSenses {
                 if (!isListener(mob) || mob.getTarget() != null) {
                     continue;
                 }
-                if (mob.getEyeLocation().distanceSquared(player.getEyeLocation()) <= effectiveSight * effectiveSight
+                Location mobEye = mob.getEyeLocation();
+                Location pEye = player.getEyeLocation();
+                if (mobEye.distanceSquared(pEye) <= effectiveSight * effectiveSight
+                        && SightModel.isWithinFov(
+                                mobEye.getX(), mobEye.getY(), mobEye.getZ(), mobEye.getYaw(),
+                                pEye.getX(), pEye.getY(), pEye.getZ(), MobSenses.settings())
                         && mob.hasLineOfSight(player)) {
                     Location mloc = mob.getLocation();
                     TacticalTargets.Point3 safeSpot = TacticalTargets.resolveSafeGoal(
@@ -1054,7 +1075,10 @@ public final class BukkitSenses {
                 world,
                 mobEye.getX(), mobEye.getY(), mobEye.getZ(),
                 attackerEye.getX(), attackerEye.getY(), attackerEye.getZ()) > 0.25;
-        if (distSq <= sightLimit * sightLimit && !blocked) {
+        boolean inFov = SightModel.isWithinFov(
+                mobEye.getX(), mobEye.getY(), mobEye.getZ(), mobEye.getYaw(),
+                attackerEye.getX(), attackerEye.getY(), attackerEye.getZ(), MobSenses.settings());
+        if (distSq <= sightLimit * sightLimit && !blocked && inFov) {
             LAST_DIRECT_HURT_MS.put(mob.getUniqueId(), new DirectHurt(attacker.getUniqueId(), now));
             return;
         }
@@ -1091,7 +1115,7 @@ public final class BukkitSenses {
         if ((reason == EntityTargetEvent.TargetReason.CLOSEST_PLAYER
                 || reason == EntityTargetEvent.TargetReason.RANDOM_TARGET)
                 && target instanceof Player
-                && MobSenses.settings().darknessStealthEnabled()
+                && (MobSenses.settings().darknessStealthEnabled() || MobSenses.settings().isFovActive())
                 && isListener(mob)) {
             Player player = (Player) target;
             if (isBypassed(player) || (player.getGameMode() == GameMode.CREATIVE && !MobSenses.debug())) {
@@ -1109,6 +1133,13 @@ public final class BukkitSenses {
             double sightMult = MobSenses.settings().sight();
             double configuredSight = MobSenses.settings().sightRange();
             if (!(sightMult > 0.0) || !(configuredSight > 0.0)) {
+                return false;
+            }
+            if (wasRecentlyHurtDirectly(mob.getUniqueId(), player.getUniqueId(), now)) {
+                return false;
+            }
+            DirectHurt legit = LEGITIMATE_PURSUIT.get(mob.getUniqueId());
+            if (legit != null && legit.attackerId.equals(player.getUniqueId()) && (now - legit.atMs) <= 8_000L) {
                 return false;
             }
             double baseSight = configuredSight * sightMult;
@@ -1134,25 +1165,19 @@ public final class BukkitSenses {
                 pz = snap.z;
                 effectiveSight = snap.effectiveSight;
             }
-            if (effectiveSight >= baseSight * 0.78) {
-                return false;
-            }
             Location mobEye = mob.getEyeLocation();
             double dx = mobEye.getX() - px;
             double dy = mobEye.getY() - py;
             double dz = mobEye.getZ() - pz;
             double loseDist = Math.max(4.0, effectiveSight);
-            if ((dx * dx + dy * dy + dz * dz) <= loseDist * loseDist) {
-                return false;
-            }
-            if (wasRecentlyHurtDirectly(mob.getUniqueId(), player.getUniqueId(), now)) {
-                return false;
-            }
-            DirectHurt legit = LEGITIMATE_PURSUIT.get(mob.getUniqueId());
-            if (legit != null && legit.attackerId.equals(player.getUniqueId()) && (now - legit.atMs) <= 8_000L) {
-                return false;
-            }
-            return true;
+            boolean darknessBlocked = MobSenses.settings().darknessStealthEnabled()
+                    && effectiveSight < baseSight * 0.78
+                    && (dx * dx + dy * dy + dz * dz) > loseDist * loseDist;
+            boolean fovBlocked = MobSenses.settings().isFovActive()
+                    && !SightModel.isWithinFov(
+                            mobEye.getX(), mobEye.getY(), mobEye.getZ(), mobEye.getYaw(),
+                            px, py, pz, MobSenses.settings());
+            return darknessBlocked || fovBlocked;
         }
         return false;
     }

@@ -164,6 +164,54 @@ public final class SightModel {
         return (int) Math.round(Math.max(0.0, Math.min(1.0, normalized)) * 100.0);
     }
 
+    /**
+     * Checks whether a target position falls within a mob's directional horizontal field of view
+     * (or inside its close-range sixth-sense perimeter) using the supplied {@link ServerSettings}.
+     */
+    public static boolean isWithinFov(
+            double mobEyeX, double mobEyeY, double mobEyeZ, float mobHeadYawDeg,
+            double targetX, double targetY, double targetZ, ServerSettings cfg) {
+        if (cfg == null) {
+            return true;
+        }
+        return isWithinFov(
+                mobEyeX, mobEyeY, mobEyeZ, mobHeadYawDeg,
+                targetX, targetY, targetZ,
+                cfg.sightFovEnabled(), cfg.sightFovDegrees(), cfg.sightBackSenseRange());
+    }
+
+    /**
+     * Checks whether {@code (targetX, targetY, targetZ)} lies within the horizontal cone of width
+     * {@code fovDegrees} centered on {@code mobHeadYawDeg} (Minecraft convention: {@code 0°} = +Z South,
+     * {@code 90°} = -X West) or within {@code backSenseRange} blocks (3D close-range awareness).
+     */
+    public static boolean isWithinFov(
+            double mobEyeX, double mobEyeY, double mobEyeZ, float mobHeadYawDeg,
+            double targetX, double targetY, double targetZ,
+            boolean fovEnabled, double fovDegrees, double backSenseRange) {
+        if (!fovEnabled || !(fovDegrees < 359.5) || !Float.isFinite(mobHeadYawDeg)) {
+            return true;
+        }
+        double dx = targetX - mobEyeX;
+        double dy = targetY - mobEyeY;
+        double dz = targetZ - mobEyeZ;
+        double distSq = dx * dx + dy * dy + dz * dz;
+        if (backSenseRange > 0.0 && distSq <= backSenseRange * backSenseRange) {
+            return true;
+        }
+        double horiz = Math.hypot(dx, dz);
+        double clampedDeg = Math.max(30.0, Math.min(360.0, fovDegrees));
+        if (horiz < 1.0e-4) {
+            return clampedDeg >= 180.0;
+        }
+        double rad = Math.toRadians(mobHeadYawDeg);
+        double fx = -Math.sin(rad);
+        double fz = Math.cos(rad);
+        double cosAngle = (dx * fx + dz * fz) / horiz;
+        double cosHalf = Math.cos(Math.toRadians(clampedDeg * 0.5));
+        return cosAngle >= (cosHalf - 1.0e-9);
+    }
+
     private static int clampLight(int light) {
         return Math.max(0, Math.min(15, light));
     }

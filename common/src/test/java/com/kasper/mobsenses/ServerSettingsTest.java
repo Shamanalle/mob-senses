@@ -387,4 +387,50 @@ class ServerSettingsTest {
         assertEquals(35.0, s.ambushFleeHealthThreshold(), 1e-6);
         assertTrue(s.ignoreBosses());
     }
+
+    @Test
+    void v170DirectionalFovSettingsPersistAutoUpgradeAndSync() throws Exception {
+        assertEquals("sight_fov_enabled", ServerSettings.canonicalOptionKey("mob_fov"));
+        assertEquals("sight_fov_degrees", ServerSettings.canonicalOptionKey("fov_degrees"));
+        assertEquals("sight_back_sense_range", ServerSettings.canonicalOptionKey("sixth_sense_range"));
+
+        Path file = dir.resolve("upgrade-161.properties");
+        Files.writeString(file, "preset=default\nignore_bosses=false\n", StandardCharsets.UTF_8);
+        ServerSettings s = new ServerSettings(file);
+        s.load();
+        assertFalse(s.ignoreBosses());
+        assertFalse(s.sightFovEnabled(), "FOV must default to false");
+        assertFalse(s.isFovActive());
+        assertEquals(150.0, s.sightFovDegrees(), 1e-6);
+        assertEquals(2.0, s.sightBackSenseRange(), 1e-6);
+
+        String upgraded = Files.readString(file, StandardCharsets.UTF_8);
+        assertTrue(upgraded.contains("sight_fov_enabled=false"), upgraded);
+        assertTrue(upgraded.contains("sight_fov_degrees=150"), upgraded);
+        assertTrue(upgraded.contains("sight_back_sense_range=2"), upgraded);
+
+        assertFalse(s.setOption("sight_fov_degrees", "15"));
+        assertFalse(s.setOption("sight_fov_degrees", "400"));
+        assertFalse(s.setOption("sight_back_sense_range", "25"));
+        assertTrue(s.setOption("sight_fov_enabled", "true"));
+        assertTrue(s.setOption("sight_fov_degrees", "120"));
+        assertTrue(s.setOption("sight_back_sense_range", "1.5"));
+        assertTrue(s.isFovActive());
+        s.save();
+
+        java.util.Properties wire = new java.util.Properties();
+        s.writeState(wire, "minecraft:overworld");
+        ServerSettings clientCopy = new ServerSettings(null);
+        clientCopy.readState(wire);
+        assertTrue(clientCopy.sightFovEnabled());
+        assertTrue(clientCopy.isFovActive());
+        assertEquals(120.0, clientCopy.sightFovDegrees(), 1e-6);
+        assertEquals(1.5, clientCopy.sightBackSenseRange(), 1e-6);
+
+        s.resetAll();
+        assertFalse(s.sightFovEnabled());
+        assertFalse(s.isFovActive());
+        assertEquals(150.0, s.sightFovDegrees(), 1e-6);
+        assertEquals(2.0, s.sightBackSenseRange(), 1e-6);
+    }
 }

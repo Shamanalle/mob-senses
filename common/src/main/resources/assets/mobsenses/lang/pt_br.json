@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "Acústica de superfícies",
   "gui.mobsenses.hearing.surface_scaling.tip": "Lã abafa passos e quedas, enquanto metal, vidro e cascalho os amplificam.",
   "gui.mobsenses.hearing.gunshot_range": "Alcance de disparos",
-  "gui.mobsenses.hearing.gunshot_range.tip": "Alcance base em blocos para tiros sem silenciador (TaCZ, Point Blank, Superb Warfare, etc.).",
+  "gui.mobsenses.hearing.gunshot_range.tip": "Alcance base em blocos para tiros sem silenciador (TaCZ, Point Blank, Superb Warfare, Iron's Arms 'n Artifice, etc.).",
   "gui.mobsenses.hearing.gunshot_silenced_range": "Disparo com silenciador",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "Alcance base em blocos para armas com silenciador ou supressor.",
   "gui.mobsenses.hearing.bullet_impact_range": "Impacto de bala",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "Reação a emboscada",
   "gui.mobsenses.ai.ambush_reaction.tip": "Ao levar tiro de fora da visão ou da escuridão, mobs saudáveis vasculham a direção e feridos recuam em vez de travar mira instantânea.",
   "gui.mobsenses.ai.ambush_flee_threshold": "Fuga por HP <",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Porcentagem de vida abaixo da qual um mob emboscado foge do tiro (0% = nunca fugir, sempre vasculhar a direção)."
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Porcentagem de vida abaixo da qual um mob emboscado foge do tiro (0% = nunca fugir, sempre vasculhar a direção).",
+  "gui.mobsenses.sight.fov_enabled": "Campo de visão",
+  "gui.mobsenses.sight.fov_enabled.tip": "Limita mobs desprevenidos a um cone frontal com ponto cego atrás das costas (Desl. = 360° vanilla).",
+  "gui.mobsenses.sight.fov_degrees": "Ângulo FOV",
+  "gui.mobsenses.sight.fov_degrees.tip": "Largura horizontal do cone de visão em graus com o FOV direcional ativo (60°–360°, padrão 150°).",
+  "gui.mobsenses.sight.back_sense_range": "Sexto sentido",
+  "gui.mobsenses.sight.back_sense_range.tip": "Raio próximo atrás do mob em que chegar perto demais ainda revela o jogador (0 m = ponto cego total)."
 }

@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "地面材质声学",
   "gui.mobsenses.hearing.surface_scaling.tip": "羊毛吸收脚步与落地声，而金属、玻璃和沙砾会放大声响。",
   "gui.mobsenses.hearing.gunshot_range": "枪声传播距离",
-  "gui.mobsenses.hearing.gunshot_range.tip": "无消音器枪械射击的基础传播半径（兼容 TaCZ、Point Blank、Superb Warfare 等）。",
+  "gui.mobsenses.hearing.gunshot_range.tip": "无消音器枪械射击的基础传播半径（兼容 TaCZ、Point Blank、Superb Warfare、Iron's Arms 'n Artifice 等）。",
   "gui.mobsenses.hearing.gunshot_silenced_range": "消音枪声距离",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "加装消音器枪械射击的基础传播半径。",
   "gui.mobsenses.hearing.bullet_impact_range": "弹着点声响距离",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "远程伏击反制",
   "gui.mobsenses.ai.ambush_reaction.tip": "从视野外或黑暗中遭到偷袭时，健康怪物会向来袭方向搜索，重伤怪物则会撤退，而非瞬间透视锁敌。",
   "gui.mobsenses.ai.ambush_flee_threshold": "残血撤退阈值",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "遭到伏击时触发撤退的生命值百分比阈值（0% 表示永不逃跑，始终朝袭击方向搜索）。"
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "遭到伏击时触发撤退的生命值百分比阈值（0% 表示永不逃跑，始终朝袭击方向搜索）。",
+  "gui.mobsenses.sight.fov_enabled": "生物视野 (FOV)",
+  "gui.mobsenses.sight.fov_enabled.tip": "将未警戒生物的视觉限制在前方锥形视野内并在背后形成盲区（关闭则保持原版 360° 视野）。",
+  "gui.mobsenses.sight.fov_degrees": "视野角度",
+  "gui.mobsenses.sight.fov_degrees.tip": "开启生物视野后的水平视锥角度（60°–360°，默认 150°）。",
+  "gui.mobsenses.sight.back_sense_range": "背后察觉距离",
+  "gui.mobsenses.sight.back_sense_range.tip": "生物身后的近距离直觉半径，过于贴近背后仍会被察觉（0 m 表示完全盲区）。"
 }

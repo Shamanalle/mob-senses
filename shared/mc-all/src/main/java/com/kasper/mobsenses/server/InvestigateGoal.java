@@ -233,6 +233,15 @@ public final class InvestigateGoal extends Goal {
         return ticksRemaining > 0 && mob.getTarget() == null;
     }
 
+    /** Whether {@code mob} currently has an active {@link InvestigateGoal} task steering it. */
+    public static boolean isActivelyControlling(Mob mob) {
+        if (mob == null) {
+            return false;
+        }
+        InvestigateGoal goal = GOALS.get(mob);
+        return goal != null && goal.ticksRemaining > 0 && mob.getTarget() == null;
+    }
+
     public double targetX() {
         return targetX;
     }

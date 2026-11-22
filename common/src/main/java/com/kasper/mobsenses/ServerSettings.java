@@ -42,6 +42,9 @@ public final class ServerSettings {
     public static final boolean DEFAULT_AMBUSH_REACTION_ENABLED = true;
     public static final double DEFAULT_AMBUSH_FLEE_HEALTH_THRESHOLD = 35.0;
     public static final boolean DEFAULT_IGNORE_BOSSES = true;
+    public static final boolean DEFAULT_SIGHT_FOV_ENABLED = false;
+    public static final double DEFAULT_SIGHT_FOV_DEGREES = 150.0;
+    public static final double DEFAULT_SIGHT_BACK_SENSE_RANGE = 2.0;
 
     private static final List<String> OPTION_KEYS = Jv.listOf(
             "preset", "hearing", "sight", "wall_muffling", "through_wall_hearing", "surface_sound_scaling",
@@ -52,7 +55,8 @@ public final class ServerSettings {
             "note_block_range", "eat_range",
             "rain_muffling", "thunder_muffling", "feather_falling_muffling",
             "voice", "voice_range", "voice_whisper_multiplier",
-            "sight_range", "held_light_enabled", "held_light_bonus",
+            "sight_range", "sight_fov_enabled", "sight_fov_degrees", "sight_back_sense_range",
+            "held_light_enabled", "held_light_bonus",
             "darkness_stealth_enabled", "darkness_min_visibility",
             "sneak_sight_multiplier", "sprint_sight_multiplier",
             "scent_enabled", "scent_health_threshold", "scent_range", "scent_max_range",
@@ -111,6 +115,9 @@ public final class ServerSettings {
 
     // 6. Sight, Torchlight & Darkness Stealth
     private volatile double sightRange = 16.0;
+    private volatile boolean sightFovEnabled = DEFAULT_SIGHT_FOV_ENABLED;
+    private volatile double sightFovDegrees = DEFAULT_SIGHT_FOV_DEGREES;
+    private volatile double sightBackSenseRange = DEFAULT_SIGHT_BACK_SENSE_RANGE;
     private volatile boolean heldLightEnabled = true;
     private volatile double heldLightBonus = 0.50;
     private volatile boolean darknessStealthEnabled = true;
@@ -196,6 +203,18 @@ public final class ServerSettings {
                 return "ambush_flee_health_threshold";
             case "boss_immunity":
                 return "ignore_bosses";
+            case "mob_fov":
+            case "mob_fov_enabled":
+            case "fov_enabled":
+                return "sight_fov_enabled";
+            case "mob_fov_degrees":
+            case "fov_degrees":
+            case "sight_fov":
+                return "sight_fov_degrees";
+            case "back_sense_range":
+            case "sixth_sense_range":
+            case "blind_spot_proximity":
+                return "sight_back_sense_range";
             default:
                 return key;
         }
@@ -440,6 +459,22 @@ public final class ServerSettings {
 
     public double sightRange() {
         return sightRange;
+    }
+
+    public boolean sightFovEnabled() {
+        return sightFovEnabled;
+    }
+
+    public double sightFovDegrees() {
+        return sightFovDegrees;
+    }
+
+    public double sightBackSenseRange() {
+        return sightBackSenseRange;
+    }
+
+    public boolean isFovActive() {
+        return sightFovEnabled && sightFovDegrees < 359.5;
     }
 
     public boolean heldLightEnabled() {
@@ -808,6 +843,18 @@ public final class ServerSettings {
         this.sightRange = checkRange("sight_range", sightRange);
     }
 
+    public void setSightFovEnabled(boolean sightFovEnabled) {
+        this.sightFovEnabled = sightFovEnabled;
+    }
+
+    public void setSightFovDegrees(double sightFovDegrees) {
+        this.sightFovDegrees = checkBounded("sight_fov_degrees", sightFovDegrees, 30.0, 360.0);
+    }
+
+    public void setSightBackSenseRange(double sightBackSenseRange) {
+        this.sightBackSenseRange = checkBounded("sight_back_sense_range", sightBackSenseRange, 0.0, 16.0);
+    }
+
     public void setHeldLightEnabled(boolean heldLightEnabled) {
         this.heldLightEnabled = heldLightEnabled;
     }
@@ -1037,6 +1084,12 @@ public final class ServerSettings {
                 return format(voiceWhisperMultiplier);
             case "sight_range":
                 return format(sightRange);
+            case "sight_fov_enabled":
+                return String.valueOf(sightFovEnabled);
+            case "sight_fov_degrees":
+                return format(sightFovDegrees);
+            case "sight_back_sense_range":
+                return format(sightBackSenseRange);
             case "held_light_enabled":
                 return String.valueOf(heldLightEnabled);
             case "held_light_bonus":
@@ -1142,9 +1195,12 @@ public final class ServerSettings {
                 return Jv.listOf("voice", "voice_range", "voice_whisper_multiplier");
             case "sight":
             case "light":
-                return Jv.listOf("sight_range", "held_light_enabled", "held_light_bonus",
+                return Jv.listOf("sight_range", "sight_fov_enabled", "sight_fov_degrees", "sight_back_sense_range",
+                        "held_light_enabled", "held_light_bonus",
                         "darkness_stealth_enabled", "darkness_min_visibility",
                         "sneak_sight_multiplier", "sprint_sight_multiplier");
+            case "fov":
+                return Jv.listOf("sight_fov_enabled", "sight_fov_degrees", "sight_back_sense_range");
             case "scent":
             case "blood":
                 return Jv.listOf("scent_enabled", "scent_health_threshold", "scent_range",
@@ -1295,6 +1351,15 @@ public final class ServerSettings {
                 return true;
             case "sight_range":
                 sightRange = 16.0;
+                return true;
+            case "sight_fov_enabled":
+                sightFovEnabled = DEFAULT_SIGHT_FOV_ENABLED;
+                return true;
+            case "sight_fov_degrees":
+                sightFovDegrees = DEFAULT_SIGHT_FOV_DEGREES;
+                return true;
+            case "sight_back_sense_range":
+                sightBackSenseRange = DEFAULT_SIGHT_BACK_SENSE_RANGE;
                 return true;
             case "held_light_enabled":
                 heldLightEnabled = true;
@@ -1535,6 +1600,15 @@ public final class ServerSettings {
                 case "sight_range":
                     setSightRange(parseDouble(val));
                     return true;
+                case "sight_fov_enabled":
+                    setSightFovEnabled(parseStrictBool(val));
+                    return true;
+                case "sight_fov_degrees":
+                    setSightFovDegrees(parseDouble(val));
+                    return true;
+                case "sight_back_sense_range":
+                    setSightBackSenseRange(parseDouble(val));
+                    return true;
                 case "held_light_enabled":
                     setHeldLightEnabled(parseStrictBool(val));
                     return true;
@@ -1712,7 +1786,10 @@ public final class ServerSettings {
                     || !text.contains("horde_max_allies=") || !text.contains("urgent_investigate_speed=")
                     || !text.contains("ambush_reaction_enabled=")
                     || !text.contains("ambush_flee_health_threshold=")
-                    || !text.contains("ignore_bosses=")) {
+                    || !text.contains("ignore_bosses=")
+                    || !text.contains("sight_fov_enabled=")
+                    || !text.contains("sight_fov_degrees=")
+                    || !text.contains("sight_back_sense_range=")) {
                 save();
             }
         } catch (IOException | RuntimeException e) {
@@ -1841,6 +1918,11 @@ public final class ServerSettings {
         voiceWhisperMultiplier = boundedNumberWithAlias(p, "voice_whisper_multiplier", "whisper_multiplier", 0.0, 1.0, 0.30);
 
         sightRange = boundedNumber(p, "sight_range", MIN_RANGE, MAX_RANGE, 16.0);
+        sightFovEnabled = boolWithAlias(p, "sight_fov_enabled", "mob_fov_enabled", DEFAULT_SIGHT_FOV_ENABLED);
+        sightFovDegrees = boundedNumberWithAlias(
+                p, "sight_fov_degrees", "fov_degrees", 30.0, 360.0, DEFAULT_SIGHT_FOV_DEGREES);
+        sightBackSenseRange = boundedNumberWithAlias(
+                p, "sight_back_sense_range", "back_sense_range", 0.0, 16.0, DEFAULT_SIGHT_BACK_SENSE_RANGE);
         heldLightEnabled = bool(p, "held_light_enabled", true);
         heldLightBonus = boundedNumberWithAlias(p, "held_light_bonus", "torchlight_penalty", 0.0, 2.0, 0.50);
         darknessStealthEnabled = boolWithAlias(p, "darkness_stealth_enabled", "darkness_stealth", true);
@@ -2040,7 +2122,7 @@ public final class ServerSettings {
         lines.add("surface_sound_scaling=" + surfaceSoundScaling);
         lines.add("");
         lines.add("# ============================================================================");
-        lines.add("# 2. FIREARMS & GUN MODS (TaCZ, PointBlank, Superb Warfare, JEG, CGM, Scorched Guns) / ОГНЕСТРЕЛЬНОЕ ОРУЖИЕ");
+        lines.add("# 2. FIREARMS & GUN MODS (TaCZ, PointBlank, Superb Warfare, JEG, CGM, Scorched Guns, Iron's Arms) / ОГНЕСТРЕЛЬНОЕ ОРУЖИЕ");
         lines.add("# ============================================================================");
         lines.add("# Base audible distance in blocks for an unsuppressed gunshot (0 - 256, 0 = disabled).");
         lines.add("# Базовая дальность слышимости выстрела без глушителя в блоках (0 - 256, 0 = выкл).");
@@ -2115,6 +2197,11 @@ public final class ServerSettings {
         lines.add("# Baseline daylight sight distance in blocks (0 - 256).");
         lines.add("# Базовая дальность зрения мобов днём в блоках (0 - 256).");
         lines.add("sight_range=" + format(sightRange));
+        lines.add("# Directional mob Field of View (cone angle in degrees 30-360, plus close rear sixth-sense radius in blocks; false = vanilla 360° vision).");
+        lines.add("# Направленный угол обзора мобов (конус 30-360° и радиус чутья вплотную со спины в блоках; false = обзор 360° как в ванилле).");
+        lines.add("sight_fov_enabled=" + sightFovEnabled);
+        lines.add("sight_fov_degrees=" + format(sightFovDegrees));
+        lines.add("sight_back_sense_range=" + format(sightBackSenseRange));
         lines.add("");
         lines.add("# Whether holding a torch/lantern makes you visible from farther away, and whether darkness + sneaking hides you.");
         lines.add("# Делает ли факел/фонарь в руке игрока заметнее издалека и скрывает ли темнота в приседе.");

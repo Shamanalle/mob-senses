@@ -554,16 +554,28 @@ public abstract class SettingsScreen extends BaseScreen {
                 s.sightRange(), 0.0, 48.0, 1.0, SettingsScreen::fmtBlocks, "sight_range", editable);
         y += 21;
 
+        addServerToggle(x, y, colW, "gui.mobsenses.sight.fov_enabled", "gui.mobsenses.sight.fov_enabled.tip",
+                s.sightFovEnabled(), "sight_fov_enabled", editable);
+        addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.fov_degrees", "gui.mobsenses.sight.fov_degrees.tip",
+                s.sightFovDegrees(), 60.0, 360.0, 5.0, SettingsScreen::fmtDegrees, "sight_fov_degrees", editable);
+        y += 21;
+
+        addServerSlider(x, y, colW, "gui.mobsenses.sight.back_sense_range", "gui.mobsenses.sight.back_sense_range.tip",
+                s.sightBackSenseRange(), 0.0, 8.0, 0.5, SettingsScreen::fmtBackSense, "sight_back_sense_range", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.torchlight_penalty", "gui.mobsenses.sight.torchlight_penalty.tip",
+                s.heldLightEnabled(), "held_light_enabled", editable);
+        y += 21;
+
         addServerToggle(x, y, colW, "gui.mobsenses.sight.darkness_stealth", "gui.mobsenses.sight.darkness_stealth.tip",
                 s.darknessStealthEnabled(), "darkness_stealth_enabled", editable);
         addServerSlider(rightX, y, rightW, "gui.mobsenses.sight.min_darkness", "gui.mobsenses.sight.min_darkness.tip",
                 s.darknessMinVisibility(), 0.05, 1.00, 0.05, SettingsScreen::fmtPct01, "darkness_min_visibility", editable);
         y += 21;
 
-        addServerToggle(x, y, colW, "gui.mobsenses.sight.torchlight_penalty", "gui.mobsenses.sight.torchlight_penalty.tip",
-                s.heldLightEnabled(), "held_light_enabled", editable);
-        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.blood_scent", "gui.mobsenses.sight.blood_scent.tip",
+        addServerToggle(x, y, colW, "gui.mobsenses.sight.blood_scent", "gui.mobsenses.sight.blood_scent.tip",
                 s.scentEnabled(), "scent_enabled", editable);
+        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.blood_particles", "gui.mobsenses.sight.blood_particles.tip",
+                s.bloodParticles(), "blood_particles", editable);
         y += 21;
 
         addServerSlider(x, y, colW, "gui.mobsenses.sight.blood_threshold", "gui.mobsenses.sight.blood_threshold.tip",
@@ -572,10 +584,8 @@ public abstract class SettingsScreen extends BaseScreen {
                 s.scentRange(), 0.0, 48.0, 1.0, SettingsScreen::fmtBlocks, "scent_range", editable);
         y += 21;
 
-        addServerSlider(x, y, colW, "gui.mobsenses.sight.scent_wall_muffling", "gui.mobsenses.sight.scent_wall_muffling.tip",
+        addServerSlider(x, y, w, "gui.mobsenses.sight.scent_wall_muffling", "gui.mobsenses.sight.scent_wall_muffling.tip",
                 s.scentWallMuffling(), 0.0, 3.0, 0.05, SettingsScreen::fmtMult, "scent_wall_muffling", editable);
-        addServerToggle(rightX, y, rightW, "gui.mobsenses.sight.blood_particles", "gui.mobsenses.sight.blood_particles.tip",
-                s.bloodParticles(), "blood_particles", editable);
         y += 23;
 
         // 4. Mob AI, Horde & Ambush
@@ -1085,7 +1095,8 @@ public abstract class SettingsScreen extends BaseScreen {
         double bloodStoneR = ScentModel.scentRangeThroughWalls(bloodR, 1.0, s.scentWallMuffling());
         double sightScaleMax = Math.max(32.0, Math.max(dayWalk, bloodR));
 
-        drawSingleRangeRow(canvas, x + 6, y + 82, w - 12, "Daylight", dayWalk, sightScaleMax, Palette.AMBER);
+        String sightLabel = s.isFovActive() ? ("Sight (" + Math.round(s.sightFovDegrees()) + "°)") : "Daylight";
+        drawSingleRangeRow(canvas, x + 6, y + 82, w - 12, sightLabel, dayWalk, sightScaleMax, Palette.AMBER);
         drawSingleRangeRow(canvas, x + 6, y + 92, w - 12, "Dark Sneak", darkSneak, sightScaleMax, Palette.ACCENT);
         drawScentRangeRow(canvas, x + 6, y + 102, w - 12, "Blood Trail", bloodR, bloodStoneR, sightScaleMax);
     }
@@ -1209,6 +1220,15 @@ public abstract class SettingsScreen extends BaseScreen {
     private static String fmtFleePct(double v) {
         long pct = Math.round(v);
         return pct <= 0 ? "0% (Off)" : (pct + "%");
+    }
+
+    private static String fmtDegrees(double v) {
+        long deg = Math.round(v);
+        return deg + "°";
+    }
+
+    private static String fmtBackSense(double v) {
+        return v <= 0.01 ? "0 m (Off)" : fmtBlocksHalf(v);
     }
 
     private static String fmtSeconds(double v) {

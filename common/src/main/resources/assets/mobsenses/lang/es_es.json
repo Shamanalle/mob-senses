@@ -136,7 +136,7 @@
   "gui.mobsenses.hearing.surface_scaling": "Acústica de superficies",
   "gui.mobsenses.hearing.surface_scaling.tip": "La lana amortigua pisadas y saltos; el metal, el cristal y la grava los amplifican.",
   "gui.mobsenses.hearing.gunshot_range": "Alcance de disparos",
-  "gui.mobsenses.hearing.gunshot_range.tip": "Radio base en bloques de disparos sin silenciador (TaCZ, Point Blank, Superb Warfare, etc.).",
+  "gui.mobsenses.hearing.gunshot_range.tip": "Radio base en bloques de disparos sin silenciador (TaCZ, Point Blank, Superb Warfare, Iron's Arms 'n Artifice, etc.).",
   "gui.mobsenses.hearing.gunshot_silenced_range": "Disparo con silenciador",
   "gui.mobsenses.hearing.gunshot_silenced_range.tip": "Radio base en bloques de armas con silenciador o supresor.",
   "gui.mobsenses.hearing.bullet_impact_range": "Impacto de bala",
@@ -217,5 +217,11 @@
   "gui.mobsenses.ai.ambush_reaction": "Reacción emboscada",
   "gui.mobsenses.ai.ambush_reaction.tip": "Al recibir disparos ocultos o desde la oscuridad, los mobs sanos registran el sector y los heridos huyen en lugar de fijar objetivo al instante.",
   "gui.mobsenses.ai.ambush_flee_threshold": "Huida por HP <",
-  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Porcentaje de vida bajo el cual un mob emboscado huye del disparo (0% = nunca huir, siempre registrar hacia el atacante)."
+  "gui.mobsenses.ai.ambush_flee_threshold.tip": "Porcentaje de vida bajo el cual un mob emboscado huye del disparo (0% = nunca huir, siempre registrar hacia el atacante).",
+  "gui.mobsenses.sight.fov_enabled": "Campo de visión",
+  "gui.mobsenses.sight.fov_enabled.tip": "Limita a los mobs desprevenidos a un cono frontal con punto ciego a sus espaldas (Desact. = 360° vanilla).",
+  "gui.mobsenses.sight.fov_degrees": "Ángulo FOV",
+  "gui.mobsenses.sight.fov_degrees.tip": "Amplitud horizontal en grados del cono de visión cuando el FOV direccional está activo (60°–360°, 150° por defecto).",
+  "gui.mobsenses.sight.back_sense_range": "Sexto sentido",
+  "gui.mobsenses.sight.back_sense_range.tip": "Radio cercano a espaldas del mob donde acercarse demasiado aún te delata (0 m = punto ciego total)."
 }

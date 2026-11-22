@@ -235,4 +235,68 @@ class NoiseModelTest {
         assertTrue(metalOnStone > woolOnWool * 3.0);
         assertTrue(onAirFallback > 5.0);
     }
+
+    @Test
+    void ironsArmsAndArtificeFirearmsSuppressorsProjectilesAndMagazinesSupported() {
+        // All 7 firearms (including flintlock, six_shooter, arquebus) must count as guns
+        for (String gun : new String[]{
+                "irons_artifice:flintlock",
+                "irons_artifice:musket",
+                "irons_artifice:blunderbuss",
+                "irons_artifice:blackpowder_revolver",
+                "irons_artifice:six_shooter",
+                "irons_artifice:arquebus",
+                "irons_artifice:clockwork_rifle"
+        }) {
+            assertTrue(NoiseModel.isFirearmItem(gun), "Expected firearm recognized: " + gun);
+        }
+
+        // Modifiers, hats, ammunition and crafting parts must not count as firearms
+        for (String nonGun : new String[]{
+                "irons_artifice:suppressor_attachment_modifier",
+                "irons_artifice:bayonet_attachment_modifier",
+                "irons_artifice:mechanical_repeater_modifier",
+                "irons_artifice:gun_oil_modifier",
+                "irons_artifice:cowboy_hat",
+                "irons_artifice:tricorne",
+                "irons_artifice:blackpowder",
+                "irons_artifice:bullet",
+                "irons_artifice:bullet_box",
+                "irons_artifice:simple_mechanical_components",
+                "irons_artifice:mechanical_components",
+                "irons_artifice:clockwork_components",
+                "irons_artifice:illificer_spawn_egg",
+                "minecraft:repeater",
+                "minecraft:comparator"
+        }) {
+            assertFalse(NoiseModel.isFirearmItem(nonGun), "Expected non-gun excluded: " + nonGun);
+        }
+
+        // Bullet entities vs non-bullet entities
+        assertTrue(NoiseModel.isBulletEntity("irons_artifice:bullet"));
+        assertFalse(NoiseModel.isBulletEntity("irons_artifice:illificer"));
+        assertFalse(NoiseModel.isBulletEntity("irons_artifice:soul"));
+
+        // Suppressor detection across 1.20.1 NBT and 1.21.1+ DataComponents
+        assertTrue(NoiseModel.isSilencedFirearm(
+                "irons_artifice:flintlock",
+                "{irons_artifice:attachment=>AttachmentMap[attachments={muzzle=irons_artifice:suppressor}]}"));
+        assertTrue(NoiseModel.isSilencedFirearm(
+                "irons_artifice:musket",
+                "{Items:[{id:\"irons_artifice:suppressor_attachment_modifier\"}]}"));
+        assertFalse(NoiseModel.isSilencedFirearm(
+                "irons_artifice:six_shooter",
+                "{irons_artifice:attachment=>AttachmentMap[attachments={underbarrel=irons_artifice:bayonet}]}"));
+        assertFalse(NoiseModel.isSilencedFirearm(
+                "irons_artifice:arquebus",
+                "{Items:[{id:\"irons_artifice:scope_attachment_modifier\"}]}"));
+
+        // Magazine ammo parsing across modern records, 1.20.1 NBT, and legacy gun mods
+        assertEquals(5, NoiseModel.extractFirearmAmmo("{irons_artifice:magazine=>MagazineContents[count=5]}"));
+        assertEquals(0, NoiseModel.extractFirearmAmmo("{irons_artifice:magazine=>MagazineContents[count=0]}"));
+        assertEquals(6, NoiseModel.extractFirearmAmmo("{\"irons_artifice:magazine\":6}"));
+        assertEquals(0, NoiseModel.extractFirearmAmmo("{irons_artifice:magazine:0}"));
+        assertEquals(29, NoiseModel.extractFirearmAmmo("{GunId:\"tacz:ak47\",GunCurrentAmmoCount:29}"));
+        assertEquals(11, NoiseModel.extractFirearmAmmo("{AmmoCount:11}"));
+    }
 }
