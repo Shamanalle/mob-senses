@@ -5,6 +5,22 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-11-25
+
+### English
+
+#### Fixed
+- **Fixed singleplayer `"Server closed"` crash on Fabric `1.21 – 1.21.4`.** Resolved a binary `NoSuchMethodError` caused by `Player.isCreative()` changing its Intermediary ID between Minecraft `1.21.4` (`method_7337`) and `1.21.5+` (`method_68878`), which crashed the integrated/dedicated server on the very first tick after a player joined.
+- **Fixed Forge `1.19.3` compatibility.** Resolved `Projectile.getOwner()` and GUI `AbstractWidget.setY(int)` SRG method name differences between `1.19.3` and `1.19.4`.
+- **Hardened server tick isolation.** Wrapped server hearing and client-sync tick handlers with deduplicated `ModLog.failure` guards so unexpected exceptions from third-party entities or mods never crash or shut down a world.
+
+### Русский
+
+#### Исправлено
+- **Исправлен вылет «Server closed» при входе в одиночный мир и на сервер на Fabric `1.21 – 1.21.4`.** Устранена бинарная ошибка `NoSuchMethodError` из-за смены Intermediary-ID метода `Player.isCreative()` между Minecraft `1.21.4` (`method_7337`) и `1.21.5+` (`method_68878`), приводившая к падению встроенного или выделенного сервера на первом же тике после входа игрока.
+- **Исправлена совместимость с Forge `1.19.3`.** Устранены расхождения SRG-имён `Projectile.getOwner()` и `AbstractWidget.setY(int)` между `1.19.3` и `1.19.4`.
+- **Усилена защита серверных тиков.** Обработчики игровых событий, слуховых тиков и синхронизации клиентов обёрнуты в перехватчики с дедуплицированным логированием `ModLog.failure`, чтобы непредвиденные сбои сторонних модов не останавливали сервер.
+
 ## [1.7.0] - 2026-11-23
 
 ### English

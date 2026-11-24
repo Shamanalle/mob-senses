@@ -4,6 +4,7 @@ import com.kasper.mobsenses.AdminCommands;
 import com.kasper.mobsenses.Jv;
 import com.kasper.mobsenses.LinkProtocol;
 import com.kasper.mobsenses.MobSenses;
+import com.kasper.mobsenses.ModLog;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -148,29 +149,33 @@ public final class ServerBridge {
             MinecraftServer server,
             Predicate<ServerPlayer> isAdmin,
             BiConsumer<ServerPlayer, String> stateSender) {
-        if (server == null || stateSender == null || MODDED_PLAYERS.isEmpty()) {
-            dirty = false;
-            return;
-        }
-        int t = ++tickCounter;
-        if ((t % 200) == 0) {
-            for (UUID id : MODDED_PLAYERS.keySet()) {
-                if (server.getPlayerList().getPlayer(id) == null) {
-                    MODDED_PLAYERS.remove(id);
-                    FINGERPRINTS.remove(id);
-                }
-            }
-            if (MODDED_PLAYERS.isEmpty()) {
+        try {
+            if (server == null || stateSender == null || MODDED_PLAYERS.isEmpty()) {
                 dirty = false;
                 return;
             }
+            int t = ++tickCounter;
+            if ((t % 200) == 0) {
+                for (UUID id : MODDED_PLAYERS.keySet()) {
+                    if (server.getPlayerList().getPlayer(id) == null) {
+                        MODDED_PLAYERS.remove(id);
+                        FINGERPRINTS.remove(id);
+                    }
+                }
+                if (MODDED_PLAYERS.isEmpty()) {
+                    dirty = false;
+                    return;
+                }
+            }
+            boolean force = dirty || (t % TELEMETRY_PUSH_TICKS) == 0;
+            if (!force && (t % STATE_CHECK_TICKS) != 0) {
+                return;
+            }
+            dirty = false;
+            broadcast(server, isAdmin, stateSender, force);
+        } catch (Throwable t) {
+            ModLog.failure("Syncing client state", t);
         }
-        boolean force = dirty || (t % TELEMETRY_PUSH_TICKS) == 0;
-        if (!force && (t % STATE_CHECK_TICKS) != 0) {
-            return;
-        }
-        dirty = false;
-        broadcast(server, isAdmin, stateSender, force);
     }
 
     /** Immediately broadcasts fresh {@code mobsenses:state} to all connected modded clients. */

@@ -2,6 +2,7 @@ package com.kasper.mobsenses.server;
 
 import com.kasper.mobsenses.AcousticMaterial;
 import com.kasper.mobsenses.MobSenses;
+import com.kasper.mobsenses.ModLog;
 import com.kasper.mobsenses.NoiseCoalescer;
 import com.kasper.mobsenses.NoiseModel;
 import com.kasper.mobsenses.Preset;
@@ -69,6 +70,16 @@ public final class ServerHearing {
     private static int cleanupCounter;
     private static final Method ITEM_GET_TAG;
     private static final Method ITEM_GET_COMPONENTS;
+    private static final Method PLAYER_IS_CREATIVE = findZeroArgMethod(
+            new Class<?>[]{Player.class, ServerPlayer.class},
+            boolean.class,
+            false,
+            new String[]{"isCreative", "method_68878", "method_7337", "m_7500_", "func_184812_l_"});
+    private static final Method PROJECTILE_GET_OWNER = findZeroArgMethod(
+            new Class<?>[]{Projectile.class},
+            Entity.class,
+            true,
+            new String[]{"getOwner", "method_24921", "m_19749_", "m_37282_", "func_234616_v_"});
     private static final List<Method> SILENCED_FIRE_HELPERS = findSilencedFireHelpers();
     private static final List<Field> ITEM_ENTITY_INT_FIELDS = findItemEntityIntFields();
     private static final Map<Class<?>, Optional<Method>> MAGAZINE_CAPACITY_METHODS = new ConcurrentHashMap<>();
@@ -132,6 +143,76 @@ public final class ServerHearing {
         } catch (Throwable ignored) {
         }
         return fields;
+    }
+
+    private static Method findZeroArgMethod(
+            Class<?>[] owners,
+            Class<?> returnType,
+            boolean assignableReturn,
+            String[] names) {
+        if (owners == null || returnType == null || names == null) {
+            return null;
+        }
+        for (Class<?> owner : owners) {
+            if (owner == null) {
+                continue;
+            }
+            for (String name : names) {
+                try {
+                    Method m = owner.getMethod(name);
+                    if (m.getParameterCount() == 0
+                            && matchesReturnType(m.getReturnType(), returnType, assignableReturn)) {
+                        return m;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            for (Class<?> c = owner; c != null && c != Object.class; c = c.getSuperclass()) {
+                for (String name : names) {
+                    try {
+                        Method m = c.getDeclaredMethod(name);
+                        if (m.getParameterCount() != 0
+                                || !matchesReturnType(m.getReturnType(), returnType, assignableReturn)) {
+                            continue;
+                        }
+                        if (!Modifier.isPublic(m.getModifiers())) {
+                            m.setAccessible(true);
+                        }
+                        return m;
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean matchesReturnType(Class<?> actual, Class<?> expected, boolean assignable) {
+        return assignable ? expected.isAssignableFrom(actual) : actual == expected;
+    }
+
+    private static boolean isCreativePlayer(Player player) {
+        if (player == null || PLAYER_IS_CREATIVE == null) {
+            return false;
+        }
+        try {
+            Object res = PLAYER_IS_CREATIVE.invoke(player);
+            return Boolean.TRUE.equals(res);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static Entity projectileOwner(Projectile proj) {
+        if (proj == null || PROJECTILE_GET_OWNER == null) {
+            return null;
+        }
+        try {
+            Object res = PROJECTILE_GET_OWNER.invoke(proj);
+            return res instanceof Entity ? (Entity) res : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     static {
@@ -211,67 +292,71 @@ public final class ServerHearing {
         if (level == null || eventId == null) {
             return;
         }
-        NoiseModel.Kind kind = NoiseModel.classifyEvent(eventId);
-        if (kind == null) {
-            return;
-        }
-        Player player = responsiblePlayer(level, sourceEntity, kind, x, y, z);
-        if (player != null && BypassPermission.hasBypass(player)) {
-            if (kind.requiresPlayerSource()
-                    || player == sourceEntity
-                    || (sourceEntity instanceof Projectile proj && proj.getOwner() == player)) {
+        try {
+            NoiseModel.Kind kind = NoiseModel.classifyEvent(eventId);
+            if (kind == null) {
                 return;
             }
-            player = null;
-        }
-        boolean playerInvolved = player != null || !kind.requiresPlayerSource();
-        if (!playerInvolved) {
-            return;
-        }
-        String worldId = Worlds.id(level);
-        Preset preset = MobSenses.settings().presetOf(worldId);
-        if (preset == Preset.OFF) {
-            return;
-        }
-
-        NoiseModel.Posture posture = NoiseModel.Posture.WALKING;
-        if (player != null) {
-            if (player.isShiftKeyDown() || player.isCrouching()) {
-                posture = NoiseModel.Posture.SNEAKING;
-            } else if (player.isSprinting()) {
-                posture = NoiseModel.Posture.SPRINTING;
+            Player player = responsiblePlayer(level, sourceEntity, kind, x, y, z);
+            if (player != null && BypassPermission.hasBypass(player)) {
+                if (kind.requiresPlayerSource()
+                        || player == sourceEntity
+                        || (sourceEntity instanceof Projectile proj && projectileOwner(proj) == player)) {
+                    return;
+                }
+                player = null;
             }
-        }
-
-        BlockPos eventPos = new BlockPos((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
-        BlockState surface = affectedState;
-        if (surface == null || surface.isAir()) {
-            BlockPos surfacePos = BlockAcoustics.blockUnderEvent(level, eventPos);
-            surface = level.getBlockState(surfacePos);
-        }
-        String blockId = BlockAcoustics.blockId(surface);
-        AcousticMaterial material = BlockAcoustics.material(surface, blockId);
-
-        String effectiveEvent = resolveFirearmEvent(eventId, sourceEntity, player);
-        String contextId = blockId;
-        if (effectiveEvent.startsWith("mobsenses:gunshot")) {
-            ItemStack firearm = findActiveFirearmForShoot(player);
-            if (firearm == null) {
-                firearm = findHeldFirearm(player);
+            boolean playerInvolved = player != null || !kind.requiresPlayerSource();
+            if (!playerInvolved) {
+                return;
             }
-            if (firearm != null) {
-                contextId = itemId(firearm) + " " + itemTagSummary(firearm);
+            String worldId = Worlds.id(level);
+            Preset preset = MobSenses.settings().presetOf(worldId);
+            if (preset == Preset.OFF) {
+                return;
             }
+
+            NoiseModel.Posture posture = NoiseModel.Posture.WALKING;
+            if (player != null) {
+                if (player.isShiftKeyDown() || player.isCrouching()) {
+                    posture = NoiseModel.Posture.SNEAKING;
+                } else if (player.isSprinting()) {
+                    posture = NoiseModel.Posture.SPRINTING;
+                }
+            }
+
+            BlockPos eventPos = new BlockPos((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
+            BlockState surface = affectedState;
+            if (surface == null || surface.isAir()) {
+                BlockPos surfacePos = BlockAcoustics.blockUnderEvent(level, eventPos);
+                surface = level.getBlockState(surfacePos);
+            }
+            String blockId = BlockAcoustics.blockId(surface);
+            AcousticMaterial material = BlockAcoustics.material(surface, blockId);
+
+            String effectiveEvent = resolveFirearmEvent(eventId, sourceEntity, player);
+            String contextId = blockId;
+            if (effectiveEvent.startsWith("mobsenses:gunshot")) {
+                ItemStack firearm = findActiveFirearmForShoot(player);
+                if (firearm == null) {
+                    firearm = findHeldFirearm(player);
+                }
+                if (firearm != null) {
+                    contextId = itemId(firearm) + " " + itemTagSummary(firearm);
+                }
+            }
+            double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
+            if (kind == NoiseModel.Kind.STEP && hasStealthEnchant(player)) {
+                envMult *= Math.max(0.0, 1.0 - MobSenses.settings().featherFallingMuffling());
+            }
+            MobSenses.gameEvent(
+                    effectiveEvent, worldId, x, y, z,
+                    posture, material, contextId,
+                    player != null, envMult,
+                    player != null ? player.getUUID() : null);
+        } catch (Throwable t) {
+            ModLog.failure("Handling a game event", t);
         }
-        double envMult = MobSenses.settings().weatherMultiplier(level.isRaining(), level.isThundering());
-        if (kind == NoiseModel.Kind.STEP && hasStealthEnchant(player)) {
-            envMult *= Math.max(0.0, 1.0 - MobSenses.settings().featherFallingMuffling());
-        }
-        MobSenses.gameEvent(
-                effectiveEvent, worldId, x, y, z,
-                posture, material, contextId,
-                player != null, envMult,
-                player != null ? player.getUUID() : null);
     }
 
     /**
@@ -283,34 +368,42 @@ public final class ServerHearing {
             return;
         }
         if (++cleanupCounter % 200 == 0) {
-            long nowCleanup = System.currentTimeMillis();
-            if (!LAST_FIREARM_KEY.isEmpty()) {
-                for (java.util.UUID id : new ArrayList<>(LAST_FIREARM_KEY.keySet())) {
-                    if (server.getPlayerList().getPlayer(id) == null) {
-                        LAST_FIREARM_KEY.remove(id);
-                        LAST_FIREARM_AMMO.remove(id);
+            try {
+                long nowCleanup = System.currentTimeMillis();
+                if (!LAST_FIREARM_KEY.isEmpty()) {
+                    for (java.util.UUID id : new ArrayList<>(LAST_FIREARM_KEY.keySet())) {
+                        if (server.getPlayerList().getPlayer(id) == null) {
+                            LAST_FIREARM_KEY.remove(id);
+                            LAST_FIREARM_AMMO.remove(id);
+                        }
                     }
                 }
-            }
-            if (!LAST_RALLY_MS.isEmpty()) {
-                LAST_RALLY_MS.entrySet().removeIf(e -> (nowCleanup - e.getValue()) > 30_000L);
-            }
-            if (!LAST_DECOY_DROP_MS.isEmpty()) {
-                LAST_DECOY_DROP_MS.entrySet().removeIf(e -> (nowCleanup - e.getValue()) > 5_000L);
-            }
-            if (!TRACKED_DECOYS.isEmpty()) {
-                TRACKED_DECOYS.entrySet().removeIf(e -> (nowCleanup - e.getValue().startedAtMs) > 6_000L);
-            }
-            if (!LEGITIMATE_PURSUIT.isEmpty()) {
-                LEGITIMATE_PURSUIT.entrySet().removeIf(e -> (nowCleanup - e.getValue().atMs) > 15_000L);
-            }
-            if (LAST_HURT_STAMP.size() > 512) {
-                LAST_HURT_STAMP.clear();
+                if (!LAST_RALLY_MS.isEmpty()) {
+                    LAST_RALLY_MS.entrySet().removeIf(e -> (nowCleanup - e.getValue()) > 30_000L);
+                }
+                if (!LAST_DECOY_DROP_MS.isEmpty()) {
+                    LAST_DECOY_DROP_MS.entrySet().removeIf(e -> (nowCleanup - e.getValue()) > 5_000L);
+                }
+                if (!TRACKED_DECOYS.isEmpty()) {
+                    TRACKED_DECOYS.entrySet().removeIf(e -> (nowCleanup - e.getValue().startedAtMs) > 6_000L);
+                }
+                if (!LEGITIMATE_PURSUIT.isEmpty()) {
+                    LEGITIMATE_PURSUIT.entrySet().removeIf(e -> (nowCleanup - e.getValue().atMs) > 15_000L);
+                }
+                if (LAST_HURT_STAMP.size() > 512) {
+                    LAST_HURT_STAMP.clear();
+                }
+            } catch (Throwable t) {
+                ModLog.failure("Server hearing tick cleanup", t);
             }
         }
         boolean runSenses = (++serverTickCounter % SENSE_TICK_INTERVAL) == 0;
-        for (ServerLevel level : server.getAllLevels()) {
-            tickLevel(level, runSenses);
+        try {
+            for (ServerLevel level : server.getAllLevels()) {
+                tickLevel(level, runSenses);
+            }
+        } catch (Throwable t) {
+            ModLog.failure("Server hearing tick", t);
         }
     }
 
@@ -322,6 +415,7 @@ public final class ServerHearing {
         if (level == null) {
             return;
         }
+        try {
         String worldId = Worlds.id(level);
         Preset preset = MobSenses.settings().presetOf(worldId);
         if (preset == Preset.OFF) {
@@ -346,7 +440,7 @@ public final class ServerHearing {
 
         // 1b. Detect newly spawned gun bullets (e.g. TaCZ EntityKineticBullet, PointBlank, CGM, Scorched Guns)
         for (ServerPlayer player : level.players()) {
-            if (player.isSpectator() || (player.isCreative() && !MobSenses.debug()) || BypassPermission.hasBypass(player)) {
+            if (player.isSpectator() || (isCreativePlayer(player) && !MobSenses.debug()) || BypassPermission.hasBypass(player)) {
                 continue;
             }
             detectPlayerGunshots(level, worldId, player);
@@ -415,11 +509,14 @@ public final class ServerHearing {
         // 3. Sight (held light / darkness + sneaking) and Scent (wounded blood trail)
         if (runSenses) {
             for (ServerPlayer player : level.players()) {
-                if (player.isSpectator() || (player.isCreative() && !MobSenses.debug())) {
+                if (player.isSpectator() || (isCreativePlayer(player) && !MobSenses.debug())) {
                     continue;
                 }
                 tickPlayerSightAndScent(level, worldId, player, preset, now);
             }
+        }
+        } catch (Throwable t) {
+            ModLog.failure("Server hearing tick", t);
         }
     }
 
@@ -468,7 +565,7 @@ public final class ServerHearing {
 
         for (ServerPlayer player : level.players()) {
             if (!player.isAlive() || player.isSpectator()
-                    || (player.isCreative() && !MobSenses.debug())
+                    || (isCreativePlayer(player) && !MobSenses.debug())
                     || BypassPermission.hasBypass(player)) {
                 continue;
             }
@@ -916,7 +1013,7 @@ public final class ServerHearing {
                 return false;
             }
             if (e instanceof Projectile proj) {
-                Entity owner = proj.getOwner();
+                Entity owner = projectileOwner(proj);
                 if (e.distanceToSqr(player) > 25.0) {
                     return owner == player;
                 }
@@ -1091,7 +1188,7 @@ public final class ServerHearing {
         if (source instanceof Player p) {
             return p.isSpectator() ? null : p;
         }
-        if (source instanceof Projectile proj && proj.getOwner() instanceof Player p) {
+        if (source instanceof Projectile proj && projectileOwner(proj) instanceof Player p) {
             return p.isSpectator() ? null : p;
         }
         if (source == null && (kind == NoiseModel.Kind.DOOR
@@ -1174,7 +1271,7 @@ public final class ServerHearing {
         }
         for (ServerPlayer player : level.players()) {
             if (!player.isAlive() || player.isSpectator()
-                    || (player.isCreative() && !MobSenses.debug())
+                    || (isCreativePlayer(player) && !MobSenses.debug())
                     || BypassPermission.hasBypass(player)) {
                 continue;
             }
@@ -1279,7 +1376,7 @@ public final class ServerHearing {
         Set<Integer> checked = new HashSet<>();
 
         for (ServerPlayer player : level.players()) {
-            if (player.isSpectator() || (player.isCreative() && !MobSenses.debug()) || BypassPermission.hasBypass(player)) {
+            if (player.isSpectator() || (isCreativePlayer(player) && !MobSenses.debug()) || BypassPermission.hasBypass(player)) {
                 continue;
             }
             AABB box = new AABB(
@@ -1292,7 +1389,7 @@ public final class ServerHearing {
                     continue;
                 }
                 if (!(mob.getLastHurtByMob() instanceof Player attacker) || attacker.isSpectator()
-                        || (attacker.isCreative() && !MobSenses.debug())
+                        || (isCreativePlayer(attacker) && !MobSenses.debug())
                         || BypassPermission.hasBypass(attacker)) {
                     continue;
                 }

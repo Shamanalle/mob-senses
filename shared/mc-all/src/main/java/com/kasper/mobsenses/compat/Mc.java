@@ -5,10 +5,44 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 /** Client widget & screen helpers for Minecraft 1.19.3 - 1.21.11. */
 public final class Mc {
 
+    private static final Method SET_Y = findSetYMethod();
+
     private Mc() {
+    }
+
+    private static Method findSetYMethod() {
+        String[] names = {"setY", "method_46419", "m_253211_", "m_252888_"};
+        for (String name : names) {
+            try {
+                Method m = AbstractWidget.class.getMethod(name, int.class);
+                if (m.getReturnType() == void.class) {
+                    return m;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        for (Class<?> c = AbstractWidget.class; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (String name : names) {
+                try {
+                    Method m = c.getDeclaredMethod(name, int.class);
+                    if (m.getReturnType() != void.class) {
+                        continue;
+                    }
+                    if (!Modifier.isPublic(m.getModifiers())) {
+                        m.setAccessible(true);
+                    }
+                    return m;
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     public static int x(AbstractWidget widget) {
@@ -24,7 +58,13 @@ public final class Mc {
     }
 
     public static void setY(AbstractWidget widget, int y) {
-        widget.setY(y);
+        if (widget == null || SET_Y == null) {
+            return;
+        }
+        try {
+            SET_Y.invoke(widget, y);
+        } catch (Throwable ignored) {
+        }
     }
 
     public static void openScreen(Minecraft client, Screen screen) {
