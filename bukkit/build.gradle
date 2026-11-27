@@ -59,10 +59,13 @@ processResources {
 // The plugin jar: the common code with the language files (replies to /mobsenses come from them; the icon
 // is for the mod only)
 tasks.named('jar') {
+    includeEmptyDirs = false
     from(sourceSets.modern.output)
     from(project(':common-j8').sourceSets.main.output) {
         exclude 'assets/mobsenses/icon.png'
+        exclude 'com/github/bsideup/jabel/**'
     }
+    exclude 'com/github/bsideup/jabel/**'
 }
 
 // Guards the jar against losing the texts or classes: without them every reply is a bare key
@@ -83,6 +86,14 @@ tasks.register('checkPluginJar') {
             if (!names.contains(required)) {
                 throw new GradleException("The plugin jar lacks " + required)
             }
+        }
+        names.findAll { it.endsWith('.class') }.each { String cls ->
+            if (!cls.startsWith('com/kasper/mobsenses/')) {
+                throw new GradleException("Unexpected foreign class in plugin jar: " + cls)
+            }
+        }
+        names.findAll { it.startsWith('com/github/') }.each { String bad ->
+            throw new GradleException("Unexpected Jabel entry in plugin jar: " + bad)
         }
     }
 }

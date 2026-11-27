@@ -5,6 +5,18 @@ each version is in English, then in Russian.
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-11-27
+
+### English
+
+#### Fixed
+- **Fixed Forge & NeoForge modpack crash alongside *Voice Physics* and other mods.** Removed a compile-only annotation class (`com.github.bsideup.jabel.Desugar`) from the release jars that caused a duplicate-package (`ResolutionException`) crash at startup when installed together with *Voice Physics*, *Player Statuses* or other mods bundling the same package.
+
+### Русский
+
+#### Исправлено
+- **Исправлен вылет сборок на Forge и NeoForge вместе с *Voice Physics* и другими модами.** Из релизных jar-файлов убран служебный класс аннотации времени компиляции (`com.github.bsideup.jabel.Desugar`), из-за дублирования пакета которого игра падала при запуске (`ResolutionException`) вместе с *Voice Physics*, *Player Statuses* и другими модами с тем же пакетом.
+
 ## [1.7.1] - 2026-11-25
 
 ### English

@@ -107,6 +107,57 @@ class MergeJarsTest {
         assertTrue(e.getMessage().contains("names the refmap"), e.getMessage());
     }
 
+    @Test
+    void jabelCompileOnlyStubIsStrippedAndForeignPackagesAreRejected() throws IOException {
+        Map<String, byte[]> commonFiles = new LinkedHashMap<>();
+        commonFiles.put("com/kasper/mobsenses/Common.class", emptyClass("com/kasper/mobsenses/Common", Opcodes.V1_8));
+        commonFiles.put("com/github/bsideup/jabel/Desugar.class", emptyClass("com/github/bsideup/jabel/Desugar", Opcodes.V1_8));
+        Path common = folder("commonWithJabel", commonFiles);
+        Path base = folder("baseJabel", Map.of("mobsenses-bands.properties", text("bands=mc1_21\n")));
+        Path bandDir = band("b21Jabel", false, Opcodes.V21);
+        Path jabelInBand = bandDir.resolve("com/github/bsideup/jabel/Desugar.class");
+        Files.createDirectories(jabelInBand.getParent());
+        Files.write(jabelInBand, emptyClass("com/github/bsideup/jabel/Desugar", Opcodes.V17));
+        Path out = dir.resolve("mob-senses-clean.jar");
+
+        MergeJars merge = new MergeJars();
+        setMixins(merge);
+        merge.run(out, java.util.List.of(common), java.util.List.of(base), Map.of("mc1_21", bandDir),
+                new HashMap<>(), Integer.MAX_VALUE, Integer.MAX_VALUE, "mobsenses-bands.properties");
+
+        try (ZipFile zip = new ZipFile(out.toFile())) {
+            assertNull(zip.getEntry("com/github/bsideup/jabel/Desugar.class"));
+            assertNull(zip.getEntry("com/github/bsideup/jabel/"));
+            assertNull(zip.getEntry("com/github/"));
+            zip.stream().filter(e -> e.getName().endsWith(".class")).forEach(e ->
+                    assertTrue(e.getName().startsWith("com/kasper/mobsenses/"), "Unexpected class: " + e.getName()));
+        }
+
+        // Verify JPMS ModuleLayer coexistence alongside Voice Physics
+        Path companionVp = dir.resolve("voice-physics-clean.jar");
+        try (var zos = new java.util.zip.ZipOutputStream(Files.newOutputStream(companionVp))) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("com/kasper/vcdistance/Common.class"));
+            zos.write(emptyClass("com/kasper/vcdistance/Common", Opcodes.V1_8));
+            zos.closeEntry();
+        }
+        var finder = java.lang.module.ModuleFinder.of(out, companionVp);
+        var resolved = ModuleLayer.boot().configuration().resolve(
+                finder, java.lang.module.ModuleFinder.of(), java.util.Set.of("mob.senses.clean", "voice.physics.clean"));
+        var pkgs = resolved.findModule("mob.senses.clean").orElseThrow().reference().descriptor().packages();
+        pkgs.forEach(p -> assertTrue(p.startsWith("com.kasper.mobsenses"), "Unexpected JPMS package: " + p));
+
+        Path pollutedCommon = folder("pollutedCommon", Map.of(
+                "com/kasper/mobsenses/Common.class", emptyClass("com/kasper/mobsenses/Common", Opcodes.V1_8),
+                "org/example/Foreign.class", emptyClass("org/example/Foreign", Opcodes.V1_8)));
+        MergeJars bad = new MergeJars();
+        setMixins(bad);
+        IllegalStateException err = assertThrows(IllegalStateException.class, () -> bad.run(
+                dir.resolve("bad.jar"), java.util.List.of(pollutedCommon), java.util.List.of(base),
+                Map.of("mc1_21", bandDir), new HashMap<>(), Integer.MAX_VALUE, Integer.MAX_VALUE,
+                "mobsenses-bands.properties"));
+        assertTrue(err.getMessage().contains("org/example/Foreign.class"), err.getMessage());
+    }
+
     private static void setMixins(MergeJars merge) {
         merge.mixinConfig = "mobsenses.mixins.json";
         merge.mixinPlugin = "com.kasper.mobsenses.BandMixins";
